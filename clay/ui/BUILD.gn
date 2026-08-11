@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//build/config/templates/templates.gni")
 import("../../config.gni")
 import("../../oliver/oliver.gni")
 import("../testing/testing.gni")
@@ -40,6 +41,114 @@ config("ui_defines") {
 
     cflags = [ "-Wno-c99-designator" ]
   }
+}
+
+keywords_input = "component/keywords.in"
+keywords_header = "$root_gen_dir/clay/ui/component/keywords.h"
+keywords_source = "$root_gen_dir/clay/ui/component/keywords.cc"
+
+if (is_ios) {
+  keywords_template_script = "../tools/keywords_codegen/template_variables.py"
+  keywords_header_template = "../tools/keywords_codegen/keywords.h.template"
+  exec_script(keywords_template_script,
+              [
+                rebase_path(keywords_input, root_build_dir),
+                rebase_path(keywords_header_template, root_build_dir),
+                rebase_path(keywords_header, root_build_dir),
+              ],
+              "",
+              [
+                keywords_input,
+                keywords_header_template,
+                keywords_template_script,
+              ])
+}
+
+action("generate_keywords_header") {
+  script = "../tools/keywords_codegen/template_variables.py"
+  template = "../tools/keywords_codegen/keywords.h.template"
+  inputs = [
+    keywords_input,
+    template,
+  ]
+  outputs = [ keywords_header ]
+  args = [
+    rebase_path(keywords_input, root_build_dir),
+    rebase_path(template, root_build_dir),
+    rebase_path(keywords_header, root_build_dir),
+  ]
+}
+
+action("generate_keywords_source") {
+  if (is_ios) {
+    codegen_script = "../tools/keywords_codegen/run.py"
+    codegen_source = "../tools/keywords_codegen/main.cc"
+    exec_script(codegen_script,
+                [
+                  rebase_path("$root_build_dir/clay_keywords_codegen_host",
+                              root_build_dir),
+                  rebase_path(codegen_source, root_build_dir),
+                  rebase_path(keywords_input, root_build_dir),
+                  rebase_path(keywords_source, root_build_dir),
+                ],
+                "",
+                [
+                  codegen_script,
+                  codegen_source,
+                  keywords_input,
+                ])
+  }
+
+  inputs = [ keywords_input ]
+  outputs = [ keywords_source ]
+  if (is_android) {
+    codegen_script = "../tools/keywords_codegen/run.py"
+    codegen_source = "../tools/keywords_codegen/main.cc"
+    script = codegen_script
+    codegen_executable = "$root_build_dir/clay_keywords_codegen_host"
+    inputs += [
+      codegen_source,
+      script,
+    ]
+    args = [
+      rebase_path(codegen_executable, root_build_dir),
+      rebase_path(codegen_source, root_build_dir),
+      rebase_path(keywords_input, root_build_dir),
+      rebase_path(keywords_source, root_build_dir),
+    ]
+  } else {
+    script = "//build/gn_run_binary.py"
+    codegen_label =
+        "../tools/keywords_codegen:clay_keywords_codegen($host_toolchain)"
+    codegen_root_out_dir = get_label_info(codegen_label, "root_out_dir")
+    codegen_executable_suffix = ""
+    if (host_os == "win") {
+      codegen_executable_suffix = ".exe"
+    }
+    codegen_executable =
+        "$codegen_root_out_dir/clay_keywords_codegen$codegen_executable_suffix"
+    deps = [ codegen_label ]
+    args = [
+      rebase_path(codegen_executable, root_build_dir),
+      rebase_path(keywords_input, root_build_dir),
+      rebase_path(keywords_source, root_build_dir),
+    ]
+  }
+}
+
+group("generate_keywords") {
+  public_deps = [
+    ":generate_keywords_header",
+    ":generate_keywords_source",
+  ]
+}
+
+source_set("keywords") {
+  sources = [
+    "$root_gen_dir/clay/ui/component/keywords.cc",
+    "$root_gen_dir/clay/ui/component/keywords.h",
+  ]
+  deps = [ ":generate_keywords" ]
 }
 
 source_set("ui") {
@@ -104,6 +213,7 @@ source_set("ui") {
   }
 
   public_deps = [
+    ":keywords",
     "../fml:fml",
     "../net:net",
     "../third_party/txt",
