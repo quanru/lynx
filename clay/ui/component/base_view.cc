@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -2855,6 +2856,14 @@ bool BaseView::IsPointInsideHitSlop(const FloatPoint& point_by_self) const {
          point_by_self.y() <= height_ + hit_slop_bottom_;
 }
 
+bool BaseView::AcceptsPointerEvents() const {
+  if (pointer_events_enabled_.has_value()) {
+    return *pointer_events_enabled_;
+  }
+  return IsIndependentSubViewTree() || parent_ == nullptr ||
+         parent_->AcceptsPointerEvents();
+}
+
 bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
   if (!CanAcceptEvent()) {
     return false;
@@ -2892,6 +2901,9 @@ bool BaseView::HitTest(const PointerEvent& event, HitTestResult& result) {
 
   if (beyond_self) {
     return founded;
+  }
+  if (!founded && !AcceptsPointerEvents()) {
+    return false;
   }
   should_pass_event_for_hittest_ = ShouldPassEventToNativeAt(event.position);
   result.emplace_back(GetHitTestTargetWeakPtr());
@@ -3113,7 +3125,7 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
   }
 
   // An internally created view (with an id < 0) cannot be the event target.
-  if (is_point_inside && !IsAnonymousView()) {
+  if (is_point_inside && !IsAnonymousView() && AcceptsPointerEvents()) {
     if (IsIndependentSubViewTree() && CanEventsPassThroughToViewsBehind()) {
       return nullptr;
     }
@@ -3202,6 +3214,15 @@ void BaseView::SetAttribute(const char* attr, const clay::Value& value) {
 
 bool BaseView::HandleCommonAttribute(const char* attr,
                                      const clay::Value& value) {
+  if (std::strcmp(attr, "pointer-events") == 0) {
+    if (value.IsNull()) {
+      pointer_events_enabled_.reset();
+    } else {
+      pointer_events_enabled_ = utils::GetInt(value) == 0;
+    }
+    return true;
+  }
+
   auto kw = GetKeywordID(attr);
   switch (kw) {
     case KeywordID::kIdselector:
