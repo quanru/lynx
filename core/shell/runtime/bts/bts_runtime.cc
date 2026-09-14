@@ -1013,7 +1013,6 @@ void BTSRuntime::OnRuntimeReady() {
   }
 
   LOGI(log_context_ << " lynx runtime ready");
-
   delegate_->OnRuntimeReady();
 
   for (const auto& task : cached_tasks_) {
