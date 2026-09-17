@@ -24,6 +24,8 @@ class Codec : public fml::RefCountedThreadSafe<Codec> {
 
   virtual void NextFrame(const CodecCallback& callback) = 0;
 
+  virtual void DecodeFrame(int, const CodecCallback&) {}
+
   virtual int FrameDuration(int index) const { return -1; }
 };
 
