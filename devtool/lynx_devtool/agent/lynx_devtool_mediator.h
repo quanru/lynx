@@ -267,6 +267,7 @@ class LynxDevToolMediator
   }
 
  public:
+  bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
   void RunOnJSThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnTASMThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnDevToolThread(lynx::base::closure&& closure, bool run_now = true);
@@ -303,8 +304,6 @@ class LynxDevToolMediator
       const std::shared_ptr<WhiteBoardInspectorDelegate>& inspector_delegate);
 
  private:
-  bool RunOnUIThread(lynx::base::closure&& closure, bool run_now = true);
-
   lynx::fml::RefPtr<lynx::fml::TaskRunner> tasm_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> ui_task_runner_;
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner_;

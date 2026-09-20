@@ -23,6 +23,15 @@ source_set("devtool_mock") {
     "white_board_inspector_delegate_mock.h",
   ]
 
+  if (is_mac) {
+    # Native tests do not link the Objective-C platform logger. Use the common
+    # platform implementation for the CDP logging entry point instead.
+    sources += [
+      "../../../base/src/log/logging_base.cc",
+      "../../../base/src/log/logging_platform_default.cc",
+    ]
+  }
+
   public_deps = [
     "../../../base/trace/native:trace",
     "../../../core/inspector:inspector",

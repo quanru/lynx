@@ -1,0 +1,20 @@
+summary: Reads the process-wide business log threshold, including INFO sublevels.
+parameters: []
+returns:
+  - name: businessLevel
+    type: string
+    description: VERBOSE, DEBUG, MONITOR, OBSERVE, INFO, WARNING or ERROR.
+events: []
+notes:
+  - Select an active LynxView session. The result describes the shared native threshold, not a per-view override or an output severity.
+  - Reads immediately without switching threads. Wait for a setLogLevel response before querying its result.
+  - Reads current logging state rather than a CDP cache, including changes made through host setters.
+examples:
+  - title: Read the current threshold
+    request:
+      id: 2
+      method: Lynx.getLogLevel
+    response:
+      id: 2
+      result:
+        businessLevel: INFO
