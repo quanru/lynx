@@ -3998,6 +3998,28 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
   DrainDeferredTasks();
 }
 
+void TemplateAssembler::ReportNativeUIExternalMemory(
+    const std::vector<std::pair<int32_t, int64_t>>& nodes) {
+  auto* manager = page_proxy()->element_manager().get();
+  if (!manager || !manager->EnableFiberElementMemoryReport()) {
+    return;
+  }
+  ExternalMemorySnapshot ui_snapshot;
+  for (const auto& node : nodes) {
+    auto* element = manager->node_manager()->Get(node.first);
+    // An Element can have been destroyed since the UI sample was taken.
+    // Its queued renderer destruction must not become GC pressure again.
+    if (!element || node.second <= 0) {
+      continue;
+    }
+    ui_snapshot.total_size += node.second;
+    if (element->IsDetached()) {
+      ui_snapshot.garbage_size += node.second;
+    }
+  }
+  ReportExternalMemory(ui_snapshot);
+}
+
 void TemplateAssembler::ReportExternalMemory(
     ExternalMemorySnapshot ui_snapshot) {
   auto* manager = page_proxy()->element_manager().get();

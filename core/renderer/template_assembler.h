@@ -338,6 +338,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void TriggerVmGC();
 
   void ReportExternalMemory(ExternalMemorySnapshot ui_snapshot);
+  // The UI thread supplies sizes only. Classify using current Element state on
+  // the engine thread, so renderer reparenting does not imply garbage.
+  void ReportNativeUIExternalMemory(
+      const std::vector<std::pair<int32_t, int64_t>>& nodes);
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 

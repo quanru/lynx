@@ -12742,6 +12742,42 @@ TEST_P(FiberElementTest, InlineElementTest0) {
   EXPECT_TRUE(HasCaptureSignWithTag(image->impl_id(), "inline-image"));
 }
 
+TEST_P(FiberElementTest, NativeUIExternalMemoryUsesCurrentElementState) {
+  auto runtime = std::make_shared<RecordingExternalMemoryRuntime>();
+  auto entry = std::make_shared<TemplateEntry>();
+  entry->SetVm(runtime);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+  manager->enable_fiber_element_memory_reporter_ = true;
+  auto attached = manager->CreateFiberNode("view");
+  auto detached = manager->CreateFiberNode("view");
+  attached->MarkAttached();
+  const auto element_snapshot =
+      manager->node_manager()->GetExternalMemorySnapshot();
+  const std::vector<std::pair<int32_t, int64_t>> nodes = {
+      {attached->impl_id(), 100}, {detached->impl_id(), 200}, {-1, 300}};
+  tasm->ReportNativeUIExternalMemory(nodes);
+  EXPECT_EQ(runtime->context()->reported_total_size,
+            element_snapshot.total_size + 300);
+  EXPECT_EQ(runtime->context()->reported_garbage_size,
+            element_snapshot.garbage_size + 200);
+
+  // A renderer removal can be part of a move. Classify when the sample
+  // reaches the engine instead of treating the removal as garbage.
+  detached->MarkAttached();
+  tasm->ReportNativeUIExternalMemory(nodes);
+  EXPECT_EQ(runtime->context()->reported_garbage_size, 0);
+  detached = nullptr;
+  tasm->ReportNativeUIExternalMemory(nodes);
+  EXPECT_EQ(
+      runtime->context()->reported_total_size,
+      manager->node_manager()->GetExternalMemorySnapshot().total_size + 100);
+
+  const auto reports = runtime->context()->report_count;
+  manager->enable_fiber_element_memory_reporter_ = false;
+  tasm->ReportNativeUIExternalMemory(nodes);
+  EXPECT_EQ(runtime->context()->report_count, reports);
+}
+
 TEST_P(FiberElementTest, ExternalMemoryReportUsesOnlyDefaultRuntime) {
   auto default_runtime = std::make_shared<RecordingExternalMemoryRuntime>();
   auto component_runtime = std::make_shared<RecordingExternalMemoryRuntime>();
