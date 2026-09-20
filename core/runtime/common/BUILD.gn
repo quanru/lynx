@@ -15,11 +15,13 @@ lynx_core_source_set("reporter") {
 
 lynx_core_source_set("common") {
   sources = [
+    "interceptor.cc",
     "js_call_native_frequency_monitor.cc",
     "js_call_native_frequency_monitor.h",
     "lynx_console_helper.h",
   ]
   deps = [ "../../build:build" ]
+  public_deps = [ "../../public:public" ]
 }
 
 unittest_set("reporter_unittests_testset") {

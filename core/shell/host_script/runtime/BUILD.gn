@@ -9,6 +9,8 @@ lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
     "../lynx_view/lynx_view_ref_types.h",
+    "host_script_interceptor.cc",
+    "host_script_interceptor.h",
     "host_script_js_dispatcher.cc",
     "host_script_js_dispatcher.h",
     "host_script_module.cc",
@@ -18,7 +20,9 @@ lynx_core_source_set("host_script") {
   ]
 
   deps = [
+    "../../../../base/src:base_values",
     "../../../../third_party/binding/napi:napi_binding_base",
+    "../../../runtime/common:common",
     "../../../runtime/common/napi:napi_binding_core",
   ]
 }

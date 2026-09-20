@@ -11,9 +11,12 @@
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/shell/host_script/runtime/host_script_interceptor.h"
 #include "core/shell/host_script/runtime/host_script_module.h"
 #include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -210,6 +213,143 @@ class HostScriptSessionTest : public ::testing::Test {
   std::shared_ptr<FakeProxyState> state_;
   std::shared_ptr<HostScriptSession> session_;
 };
+
+class HostScriptInterceptorTest : public HostScriptSessionTest {
+ protected:
+  ~HostScriptInterceptorTest() override {
+    if (provider_) provider_->Uninstall();
+  }
+  void Install(HostScriptInterceptor::Thread thread =
+                   HostScriptInterceptor::Thread::kUI) {
+    provider_ = HostScriptInterceptor::Install(env_, thread);
+    ASSERT_NE(provider_, nullptr);
+  }
+  void Script(const char* source) {
+    env_.RunScript(source);
+    ASSERT_FALSE(env_.IsExceptionPending());
+  }
+  pub::InterceptResult Dispatch(
+      pub::InterceptKind kind = pub::InterceptKind::kCreate) {
+    lepus::Value event(lepus::Dictionary::Create());
+    lepus::Value request(lepus::Dictionary::Create());
+    request.SetProperty("fontScale", lepus::Value(1));
+    event.SetProperty("viewId", lepus::Value("1"));
+    event.SetProperty("request", request);
+    return provider_->Dispatch(kind, event);
+  }
+  std::shared_ptr<HostScriptInterceptor> provider_;
+};
+
+TEST_F(HostScriptInterceptorTest, OrderedPatchesAndProceed) {
+  Install();
+  Script(R"(
+    interceptor.use('view.create', (e,c) => c.next({fontScale: 2}));
+    interceptor.use('view.create', (e,c) => c.proceed({fontScale: e.request.fontScale + 1}));
+    interceptor.use('view.create', () => {throw Error('must not execute')});
+  )");
+  auto result = Dispatch();
+  EXPECT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 3);
+}
+
+TEST_F(HostScriptInterceptorTest, RegistrationSnapshotAndDispose) {
+  Install();
+  Script(R"(
+    globalThis.calls = [];
+    interceptor.use('view.create', (e,c) => {
+      calls.push('first'); second.dispose();
+      interceptor.use('view.create', (e,c) => {calls.push('late'); return c.next()});
+      return c.next();
+    });
+    globalThis.second = interceptor.use('view.create', (e,c) => {calls.push('second'); return c.next()});
+  )");
+  EXPECT_FALSE(Dispatch().failed);
+  EXPECT_EQ(EvalString("calls.join(',')"), "first,second");
+  Script("calls = []");
+  EXPECT_FALSE(Dispatch().failed);
+  EXPECT_EQ(EvalString("calls.join(',')"), "first,late");
+}
+
+TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
+  const char* invalid[] = {"throw Error('failure')",
+                           "return Promise.resolve(c.next())",
+                           "return undefined",
+                           "return c.next({fontScale:-1})",
+                           "return c.mock({})",
+                           "const x={}; x.self=x; return c.next(x)",
+                           "return c.next({fontScale: NaN})"};
+  for (auto body : invalid) {
+    Install();
+    Script("interceptor.use('view.create', (e,c) => c.next({fontScale:2}))");
+    std::string source =
+        "interceptor.use('view.create', (e,c) => {" + std::string(body) + "})";
+    Script(source.c_str());
+    auto before = pub::Interceptor::FailureCount();
+    auto result = Dispatch();
+    EXPECT_TRUE(result.failed) << body;
+    EXPECT_FALSE(result.patch.IsTable());
+    EXPECT_FALSE(result.mock.IsTable());
+    EXPECT_EQ(pub::Interceptor::FailureCount(), before + 1);
+    EXPECT_FALSE(env_.IsExceptionPending());
+    provider_->Uninstall();
+    provider_.reset();
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, ThreadRegistrationAndUnload) {
+  Install();
+  EXPECT_EQ(EvalString("try { interceptor.use('jsb.call', ()=>{}); 'bad' } "
+                       "catch(e) { 'ok' }"),
+            "ok");
+  Script(
+      "globalThis.oldApi=interceptor; "
+      "interceptor.use('view.create',(e,c)=>c.next())");
+  provider_->Uninstall();
+  EXPECT_EQ(pub::Interceptor::Current(pub::InterceptKind::kCreate), nullptr);
+  EXPECT_EQ(
+      EvalString(
+          "try { oldApi.use('view.create',()=>{}); 'bad' } catch(e) { 'ok' }"),
+      "ok");
+  provider_.reset();
+  Install();
+  EXPECT_FALSE(provider_->HasHandlers(pub::InterceptKind::kCreate));
+}
+
+TEST_F(HostScriptInterceptorTest, MockValidatesAllCallbacksBeforeCommit) {
+  Install(HostScriptInterceptor::Thread::kBTS);
+  lepus::Value event(lepus::Dictionary::Create());
+  auto indices = lepus::CArray::Create();
+  indices->push_back(lepus::Value(0));
+  event.SetProperty("callbackIndices", lepus::Value(indices));
+  Script(
+      "globalThis.d = "
+      "interceptor.use('jsb.call',(e,c)=>c.mock({returnValue:7,callbacks:[{"
+      "argumentIndex:0,args:[1]},{argumentIndex:0,args:[2]}]}))");
+  auto result = provider_->Dispatch(pub::InterceptKind::kCall, event);
+  EXPECT_FALSE(result.failed);
+  EXPECT_EQ(result.mock.GetProperty("returnValue").Number(), 7);
+  EXPECT_EQ(result.mock.GetProperty("callbacks").GetLength(), 2);
+  Script(
+      "d.dispose(); "
+      "interceptor.use('jsb.call',(e,c)=>c.mock({callbacks:[{argumentIndex:0,"
+      "args:[]},{argumentIndex:1,args:[]}]}))");
+  result = provider_->Dispatch(pub::InterceptKind::kCall, event);
+  EXPECT_TRUE(result.failed);
+  EXPECT_FALSE(result.mock.IsTable());
+}
+
+TEST_F(HostScriptInterceptorTest, ViewIdentityIsIndependentOfURL) {
+  auto first = pub::Interceptor::CreateView();
+  auto second = pub::Interceptor::CreateView();
+  EXPECT_NE(first, second);
+  pub::Interceptor::BindView(first, 101);
+  pub::Interceptor::BindView(second, 102);
+  EXPECT_EQ(pub::Interceptor::FindView(101), first);
+  pub::Interceptor::DestroyView(first);
+  EXPECT_EQ(pub::Interceptor::FindView(101), 0u);
+  EXPECT_EQ(pub::Interceptor::FindView(102), second);
+  pub::Interceptor::DestroyView(second);
+}
 
 TEST_F(HostScriptSessionTest, SupportsBothAttachAndBindOrders) {
   for (bool attach_first : {true, false}) {

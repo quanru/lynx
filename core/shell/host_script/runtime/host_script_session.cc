@@ -43,6 +43,17 @@ bool HostScriptSession::Attach(napi_env env) {
     attached_ = true;
   }
   HostScriptModule::Register(env, shared_from_this());
+  interceptor_ = HostScriptInterceptor::Install(
+      env, HostScriptInterceptor::Thread::kBTS,
+      [weak = weak_from_this()](const std::string& message) {
+        if (auto session = weak.lock())
+          session->ReportEntryResult("ERROR", message);
+      });
+  if (!interceptor_) {
+    ReportEntryResult("ERROR", "Interceptor environment is already attached");
+    Detach();
+    return false;
+  }
   MaybePostReady();
   return true;
 }
@@ -59,6 +70,10 @@ void HostScriptSession::Detach() {
     dispatcher = std::move(dispatcher_);
   }
   InvalidateView();
+  if (interceptor_) {
+    interceptor_->Uninstall();
+    interceptor_.reset();
+  }
   SettleWaiters("The Host Script runtime was detached");
   listeners_.clear();
   if (dispatcher) {

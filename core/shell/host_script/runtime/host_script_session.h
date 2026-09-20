@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "core/shell/host_script/lynx_view/lynx_view_ref_proxy.h"
+#include "core/shell/host_script/runtime/host_script_interceptor.h"
 #include "core/shell/host_script/runtime/host_script_js_dispatcher.h"
 
 namespace lynx {
@@ -78,6 +79,7 @@ class HostScriptSession final
 
   // Only touched on the JS thread, while the N-API environment is alive.
   bool destroyed_dispatched_ = false;
+  std::shared_ptr<HostScriptInterceptor> interceptor_;
   std::vector<Deferred> waiters_;
   std::unordered_map<std::string, std::vector<Napi::FunctionReference>>
       listeners_;
