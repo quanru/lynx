@@ -1281,8 +1281,8 @@ TEST_F(FragmentTest, PlatformEventHandlerUsesRebuiltTargetsForPointerState) {
   EXPECT_FALSE(old_root);
   EXPECT_FALSE(old_target);
 
-  // No new input updates the handler's root between rebuilding and querying it.
-  EXPECT_TRUE(platform_ref.event_handler_->EventThrough());
+  // Rebuilding the target tree does not change behavior cached on pointer down.
+  EXPECT_FALSE(platform_ref.event_handler_->EventThrough());
   int move_data[] = {0, 2, 0, 1};
   float move_point[] = {0.f, 40.f, 50.f};
   PlatformPointerEvent move_event(move_data, move_point);

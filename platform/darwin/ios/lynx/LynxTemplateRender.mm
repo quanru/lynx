@@ -1504,19 +1504,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 }
 
-- (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point {
+- (LynxPlatformEventBehavior)GetPlatformEventBehavior:(NSInteger)rootSign point:(CGPoint)point {
   if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
-    return [(LynxUIRenderer*)_lynxUIRenderer IsPlatformEventTargetEventThrough:rootSign
-                                                                         point:point];
+    return [(LynxUIRenderer*)_lynxUIRenderer GetPlatformEventBehavior:rootSign point:point];
   }
-  return NO;
-}
-
-- (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point {
-  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
-    return [(LynxUIRenderer*)_lynxUIRenderer IsPlatformEventTargetIgnoreFocus:rootSign point:point];
-  }
-  return NO;
+  return LynxPlatformEventBehaviorNone;
 }
 
 #pragma mark - Life Cycle
