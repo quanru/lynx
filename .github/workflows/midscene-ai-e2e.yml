@@ -1,0 +1,253 @@
+name: Midscene AI E2E (Lynx Explorer)
+
+# AI-driven E2E for Lynx Explorer, powered by Midscene (vision model).
+# Coexists with the legacy Appium jobs in ci.yml — neither replaces the other.
+#   Android: Midscene -> adb directly (no Appium / Espresso re-signing)
+#   iOS:     Midscene -> WebDriverAgent directly (no Appium / xcuitest driver)
+#
+# Required repository secrets:
+#   MIDSCENE_MODEL_API_KEY / NAME / BASE_URL / FAMILY
+# Optional:
+#   MIDSCENE_MODEL_REASONING_ENABLED
+# Optional repository variables:
+#   MIDSCENE_PAGES_BRANCH  e.g. "develop" — publish HTML report to GitHub Pages
+#                          only on pushes to that branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Lynx release tag to download Explorer artifacts from'
+        type: string
+        default: '4.1.0'
+  push:
+    branches: [develop]
+    paths: &ai-e2e-paths
+      - '.github/workflows/midscene-ai-e2e.yml'
+      - 'testing/ai_e2e/**'
+  pull_request:
+    branches: [develop]
+    paths: *ai-e2e-paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: midscene-ai-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  LYNX_RELEASE_TAG: ${{ inputs.release_tag || '4.1.0' }}
+  MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+  MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
+  MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
+  MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
+  MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+  NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
+
+jobs:
+  android-ai-e2e:
+    name: Midscene AI E2E · Android (Explorer)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      ANDROID_API: '30'
+      ANDROID_ABI: x86_64
+      AVD_NAME: lynx_midscene
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: testing/ai_e2e/package-lock.json
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '17'
+          distribution: zulu
+
+      - name: Preflight model endpoint
+        run: bash testing/ai_e2e/scripts/preflight-model.sh
+
+      - name: Start headless Android emulator
+        working-directory: testing/ai_e2e
+        run: bash scripts/start-android-emulator.sh
+
+      - name: Download Explorer APK
+        working-directory: testing/ai_e2e
+        run: |
+          curl -fL --retry 3 \
+            -o LynxExplorer.apk \
+            "https://github.com/lynx-family/lynx/releases/download/${LYNX_RELEASE_TAG}/LynxExplorer-noasan-release.apk"
+
+      - name: Install Explorer
+        working-directory: testing/ai_e2e
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          "$ANDROID_HOME/platform-tools/adb" install -r -g LynxExplorer.apk
+
+      - name: Install Midscene test dependencies
+        working-directory: testing/ai_e2e
+        run: |
+          for attempt in 1 2 3; do
+            npm ci && break
+            echo "npm ci attempt $attempt failed; retrying." >&2
+            sleep 10
+          done
+
+      - name: Run Android Midscene cases
+        working-directory: testing/ai_e2e
+        run: npm test -- --project android-explorer
+
+      - name: Upload Android report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-ai-e2e-android
+          path: testing/ai_e2e/midscene_run/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload emulator log
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-ai-e2e-android-emulator-log
+          path: testing/ai_e2e/emulator.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ios-ai-e2e:
+    name: Midscene AI E2E · iOS (Explorer)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: testing/ai_e2e/package-lock.json
+
+      - name: Preflight model endpoint
+        run: bash testing/ai_e2e/scripts/preflight-model.sh
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          uname -m
+
+      - name: Download Explorer app
+        working-directory: testing/ai_e2e
+        run: |
+          # GitHub-hosted macos-15 runners are Apple Silicon; keep x64 fallback.
+          if [ "$(uname -m)" = "arm64" ]; then
+            asset=LynxExplorer-arm64.app.tar.gz
+          else
+            asset=LynxExplorer-x86_64.app.tar.gz
+          fi
+          echo "downloading $asset"
+          mkdir -p LynxExplorer.app
+          curl -fL --retry 3 \
+            "https://github.com/lynx-family/lynx/releases/download/${LYNX_RELEASE_TAG}/${asset}" \
+            | tar -xzv -C LynxExplorer.app
+
+      - name: Build and start WebDriverAgent
+        working-directory: testing/ai_e2e
+        env:
+          WDA_WORKDIR: ${{ runner.temp }}/wda-build
+        run: bash scripts/start-wda.sh
+
+      - name: Install Explorer on simulator
+        working-directory: testing/ai_e2e
+        run: xcrun simctl install "$SIMULATOR_UDID" LynxExplorer.app
+
+      - name: Install Midscene test dependencies
+        working-directory: testing/ai_e2e
+        run: |
+          for attempt in 1 2 3; do
+            npm ci && break
+            echo "npm ci attempt $attempt failed; retrying." >&2
+            sleep 10
+          done
+
+      - name: Run iOS Midscene cases
+        working-directory: testing/ai_e2e
+        run: npm test -- --project ios-explorer
+
+      - name: Upload iOS report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-ai-e2e-ios
+          path: testing/ai_e2e/midscene_run/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload WDA log
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-ai-e2e-ios-wda-log
+          path: ${{ runner.temp }}/wda-build/wda.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report-bundle:
+    name: Assemble Midscene report bundle
+    needs: [android-ai-e2e, ios-ai-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: midscene-ai-e2e-*
+          path: ${{ runner.temp }}/midscene-reports
+          merge-multiple: false
+
+      - name: Upload combined report bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-ai-e2e-report
+          path: ${{ runner.temp }}/midscene-reports/
+          if-no-files-found: warn
+          retention-days: 30
+
+  pages-report:
+    name: Publish report to GitHub Pages
+    needs: [android-ai-e2e, ios-ai-e2e, report-bundle]
+    if: >-
+      always() &&
+      github.event_name != 'pull_request' &&
+      github.ref_name == vars.MIDSCENE_PAGES_BRANCH
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download combined report bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: midscene-ai-e2e-report
+          path: report
+
+      - id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: report
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
