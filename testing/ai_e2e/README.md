@@ -62,6 +62,14 @@ npm test -- --project ios-explorer
 
 HTML reports are written to `midscene_run/report/`.
 
+## Case-writing guidelines
+
+- Use `aiAct` for visible user interactions. Describe the user goal instead of
+  decomposing it into `aiTap`, `aiScroll`, or other atomic AI operations.
+- Use `aiAssert` for visual outcomes and semantic UI state.
+- Keep lifecycle and navigation setup in deterministic nodes such as
+  `explorer.open`.
+
 ## Differences from the Appium suite
 
 - Removed from this path: the Appium server, Espresso/XCUITest drivers,

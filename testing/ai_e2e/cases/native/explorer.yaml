@@ -10,7 +10,7 @@ cases:
     steps:
       - explorer.open: {}
       - wait: { duration: 4000 }
-      - aiTap: the "Showcase" entry row with the colorful grid icon
+      - aiAct: Open the "Showcase" entry with the colorful grid icon.
       - wait: { duration: 5000 }
       - aiAssert: A showcase page listing Lynx example demos or categories is displayed, not the URL entry home screen.
 
@@ -19,9 +19,9 @@ cases:
     steps:
       - explorer.open: {}
       - wait: { duration: 4000 }
-      - aiTap: the "Showcase" entry row with the colorful grid icon
+      - aiAct: Open the "Showcase" entry with the colorful grid icon.
       - wait: { duration: 5000 }
       - aiAssert: The Showcase category list is displayed, showing category rows including "Animation", "CSS", "Fetch API", "Image", and "Layout".
-      - aiTap: the "Image" category row with the picture icon and the description about the image component
+      - aiAct: Open the "Image" category with the picture icon and the description about the image component.
       - wait: { duration: 5000 }
       - aiAssert: An Image examples page is displayed with an "Image Examples" heading and actual rendered demo images, including labels "scaleToFill" and "aspectFit" next to cartoon pictures.
