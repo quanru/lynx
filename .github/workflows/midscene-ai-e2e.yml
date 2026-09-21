@@ -76,6 +76,7 @@ jobs:
 
       - name: Start headless Android emulator
         working-directory: testing/ai_e2e
+        timeout-minutes: 20
         run: bash scripts/start-android-emulator.sh
 
       - name: Download Explorer APK
@@ -95,10 +96,14 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           for attempt in 1 2 3; do
-            npm ci && break
+            npm ci --no-audit --no-fund && exit 0
             echo "npm ci attempt $attempt failed; retrying." >&2
             sleep 10
           done
+          echo "::error:: npm ci failed after 3 attempts" >&2
+          ls -la "$HOME/.npm/_logs/" 2>/dev/null || true
+          tail -n 80 "$(ls -t "$HOME"/.npm/_logs/*-debug-0.log 2>/dev/null | head -1)" 2>/dev/null || true
+          exit 1
 
       - name: Run Android Midscene cases
         working-directory: testing/ai_e2e
@@ -175,10 +180,14 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           for attempt in 1 2 3; do
-            npm ci && break
+            npm ci --no-audit --no-fund && exit 0
             echo "npm ci attempt $attempt failed; retrying." >&2
             sleep 10
           done
+          echo "::error:: npm ci failed after 3 attempts" >&2
+          ls -la "$HOME/.npm/_logs/" 2>/dev/null || true
+          tail -n 80 "$(ls -t "$HOME"/.npm/_logs/*-debug-0.log 2>/dev/null | head -1)" 2>/dev/null || true
+          exit 1
 
       - name: Run iOS Midscene cases
         working-directory: testing/ai_e2e
