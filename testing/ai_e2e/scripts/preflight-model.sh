@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 模型端点连通性预检：fail fast，避免模拟器/WDA 都起好后才发现凭证问题。
-# 用法：bash scripts/preflight-model.sh
+# Check model endpoint connectivity before spending time starting an emulator or WDA.
+# Usage: bash scripts/preflight-model.sh
 set -euo pipefail
 
 : "${MIDSCENE_MODEL_API_KEY:?MIDSCENE_MODEL_API_KEY is required}"

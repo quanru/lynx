@@ -1,67 +1,73 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Midscene 视觉模型驱动的 Lynx Explorer E2E：**一份 YAML 同时跑 Android 与 iOS**，
-直连 adb / WebDriverAgent，不经过 Appium。本地验证（2026-09-20）：Android 3/3、
-iOS 3/3。
+This suite uses Midscene vision models to run the same YAML cases on Android
+and iOS. It connects directly through adb or WebDriverAgent without Appium.
+Local validation on September 20, 2026 passed 3/3 cases on each platform.
 
-## 目录
+## Structure
 
-```
+```text
 testing/ai_e2e/
-├── midscene.config.ts        # android-explorer / ios-explorer 两个 project
+├── midscene.config.ts        # android-explorer and ios-explorer projects
 ├── cases/native/explorer.yaml
-├── smoke-android.ts / smoke-ios.ts   # 不调模型的链路自检
+├── smoke-android.ts / smoke-ios.ts   # Model-free connection checks
 ├── scripts/
-│   ├── preflight-model.sh           # 模型端点连通性预检
-│   ├── start-android-emulator.sh    # Linux CI：建 AVD + headless 启动
-│   └── start-wda.sh                 # macOS：构建并常驻 WDA v16.9.3:8100
+│   ├── preflight-model.sh           # Model endpoint connectivity check
+│   ├── start-android-emulator.sh    # Create and start a headless AVD on Linux CI
+│   └── start-wda.sh                 # Build and keep WDA v16.9.3 running on macOS
 └── package.json
 ```
 
-配套 workflow：`.github/workflows/midscene-ai-e2e.yml`
-（与 ci.yml 中现有 Appium job **并存**，互不影响）。
+The companion workflow is `.github/workflows/midscene-ai-e2e.yml`. It
+coexists with the existing Appium jobs in `ci.yml` and does not replace them.
 
-## 仓库需要配置的 secrets / variables
+## Required repository configuration
 
-| 类型 | 名称 | 说明 |
+| Type | Name | Description |
 | --- | --- | --- |
-| secret | `MIDSCENE_MODEL_API_KEY` | OpenAI 兼容多模态模型 Key |
-| secret | `MIDSCENE_MODEL_NAME` | 模型名 |
-| secret | `MIDSCENE_MODEL_BASE_URL` | 形如 `https://host/v1` |
-| secret | `MIDSCENE_MODEL_FAMILY` | 模型族（如 qwen3 / doubao-seed） |
-| secret | `MIDSCENE_MODEL_REASONING_ENABLED` | 可选 |
-| variable | `MIDSCENE_PAGES_BRANCH` | 可选，设为 `develop` 后推送到该分支时发布 HTML 报告到 Pages |
+| Secret | `MIDSCENE_MODEL_API_KEY` | API key for an OpenAI-compatible multimodal model |
+| Secret | `MIDSCENE_MODEL_NAME` | Model name |
+| Secret | `MIDSCENE_MODEL_BASE_URL` | Endpoint such as `https://host/v1` |
+| Secret | `MIDSCENE_MODEL_FAMILY` | Model family, such as `qwen3` or `doubao-seed` |
+| Secret | `MIDSCENE_MODEL_REASONING_ENABLED` | Optional reasoning toggle |
+| Variable | `MIDSCENE_PAGES_BRANCH` | Optional. Set to `develop` to publish HTML reports to Pages after pushes to that branch. |
 
-Explorer 制品默认取 Release `4.1.0`（APK 已含 x86_64 ABI，可直接装 hosted
-x86_64 模拟器；Release 包自带签名，无需 Espresso 重签）。workflow_dispatch 可改 tag。
+By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
+contains an x86_64 ABI and can be installed directly on the hosted x86_64
+emulator. The release artifacts are already signed, so Espresso resigning is
+not required. A `workflow_dispatch` run can override the release tag.
 
-## 本地运行
+## Run locally
 
-需要 Node 22+。
+Node.js 22 or later is required.
 
 ```bash
 cd testing/ai_e2e
 npm ci
-cp .env.example .env       # 填入模型凭证，不要提交
+cp .env.example .env       # Add model credentials; do not commit this file.
 set -a && source .env && set +a
 
-# Android：先启动模拟器并安装 Explorer
+# Android: start an emulator and install Explorer first.
 adb install -r LynxExplorer-noasan-release.apk
-npm run smoke:android      # 可选：不耗模型，验证 adb 链路
+npm run smoke:android      # Optional model-free adb connection check.
 npm test -- --project android-explorer
 
-# iOS：先装 .app，并让 WDA 常驻 8100（脚本动态选择最新可用 iPhone 模拟器）
-bash scripts/start-wda.sh                      # 日志打印 "using simulator UDID: ..."
+# iOS: install the app and keep WDA running on port 8100. The script selects
+# the newest available iPhone simulator dynamically.
+bash scripts/start-wda.sh  # Prints "using simulator UDID: ..."
 xcrun simctl install <UDID> /path/to/LynxExplorer.app
 npm run smoke:ios
 npm test -- --project ios-explorer
 ```
 
-HTML 报告在 `midscene_run/report/`。
+HTML reports are written to `midscene_run/report/`.
 
-## 与原 Appium 方案的差异
+## Differences from the Appium suite
 
-- 删除：Appium server、espresso/xcuitest driver、Espresso 重签、
-  `lynx-e2e-appium` Python 框架、`get_by_test_tag` 白盒定位。
-- 保留：Explorer 制品、模拟器矩阵、WebDriverAgent（Midscene iOS 仍用 WDA）。
-- 不覆盖的能力：像素基线比对、Espresso 白盒——建议原 job 保留为 opt-in 并存。
+- Removed from this path: the Appium server, Espresso/XCUITest drivers,
+  Espresso resigning, the `lynx-e2e-appium` Python framework, and white-box
+  `get_by_test_tag` lookups.
+- Retained: Explorer artifacts, the simulator matrix, and WebDriverAgent,
+  which Midscene iOS uses directly.
+- Not covered: pixel-baseline comparison and Espresso white-box access. Keep
+  the existing jobs available as an opt-in complement.

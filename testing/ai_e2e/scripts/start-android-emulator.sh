@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# 在 Linux CI（GitHub hosted ubuntu，具备 /dev/kvm）上准备并启动一台 headless
-# Android 模拟器。Lynx Explorer Release APK 含 x86_64 ABI，可直接安装。
+# Prepare and start a headless Android emulator on KVM-enabled Linux CI.
+# The Lynx Explorer release APK includes an x86_64 ABI and installs directly.
 #
-# 环境变量（均有默认值）：
-#   ANDROID_API=30                 系统镜像 API level
-#   ANDROID_ABI=x86_64             ABI（hosted x86_64 runner 配 KVM）
-#   ANDROID_VARIANT=google_apis    镜像变体（不要用 google_apis_playstore）
+# Environment variables (all have defaults):
+#   ANDROID_API=30                 System image API level
+#   ANDROID_ABI=x86_64             ABI for a hosted x86_64 runner with KVM
+#   ANDROID_VARIANT=google_apis    Image variant; do not use google_apis_playstore
 #   AVD_NAME=lynx_midscene
-#   SDK_INSTALL_TIMEOUT=900        SDK / 系统镜像安装总超时（秒）
-#   BOOT_TIMEOUT=300               模拟器启动到 boot_completed 超时（秒）
-#   ANDROID_HOME / ANDROID_SDK_ROOT 由 runner 预置
+#   SDK_INSTALL_TIMEOUT=900        SDK and system-image installation timeout in seconds
+#   BOOT_TIMEOUT=300               Timeout for boot_completed in seconds
+#   ANDROID_HOME / ANDROID_SDK_ROOT are provided by the runner
 set -euo pipefail
 
 ANDROID_API="${ANDROID_API:-30}"
@@ -46,8 +46,9 @@ fi
 [ -r /dev/kvm ] && [ -w /dev/kvm ] || fail "/dev/kvm still not accessible after chmod"
 echo "/dev/kvm accessible: $(ls -l /dev/kvm)"
 
-# 接受 license 并安装平台工具 / 模拟器 / 系统镜像（runner 通常已预装前两项）。
-# 全程包 timeout：sdkmanager 偶发卡在网络握手，不能让 step 无限挂住。
+# Accept licenses and install the platform tools, emulator, and system image.
+# The runner usually includes the first two. Bound sdkmanager because network
+# handshakes can otherwise stall the step indefinitely.
 yes | timeout 120 "$SDKM" --licenses >/dev/null || true
 timeout "$SDK_INSTALL_TIMEOUT" "$SDKM" \
   "platform-tools" "emulator" "$SYSTEM_IMAGE" \
@@ -78,7 +79,7 @@ fi
 echo "AVD '$AVD_NAME' ready; available AVDs:"
 "$SDK_ROOT/emulator/emulator" -list-avds
 
-# headless 后台启动。
+# Start the emulator headlessly in the background.
 export QT_QPA_PLATFORM=offscreen
 nohup "$SDK_ROOT/emulator/emulator" \
   -avd "$AVD_NAME" \
@@ -92,8 +93,8 @@ echo "emulator pid=$EMULATOR_PID"
 
 wait_pid_deadline=$(( $(date +%s) + BOOT_TIMEOUT ))
 
-# 替代裸 `adb wait-for-device`（它在 emulator 进程早退时会永久死等）：
-# 轮询设备状态，同时确认 emulator 进程仍存活。
+# Poll device state while verifying that the emulator process is still alive.
+# A bare `adb wait-for-device` hangs forever when the emulator exits early.
 while true; do
   state="$("$ADB" get-state 2>/dev/null | tr -d '\r' || true)"
   [ "$state" = "device" ] && break
@@ -111,7 +112,7 @@ while true; do
   sleep 5
 done
 
-# 等 sys.boot_completed（同样带进程存活检测）。
+# Wait for sys.boot_completed while continuing to check process liveness.
 until [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
   if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
     fail "emulator process exited during boot"
