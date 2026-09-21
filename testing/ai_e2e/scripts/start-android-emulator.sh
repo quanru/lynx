@@ -31,6 +31,21 @@ if [ ! -e /dev/kvm ]; then
   fail "/dev/kvm not available; run on a KVM-enabled Linux runner."
 fi
 
+# On GitHub-hosted ubuntu images /dev/kvm exists but is owned by root:kvm
+# with the runner user NOT in the kvm group -> "x86_64 emulation currently
+# requires hardware acceleration". The runner has passwordless sudo; loosen
+# the device node (the VM itself is already trusted multi-tenant hardware).
+if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+  echo "/dev/kvm not accessible by $(id -un); relaxing permissions"
+  if command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
+    sudo chmod 666 /dev/kvm
+  else
+    fail "/dev/kvm exists but is not accessible and passwordless sudo is unavailable"
+  fi
+fi
+[ -r /dev/kvm ] && [ -w /dev/kvm ] || fail "/dev/kvm still not accessible after chmod"
+echo "/dev/kvm accessible: $(ls -l /dev/kvm)"
+
 # 接受 license 并安装平台工具 / 模拟器 / 系统镜像（runner 通常已预装前两项）。
 # 全程包 timeout：sdkmanager 偶发卡在网络握手，不能让 step 无限挂住。
 yes | timeout 120 "$SDKM" --licenses >/dev/null || true
@@ -68,6 +83,7 @@ export QT_QPA_PLATFORM=offscreen
 nohup "$SDK_ROOT/emulator/emulator" \
   -avd "$AVD_NAME" \
   -no-window -no-snapshot -no-snapshot-save -no-audio -no-boot-anim \
+  -no-metrics \
   -gpu swiftshader_indirect \
   -netdelay none -netspeed full \
   > emulator.log 2>&1 &
