@@ -38,8 +38,30 @@ timeout "$SDK_INSTALL_TIMEOUT" "$SDKM" \
   "platform-tools" "emulator" "$SYSTEM_IMAGE" \
   || fail "sdkmanager install timed out or failed after ${SDK_INSTALL_TIMEOUT}s"
 
-echo "no" | timeout 120 "$SDK_ROOT/cmdline-tools/latest/bin/avdmanager" create avd \
-  --force --name "$AVD_NAME" --package "$SYSTEM_IMAGE" --device "pixel_6"
+# Pin one AVD location for both avdmanager (write) and emulator (read);
+# otherwise they can disagree on where $HOME/.android/avd lives.
+export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-$HOME/.android/avd}"
+mkdir -p "$ANDROID_AVD_HOME"
+echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+
+if ! printf 'no\n' | timeout 120 "$SDK_ROOT/cmdline-tools/latest/bin/avdmanager" create avd \
+  --force --name "$AVD_NAME" --package "$SYSTEM_IMAGE" --device "pixel_6"; then
+  echo "::error:: avdmanager create avd failed" >&2
+  exit 1
+fi
+
+# avdmanager has, on some cmdline-tools versions, exited 0 without actually
+# creating the AVD; verify the emulator can see it before launching.
+if ! "$SDK_ROOT/emulator/emulator" -list-avds 2>/dev/null | grep -qx "$AVD_NAME"; then
+  echo "::error:: AVD '$AVD_NAME' is not visible to the emulator after creation" >&2
+  echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >&2
+  ls -la "$ANDROID_AVD_HOME" >&2 || true
+  echo "emulator -list-avds:" >&2
+  "$SDK_ROOT/emulator/emulator" -list-avds >&2 || true
+  exit 1
+fi
+echo "AVD '$AVD_NAME' ready; available AVDs:"
+"$SDK_ROOT/emulator/emulator" -list-avds
 
 # headless 后台启动。
 export QT_QPA_PLATFORM=offscreen
