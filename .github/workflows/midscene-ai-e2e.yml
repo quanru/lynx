@@ -110,12 +110,22 @@ jobs:
         working-directory: testing/ai_e2e
         run: npm test -- --project android-explorer
 
+      - name: Stage Android report for this attempt
+        if: always()
+        run: |
+          target="$RUNNER_TEMP/midscene-upload/android/attempt-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$target"
+          printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
+          if [ -d testing/ai_e2e/midscene_run ]; then
+            cp -R testing/ai_e2e/midscene_run/. "$target"/
+          fi
+
       - name: Upload Android report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: midscene-ai-e2e-android-${{ github.run_attempt }}
-          path: testing/ai_e2e/midscene_run/
+          path: ${{ runner.temp }}/midscene-upload/android
           if-no-files-found: warn
           retention-days: 14
 
@@ -194,12 +204,22 @@ jobs:
         working-directory: testing/ai_e2e
         run: npm test -- --project ios-explorer
 
+      - name: Stage iOS report for this attempt
+        if: always()
+        run: |
+          target="$RUNNER_TEMP/midscene-upload/ios/attempt-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$target"
+          printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
+          if [ -d testing/ai_e2e/midscene_run ]; then
+            cp -R testing/ai_e2e/midscene_run/. "$target"/
+          fi
+
       - name: Upload iOS report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: midscene-ai-e2e-ios-${{ github.run_attempt }}
-          path: testing/ai_e2e/midscene_run/
+          path: ${{ runner.temp }}/midscene-upload/ios
           if-no-files-found: warn
           retention-days: 14
 
@@ -231,6 +251,7 @@ jobs:
         with:
           pattern: midscene-ai-e2e-android-*
           path: ${{ runner.temp }}/midscene-artifacts/android
+          merge-multiple: true
 
       - name: Download iOS report
         continue-on-error: true
@@ -238,6 +259,7 @@ jobs:
         with:
           pattern: midscene-ai-e2e-ios-*
           path: ${{ runner.temp }}/midscene-artifacts/ios
+          merge-multiple: true
 
       - name: Select latest report attempt per platform
         run: |
@@ -248,7 +270,7 @@ jobs:
             local latest=""
             if [ -d "$source" ]; then
               latest="$(find "$source" -mindepth 1 -maxdepth 1 -type d \
-                -name "midscene-ai-e2e-$platform-*" -print | sort -V | tail -n 1)"
+                -name 'attempt-*' -print | sort -V | tail -n 1)"
             fi
             if [ -n "$latest" ]; then
               mkdir -p "$target"
@@ -258,12 +280,21 @@ jobs:
           select_latest android
           select_latest ios
 
+      - name: Stage combined report bundle for this attempt
+        run: |
+          target="$RUNNER_TEMP/midscene-bundle-upload/attempt-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$target"
+          printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
+          if [ -d "$RUNNER_TEMP/midscene-reports" ]; then
+            cp -R "$RUNNER_TEMP/midscene-reports"/. "$target"/
+          fi
+
       - name: Upload combined report bundle
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: midscene-ai-e2e-report-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/midscene-reports/
+          path: ${{ runner.temp }}/midscene-bundle-upload
           if-no-files-found: warn
           retention-days: 30
 
@@ -297,12 +328,13 @@ jobs:
         with:
           pattern: midscene-ai-e2e-report-*
           path: ${{ runner.temp }}/midscene-bundles
+          merge-multiple: true
 
       - name: Select latest combined report bundle
         run: |
           latest="$(find "$RUNNER_TEMP/midscene-bundles" \
             -mindepth 1 -maxdepth 1 -type d \
-            -name 'midscene-ai-e2e-report-*' -print | sort -V | tail -n 1)"
+            -name 'attempt-*' -print | sort -V | tail -n 1)"
           test -n "$latest"
           mkdir -p "$RUNNER_TEMP/midscene-reports"
           cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
