@@ -114,7 +114,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-android
+          name: midscene-ai-e2e-android-${{ github.run_attempt }}
           path: testing/ai_e2e/midscene_run/
           if-no-files-found: warn
           retention-days: 14
@@ -123,7 +123,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-android-emulator-log
+          name: midscene-ai-e2e-log-android-emulator-${{ github.run_attempt }}
           path: testing/ai_e2e/emulator.log
           if-no-files-found: ignore
           retention-days: 14
@@ -198,7 +198,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-ios
+          name: midscene-ai-e2e-ios-${{ github.run_attempt }}
           path: testing/ai_e2e/midscene_run/
           if-no-files-found: warn
           retention-days: 14
@@ -207,7 +207,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-ios-wda-log
+          name: midscene-ai-e2e-log-ios-wda-${{ github.run_attempt }}
           path: ${{ runner.temp }}/wda-build/wda.log
           if-no-files-found: ignore
           retention-days: 14
@@ -229,21 +229,40 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: midscene-ai-e2e-android
-          path: ${{ runner.temp }}/midscene-reports/midscene-ai-e2e-android
+          pattern: midscene-ai-e2e-android-*
+          path: ${{ runner.temp }}/midscene-artifacts/android
 
       - name: Download iOS report
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: midscene-ai-e2e-ios
-          path: ${{ runner.temp }}/midscene-reports/midscene-ai-e2e-ios
+          pattern: midscene-ai-e2e-ios-*
+          path: ${{ runner.temp }}/midscene-artifacts/ios
+
+      - name: Select latest report attempt per platform
+        run: |
+          select_latest() {
+            local platform="$1"
+            local source="$RUNNER_TEMP/midscene-artifacts/$platform"
+            local target="$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-$platform"
+            local latest=""
+            if [ -d "$source" ]; then
+              latest="$(find "$source" -mindepth 1 -maxdepth 1 -type d \
+                -name "midscene-ai-e2e-$platform-*" -print | sort -V | tail -n 1)"
+            fi
+            if [ -n "$latest" ]; then
+              mkdir -p "$target"
+              cp -R "$latest"/. "$target"/
+            fi
+          }
+          select_latest android
+          select_latest ios
 
       - name: Upload combined report bundle
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-report
+          name: midscene-ai-e2e-report-${{ github.run_attempt }}
           path: ${{ runner.temp }}/midscene-reports/
           if-no-files-found: warn
           retention-days: 30
@@ -276,8 +295,17 @@ jobs:
       - name: Download combined report bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: midscene-ai-e2e-report
-          path: ${{ runner.temp }}/midscene-reports
+          pattern: midscene-ai-e2e-report-*
+          path: ${{ runner.temp }}/midscene-bundles
+
+      - name: Select latest combined report bundle
+        run: |
+          latest="$(find "$RUNNER_TEMP/midscene-bundles" \
+            -mindepth 1 -maxdepth 1 -type d \
+            -name 'midscene-ai-e2e-report-*' -print | sort -V | tail -n 1)"
+          test -n "$latest"
+          mkdir -p "$RUNNER_TEMP/midscene-reports"
+          cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
 
       - id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -298,10 +326,10 @@ jobs:
             --pages-url "$PAGES_URL" \
             --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
             --result "Android=$ANDROID_RESULT" \
-            --artifact "Android=midscene-ai-e2e-android" \
+            --artifact "Android=midscene-ai-e2e-android-$GITHUB_RUN_ATTEMPT" \
             --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
             --result "iOS=$IOS_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-ios" \
+            --artifact "iOS=midscene-ai-e2e-ios-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/pages-site" \
             --output "$GITHUB_STEP_SUMMARY"
 
