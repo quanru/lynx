@@ -12,9 +12,9 @@
     "smoke:ios": "tsx smoke-ios.ts"
   },
   "devDependencies": {
-    "@midscene/android": "1.12.9",
-    "@midscene/ios": "1.12.9",
-    "@midscene/test": "1.12.9",
+    "@midscene/android": "1.13.1",
+    "@midscene/ios": "1.13.1",
+    "@midscene/test": "1.13.1",
     "@types/node": "^22.0.0",
     "tsx": "4.23.13",
     "typescript": "^5.8.3"
