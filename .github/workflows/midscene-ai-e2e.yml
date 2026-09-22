@@ -11,7 +11,8 @@ name: Midscene AI E2E (Lynx Explorer)
 #   MIDSCENE_MODEL_REASONING_ENABLED
 # Optional repository variables:
 #   MIDSCENE_PAGES_BRANCH  e.g. "develop" — publish HTML report to GitHub Pages
-#                          only on pushes to that branch.
+#                          on pushes to that branch. Same-repository pull
+#                          requests also publish review evidence.
 
 on:
   workflow_dispatch:
@@ -224,9 +225,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test the summary renderer
-        run: node --test testing/ai_e2e/scripts/render-ci-summary.test.mjs
-
       - name: Download Android report
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -241,24 +239,6 @@ jobs:
           name: midscene-ai-e2e-ios
           path: ${{ runner.temp }}/midscene-reports/midscene-ai-e2e-ios
 
-      - name: Add test results to the run summary
-        if: always()
-        env:
-          ANDROID_RESULT: ${{ needs.android-ai-e2e.result }}
-          IOS_RESULT: ${{ needs.ios-ai-e2e.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          node testing/ai_e2e/scripts/render-ci-summary.mjs \
-            --title "Lynx Explorer × Midscene" \
-            --run-url "$RUN_URL" \
-            --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
-            --result "Android=$ANDROID_RESULT" \
-            --artifact "Android=midscene-ai-e2e-android" \
-            --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
-            --result "iOS=$IOS_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-ios" \
-            --output "$GITHUB_STEP_SUMMARY"
-
       - name: Upload combined report bundle
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -269,30 +249,64 @@ jobs:
           retention-days: 30
 
   pages-report:
-    name: Publish report to GitHub Pages
+    name: Publish report and evidence summary
     needs: [android-ai-e2e, ios-ai-e2e, report-bundle]
     if: >-
       always() &&
-      github.event_name != 'pull_request' &&
-      github.ref_name == vars.MIDSCENE_PAGES_BRANCH
+      !cancelled() &&
+      needs.report-bundle.result == 'success' &&
+      ((github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name != 'pull_request' &&
+      github.ref_name == vars.MIDSCENE_PAGES_BRANCH))
     runs-on: ubuntu-latest
     permissions:
+      actions: read
+      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Download combined report bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: midscene-ai-e2e-report
-          path: report
+          path: ${{ runner.temp }}/midscene-reports
 
       - id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Test the evidence renderer
+        run: node --test testing/ai_e2e/scripts/render-ci-summary.test.mjs
+
+      - name: Build Pages report and linked screenshot summary
+        env:
+          ANDROID_RESULT: ${{ needs.android-ai-e2e.result }}
+          IOS_RESULT: ${{ needs.ios-ai-e2e.result }}
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+            --title "Lynx Explorer × Midscene" \
+            --run-url "$RUN_URL" \
+            --pages-url "$PAGES_URL" \
+            --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
+            --result "Android=$ANDROID_RESULT" \
+            --artifact "Android=midscene-ai-e2e-android" \
+            --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
+            --result "iOS=$IOS_RESULT" \
+            --artifact "iOS=midscene-ai-e2e-ios" \
+            --site-dir "$RUNNER_TEMP/pages-site" \
+            --output "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
-          path: report
+          path: ${{ runner.temp }}/pages-site
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

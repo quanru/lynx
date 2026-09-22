@@ -62,8 +62,11 @@ npm test -- --project ios-explorer
 
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
-aggregation job also writes an English Actions Summary table with platform
-totals, individual case results, durations, failure details, and report links.
+report job publishes the HTML reports and per-case node screenshots to GitHub
+Pages, then writes an English Actions Summary with platform totals, durations,
+failure details, and a three-column screenshot grid. Each screenshot and case
+name links to the exact step in the complete HTML report. Pages publication is
+allowed for same-repository pull requests; external forks remain excluded.
 
 ## Case-writing guidelines
 
