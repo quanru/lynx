@@ -172,3 +172,60 @@ test('extracts a node screenshot and publishes a linked HTML report', async (con
     /midscene_test_run_dump/,
   );
 });
+
+test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source', 'report');
+  const screenshots = path.join(source, 'screenshots');
+  const site = path.join(root, 'site');
+  await mkdir(screenshots, { recursive: true });
+  const screenshotBytes = Buffer.from('/9j/2Q==', 'base64');
+  await writeFile(path.join(screenshots, 'screenshot-1.jpeg'), screenshotBytes);
+  const html = [
+    '<!doctype html><html><body>',
+    `<script type="midscene_web_dump" data-report-id="report-1">${
+      JSON.stringify({
+        executions: [
+          {
+            id: 'execution-1',
+            tasks: [
+              {
+                uiContext: {
+                  screenshot: {
+                    type: 'midscene_screenshot_ref',
+                    id: 'screenshot-1',
+                    mimeType: 'image/jpeg',
+                    storage: 'file',
+                    path: './screenshots/screenshot-1.jpeg',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      })
+    }</script>`,
+    `<script type="midscene_test_run_dump">${JSON.stringify(run)}</script>`,
+    '</body></html>',
+  ].join('');
+  const reportFile = path.join(source, 'test-run.html');
+  await writeFile(reportFile, html);
+
+  const [entry] = await preparePagesSite({
+    entries: [
+      {
+        label: 'Android',
+        result: 'success',
+        report: { dump: run, file: reportFile, html },
+      },
+    ],
+    siteDirectory: site,
+  });
+
+  assert.equal(entry.cases[0].previewPath, 'android/previews/showcase.jpg');
+  assert.deepEqual(
+    await readFile(path.join(site, entry.cases[0].previewPath)),
+    screenshotBytes,
+  );
+});

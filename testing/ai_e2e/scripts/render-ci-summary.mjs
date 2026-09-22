@@ -194,12 +194,46 @@ function screenshotForStep(step, evidence) {
         (entry) => entry.id === detail.executionId,
       );
       for (const task of [...(execution?.tasks ?? [])].reverse()) {
-        const screenshot = evidence.images.get(task?.uiContext?.screenshot?.id);
-        if (screenshot) return screenshot;
+        const reference = task?.uiContext?.screenshot;
+        const embedded = evidence.images.get(reference?.id);
+        if (embedded) return embedded;
+        if (
+          reference?.storage === 'file'
+          && typeof reference.path === 'string'
+        ) {
+          const extension = reference.mimeType === 'image/jpeg'
+            ? 'jpg'
+            : reference.mimeType?.replace('image/', '')
+              ?? path.extname(reference.path).slice(1)
+              ?? 'jpg';
+          return { extension, path: reference.path };
+        }
       }
     }
   }
   return null;
+}
+
+async function screenshotBytes(screenshot, reportFile) {
+  if (!screenshot) return null;
+  if (screenshot.bytes) return screenshot.bytes;
+  if (!screenshot.path) return null;
+  const reportDirectory = path.resolve(path.dirname(reportFile));
+  const source = path.resolve(reportDirectory, screenshot.path);
+  const relative = path.relative(reportDirectory, source);
+  if (
+    relative === '..'
+    || relative.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relative)
+  ) {
+    return null;
+  }
+  try {
+    return await readFile(source);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
 }
 
 function slug(value) {
@@ -237,14 +271,18 @@ export async function preparePagesSite({ entries, siteDirectory }) {
     for (const [index, testCase] of rawCases(entry.report.dump).entries()) {
       const step = selectedStep(testCase);
       const screenshot = screenshotForStep(step, evidence);
+      const screenshotContent = await screenshotBytes(
+        screenshot,
+        entry.report.file,
+      );
       const caseSlug = slug(testCase.caseId ?? `${index + 1}-${testCase.name}`);
       let previewPath;
-      if (screenshot) {
+      if (screenshotContent) {
         previewPath =
           `${entrySlug}/previews/${caseSlug}.${screenshot.extension}`;
         await writeFile(
           path.join(siteDirectory, previewPath),
-          screenshot.bytes,
+          screenshotContent,
         );
       }
       cases.push({ ...testCase, previewPath, stepId: step?.id });
