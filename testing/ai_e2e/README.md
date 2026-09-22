@@ -60,7 +60,10 @@ npm run smoke:ios
 npm test -- --project ios-explorer
 ```
 
-HTML reports are written to `midscene_run/report/`.
+HTML reports are written to `midscene_run/report/`. CI uploads the native
+reports as platform-specific artifacts and as a combined bundle. The final
+aggregation job also writes an English Actions Summary table with platform
+totals, individual case results, durations, failure details, and report links.
 
 ## Case-writing guidelines
 
