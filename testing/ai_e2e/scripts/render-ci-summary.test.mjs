@@ -78,7 +78,8 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
     ],
   });
   assert.doesNotMatch(summary, /### Needs attention/);
-  assert.match(summary, /All 1 cases passed/);
+  assert.match(summary, /\*\*✅ 0 need attention · 1 passed\*\*/);
+  assert.match(summary, /🎉 All 1 cases passed/);
   assert.match(summary, /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/);
   assert.match(
     summary,
@@ -115,6 +116,8 @@ test('shows abnormal cases with screenshots before passed-only appendix', () => 
     }],
   });
   const appendix = summary.indexOf('<details>');
+  assert.doesNotMatch(summary, /✅ 2 need attention/);
+  assert.doesNotMatch(summary, /🎉 All/);
   assert.ok(summary.indexOf('Failed case') < appendix);
   assert.ok(summary.indexOf('Failed case') < summary.indexOf('Not-run case'));
   assert.ok(summary.indexOf('Not-run case') < appendix);

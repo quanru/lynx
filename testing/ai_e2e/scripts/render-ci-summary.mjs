@@ -428,13 +428,15 @@ export function renderSummary({ title, runUrl, pagesUrl, entries }) {
     (entry.result !== 'success' || entry.run?.status !== 'success') &&
     !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
   );
+  const needsAttention = attentionCases.length + infrastructureFailures.length;
+  const allPassed = needsAttention === 0 && passedCases.length > 0;
   const sections = [
     `## ${title}`,
     '',
-    `**${attentionCases.length + infrastructureFailures.length} need attention · ${passedCases.length} passed**`,
+    `**${allPassed ? '✅ ' : ''}${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
-  if (attentionCases.length || infrastructureFailures.length) {
+  if (needsAttention) {
     sections.push(
       '### Needs attention',
       '',
@@ -463,8 +465,10 @@ export function renderSummary({ title, runUrl, pagesUrl, entries }) {
         )),
       '',
     );
+  } else if (allPassed) {
+    sections.push(`🎉 All ${passedCases.length} cases passed.`, '');
   } else {
-    sections.push(`All ${passedCases.length} cases passed.`, '');
+    sections.push('No cases were reported.', '');
   }
   sections.push(
     '<details>',
