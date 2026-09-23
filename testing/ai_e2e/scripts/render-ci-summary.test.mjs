@@ -151,10 +151,17 @@ test('escapes report-provided Markdown in failure rows', () => {
     title: 'Lynx Explorer × Midscene',
     runUrl: 'https://github.com/example/project/actions/runs/123',
     pagesUrl: 'https://example.github.io/project/',
-    entries: [{ label: 'iOS', result: 'failure', run: failedRun }],
+    entries: [{
+      label: 'iOS',
+      result: 'failure',
+      run: failedRun,
+      reportPath: 'ios/report/test-run.html',
+      cases: [{ ...testCase, previewPath: 'ios/previews/broken.jpg' }],
+    }],
   });
   assert.match(summary, /Broken \\| \\\[case\\\]/);
   assert.match(summary, /&lt;unsafe&gt; \\| reason/);
+  assert.match(summary, /alt="Broken &#124; \[case\]"/);
 });
 
 test('extracts a node screenshot and publishes a linked HTML report', async (context) => {

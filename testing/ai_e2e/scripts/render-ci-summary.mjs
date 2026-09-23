@@ -328,7 +328,7 @@ function inlineCell(value) {
     .replaceAll(']', '\\]')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
-    .replaceAll('\n', ' ');
+    .replaceAll(/[\r\n]+/g, ' ');
 }
 
 function escapeHtml(value) {
@@ -390,7 +390,9 @@ function caseScreenshot(pagesUrl, entry, testCase) {
   if (!testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
   const image = escapeHtml(pageUrl(pagesUrl, testCase.previewPath));
-  const name = escapeHtml(testCase.name);
+  const name = escapeHtml(testCase.name)
+    .replaceAll('|', '&#124;')
+    .replaceAll(/[\r\n]+/g, ' ');
   return `<a href="${target}"><img src="${image}" alt="${name}" width="160"></a>`;
 }
 
