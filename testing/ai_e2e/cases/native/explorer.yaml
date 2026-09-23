@@ -1,0 +1,27 @@
+cases:
+  - name: Explorer home shows URL entry and showcase
+    steps:
+      - explorer.open: {}
+      - wait: { duration: 5000 }
+      - aiAssert: The Lynx Explorer home screen is visible, showing the title "Lynx Explorer", a URL input card labeled either "Bundle URL" (native) or "Card URL" (web) with an "Enter ... URL" placeholder, a red "Go" button, and a "Showcase" entry row with a colorful grid icon.
+
+  - name: Open Showcase from home
+    tags: [showcase]
+    steps:
+      - explorer.open: {}
+      - wait: { duration: 4000 }
+      - aiAct: Open the "Showcase" entry with the colorful grid icon.
+      - wait: { duration: 5000 }
+      - aiAssert: A showcase page listing Lynx example demos or categories is displayed, not the URL entry home screen.
+
+  - name: Browse into Showcase Image examples
+    tags: [showcase, deep]
+    steps:
+      - explorer.open: {}
+      - wait: { duration: 4000 }
+      - aiAct: Open the "Showcase" entry with the colorful grid icon.
+      - wait: { duration: 5000 }
+      - aiAssert: The Showcase category list is displayed, showing category rows including "Animation", "CSS", "Fetch API", "Image", and "Layout".
+      - aiAct: Open the "Image" category with the picture icon and the description about the image component.
+      - wait: { duration: 5000 }
+      - aiAssert: An Image examples page is displayed with an "Image Examples" heading and actual rendered demo images, including labels "scaleToFill" and "aspectFit" next to cartoon pictures.
