@@ -386,113 +386,97 @@ function caseUrl(baseUrl, entry, testCase) {
   return url.href;
 }
 
-function screenshotGrid(pagesUrl, entries) {
-  const cells = entries.flatMap((entry) =>
-    (entry.cases ?? [])
-      .filter((testCase) => testCase.previewPath)
-      .map((testCase) => {
-        const target = caseUrl(pagesUrl, entry, testCase);
-        const image = pageUrl(pagesUrl, testCase.previewPath);
-        const name = inlineCell(testCase.name);
-        return `[![${name}](${image})](${target})<br>[${name}](${target})`;
-      })
-  );
-  if (!cells.length) return '_No node screenshots were produced._';
-  const rows = [];
-  for (let index = 0; index < cells.length; index += 3) {
-    const row = cells.slice(index, index + 3);
-    while (row.length < 3) row.push('');
-    rows.push(`| ${row.join(' | ')} |`);
-  }
-  return ['| | | |', '|:--|:--|:--|', ...rows].join('\n');
+function caseScreenshot(pagesUrl, entry, testCase) {
+  if (!testCase.previewPath || !entry.reportPath) return '—';
+  const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
+  const image = escapeHtml(pageUrl(pagesUrl, testCase.previewPath));
+  const name = escapeHtml(testCase.name);
+  return `<a href="${target}"><img src="${image}" alt="${name}" width="160"></a>`;
+}
+
+function caseName(pagesUrl, entry, testCase) {
+  const name = inlineCell(testCase.name);
+  return entry.reportPath
+    ? `[${name}](${caseUrl(pagesUrl, entry, testCase)})`
+    : name;
+}
+
+function caseRow(pagesUrl, entry, testCase, detail) {
+  return `| ${inlineCell(entry.label)} | ${caseName(pagesUrl, entry, testCase)} | ${
+    caseScreenshot(pagesUrl, entry, testCase)
+  } | ${inlineCell(detail)} | ${
+    formatDuration(testCase.attempts?.at(-1)?.durationMs)
+  } |`;
 }
 
 export function renderSummary({ title, runUrl, pagesUrl, entries }) {
-  const rows = entries.map(({ label, result, artifact, run, reportPath }) => {
-    const summary = run?.summary ?? {};
-    const links = [
-      reportPath ? `[Open HTML](${pageUrl(pagesUrl, reportPath)})` : null,
-      artifact ? `[Artifact](${runUrl}#artifacts)` : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || `[Workflow run](${runUrl})`;
-    return `| ${inlineCell(label)} | ${statusLabel(result, run)} | ${
-      summary.total ?? 0
-    } | ${summary.passed ?? 0} | ${summary.failed ?? 0} | ${
-      summary.notRun ?? 0
-    } | ${formatDuration(run?.durationMs)} | ${links} |`;
-  });
   const allCases = entries.flatMap((entry) =>
     (entry.cases ?? rawCases(entry.run)).map((testCase) => ({
       entry,
       testCase,
     }))
   );
-  const failedCases = allCases.filter(
+  const attentionCases = allCases.filter(
     ({ testCase }) => testCase.status !== 'success',
+  );
+  const passedCases = allCases.filter(
+    ({ testCase }) => testCase.status === 'success',
+  );
+  const infrastructureFailures = entries.filter((entry) =>
+    (entry.result !== 'success' || entry.run?.status !== 'success') &&
+    !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
   );
   const sections = [
     `## ${title}`,
     '',
-    '| Platform | Result | Cases | Passed | Failed | Not run | Duration | Evidence |',
-    '|:--|:--|--:|--:|--:|--:|--:|:--|',
-    ...rows,
+    `**${attentionCases.length + infrastructureFailures.length} need attention · ${passedCases.length} passed**`,
     '',
   ];
-  if (failedCases.length) {
+  if (attentionCases.length || infrastructureFailures.length) {
     sections.push(
-      `### Failures (${failedCases.length})`,
+      '### Needs attention',
       '',
-      '| Platform | Case | Duration | Reason |',
-      '|:--|:--|--:|:--|',
-      ...failedCases.map(({ entry, testCase }) => {
-        const name = entry.reportPath
-          ? `[${inlineCell(testCase.name)}](${
-            caseUrl(pagesUrl, entry, testCase)
-          })`
-          : inlineCell(testCase.name);
-        return `| ${inlineCell(entry.label)} | ❌ ${name} | ${
-          formatDuration(testCase.attempts?.at(-1)?.durationMs)
-        } | ${inlineCell(failedReason(testCase))} |`;
+      '| Platform | Case | Screenshot | Status / reason | Duration |',
+      '|:--|:--|:--|:--|--:|',
+      ...infrastructureFailures.map(({ label, result, artifact, run }) => {
+        const evidence = artifact
+          ? `[Artifact](${runUrl}#artifacts)`
+          : `[Workflow run](${runUrl})`;
+        return `| ${inlineCell(label)} | — | — | ${
+          statusLabel(result, run)
+        } · ${evidence} | ${formatDuration(run?.durationMs)} |`;
       }),
+      ...attentionCases
+        .sort((a, b) =>
+          Number(a.testCase.status === 'not-run') -
+          Number(b.testCase.status === 'not-run')
+        )
+        .map(({ entry, testCase }) => caseRow(
+          pagesUrl,
+          entry,
+          testCase,
+          `${testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'}: ${
+            failedReason(testCase)
+          }`,
+        )),
       '',
     );
-  } else if (
-    entries.every(
-      ({ result, run }) => result === 'success' && run?.status === 'success',
-    )
-  ) {
-    sections.push(`**All ${allCases.length} cases passed.**`, '');
+  } else {
+    sections.push(`All ${passedCases.length} cases passed.`, '');
   }
   sections.push(
-    '### Node screenshots',
-    '',
-    screenshotGrid(pagesUrl, entries),
-    '',
     '<details>',
-    `<summary>All cases (${allCases.length})</summary>`,
+    `<summary>Appendix: passed cases (${passedCases.length})</summary>`,
     '',
-    '| Platform | Case | Status | Duration |',
-    '|:--|:--|:--|--:|',
-    ...allCases.map(({ entry, testCase }) => {
-      const status = testCase.status === 'success'
-        ? '✅ Passed'
-        : testCase.status === 'not-run'
-        ? '⏭️ Not run'
-        : '❌ Failed';
-      const name = entry.reportPath
-        ? `[${inlineCell(testCase.name)}](${
-          caseUrl(pagesUrl, entry, testCase)
-        })`
-        : inlineCell(testCase.name);
-      return `| ${inlineCell(entry.label)} | ${name} | ${status} | ${
-        formatDuration(testCase.attempts?.at(-1)?.durationMs)
-      } |`;
-    }),
+    '| Platform | Case | Screenshot | Status | Duration |',
+    '|:--|:--|:--|:--|--:|',
+    ...passedCases.map(({ entry, testCase }) =>
+      caseRow(pagesUrl, entry, testCase, '✅ Passed')
+    ),
     '',
     '</details>',
     '',
-    'Each image is the original Midscene node screenshot. Click an image or case name to open the complete HTML report at that exact step.',
+    'Click a screenshot or case name to open the complete HTML report at that exact step.',
     '',
   );
   return sections.join('\n');

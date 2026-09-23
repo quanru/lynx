@@ -55,7 +55,7 @@ test('extracts the runner dump from a Midscene HTML report', () => {
   assert.deepEqual(testRunDump(html), run);
 });
 
-test('renders summary tables and linked screenshot evidence', () => {
+test('puts passed cases and linked screenshots in the collapsed appendix', () => {
   const summary = renderSummary({
     title: 'Lynx Explorer × Midscene',
     runUrl: 'https://github.com/example/project/actions/runs/123',
@@ -77,17 +77,52 @@ test('renders summary tables and linked screenshot evidence', () => {
       },
     ],
   });
-  assert.match(
-    summary,
-    /\| Android \| ✅ Passed \| 1 \| 1 \| 0 \| 0 \| 1m 13s \|/,
-  );
+  assert.doesNotMatch(summary, /### Needs attention/);
   assert.match(summary, /All 1 cases passed/);
-  assert.match(summary, /Open HTML/);
+  assert.match(summary, /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/);
   assert.match(
     summary,
-    /\[!\[Open the Showcase page\]\(https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg\)\]/,
+    /<a href="[^\"]+runner-step=case%3Asteps%3A0"><img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Open the Showcase page" width="160"><\/a>/,
   );
   assert.match(summary, /runner-step=case%3Asteps%3A0/);
+});
+
+test('shows abnormal cases with screenshots before passed-only appendix', () => {
+  const failed = structuredClone(run.projects[0].documents[0].cases[0]);
+  failed.name = 'Failed case';
+  failed.status = 'failed';
+  failed.attempts[0].steps = [{ status: 'failed', error: { message: 'Assertion failed' } }];
+  const notRun = structuredClone(run.projects[0].documents[0].cases[0]);
+  notRun.name = 'Not-run case';
+  notRun.status = 'not-run';
+  notRun.notRunReason = 'Blocked by setup';
+  const passed = structuredClone(run.projects[0].documents[0].cases[0]);
+  passed.name = 'Passed case';
+  const summary = renderSummary({
+    title: 'Lynx Explorer × Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [{
+      label: 'Android',
+      result: 'failure',
+      run: { ...run, status: 'failed' },
+      reportPath: 'android/report/test-run.html',
+      cases: [
+        { ...passed, previewPath: 'android/previews/passed.jpg' },
+        notRun,
+        { ...failed, previewPath: 'android/previews/failed.jpg', stepId: 'case:steps:0' },
+      ],
+    }],
+  });
+  const appendix = summary.indexOf('<details>');
+  assert.ok(summary.indexOf('Failed case') < appendix);
+  assert.ok(summary.indexOf('Failed case') < summary.indexOf('Not-run case'));
+  assert.ok(summary.indexOf('Not-run case') < appendix);
+  assert.ok(summary.indexOf('Passed case') > appendix);
+  assert.match(summary.slice(0, appendix), /failed\.jpg[^\n]+Assertion failed/);
+  assert.doesNotMatch(summary.slice(0, appendix), /passed\.jpg/);
+  assert.match(summary.slice(appendix), /passed\.jpg/);
+  assert.doesNotMatch(summary.slice(appendix), /failed\.jpg/);
 });
 
 test('reports infrastructure failures when no Midscene report exists', () => {
