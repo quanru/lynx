@@ -229,3 +229,38 @@ test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
     screenshotBytes,
   );
 });
+
+test('keeps prior run reports at immutable URLs', async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source');
+  const site = path.join(root, 'site');
+  await mkdir(source, { recursive: true });
+  const file = path.join(source, 'test-run.html');
+  const makeEntry = async (marker) => {
+    const html = `<html>${marker}</html>`;
+    await writeFile(file, html);
+    return { label: 'Android', report: { file, html, dump: run } };
+  };
+  const [first] = await preparePagesSite({
+    entries: [await makeEntry('first')],
+    siteDirectory: site,
+    sitePrefix: 'runs/123-1',
+  });
+  const [second] = await preparePagesSite({
+    entries: [await makeEntry('second')],
+    siteDirectory: site,
+    sitePrefix: 'runs/124-1',
+  });
+  assert.equal(first.reportPath, 'runs/123-1/android/report/test-run.html');
+  assert.equal(second.reportPath, 'runs/124-1/android/report/test-run.html');
+  assert.equal(await readFile(path.join(site, first.reportPath), 'utf8'), '<html>first</html>');
+  assert.equal(await readFile(path.join(site, second.reportPath), 'utf8'), '<html>second</html>');
+});
+
+test('rejects a run prefix that escapes the Pages site', async () => {
+  await assert.rejects(
+    preparePagesSite({ entries: [], siteDirectory: '/tmp/unused', sitePrefix: '../bad' }),
+    /sitePrefix must be/,
+  );
+});

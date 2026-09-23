@@ -251,8 +251,14 @@ function rawCases(run) {
   );
 }
 
-export async function preparePagesSite({ entries, siteDirectory }) {
+export async function preparePagesSite(
+  { entries, siteDirectory, sitePrefix = '' },
+) {
+  if (sitePrefix && !/^runs\/[0-9]+-[0-9]+$/.test(sitePrefix)) {
+    throw new Error('sitePrefix must be runs/RUN_ID-ATTEMPT');
+  }
   await mkdir(siteDirectory, { recursive: true });
+  const runDirectory = path.join(siteDirectory, sitePrefix);
   const prepared = [];
   for (const entry of entries) {
     if (!entry.report) {
@@ -260,8 +266,8 @@ export async function preparePagesSite({ entries, siteDirectory }) {
       continue;
     }
     const entrySlug = slug(entry.label);
-    const reportDirectory = path.join(siteDirectory, entrySlug, 'report');
-    const previewDirectory = path.join(siteDirectory, entrySlug, 'previews');
+    const reportDirectory = path.join(runDirectory, entrySlug, 'report');
+    const previewDirectory = path.join(runDirectory, entrySlug, 'previews');
     await cp(path.dirname(entry.report.file), reportDirectory, {
       recursive: true,
     });
@@ -278,8 +284,9 @@ export async function preparePagesSite({ entries, siteDirectory }) {
       const caseSlug = slug(testCase.caseId ?? `${index + 1}-${testCase.name}`);
       let previewPath;
       if (screenshotContent) {
-        previewPath =
-          `${entrySlug}/previews/${caseSlug}.${screenshot.extension}`;
+        previewPath = `${
+          sitePrefix ? `${sitePrefix}/` : ''
+        }${entrySlug}/previews/${caseSlug}.${screenshot.extension}`;
         await writeFile(
           path.join(siteDirectory, previewPath),
           screenshotContent,
@@ -290,7 +297,9 @@ export async function preparePagesSite({ entries, siteDirectory }) {
     prepared.push({
       ...entry,
       cases,
-      reportPath: `${entrySlug}/report/${path.basename(entry.report.file)}`,
+      reportPath: `${sitePrefix ? `${sitePrefix}/` : ''}${entrySlug}/report/${
+        path.basename(entry.report.file)
+      }`,
       run: entry.report.dump,
     });
   }
@@ -505,6 +514,7 @@ async function main() {
   const entries = await preparePagesSite({
     entries: loaded,
     siteDirectory: required(options, 'site-dir'),
+    sitePrefix: options['site-prefix'] ?? '',
   });
   const markdown = renderSummary({
     title: required(options, 'title'),

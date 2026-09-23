@@ -1,7 +1,10 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-This suite uses Midscene vision models to run the same YAML cases on Android
-and iOS. It connects directly through adb or WebDriverAgent without Appium.
+This released-artifact compatibility smoke uses Midscene vision models to run
+the same YAML cases on Android and iOS. It connects directly through adb or
+WebDriverAgent without Appium. It does not validate Explorer built from the
+current pull-request commit; the existing Explorer build and test jobs retain
+that responsibility.
 Local validation on September 20, 2026 passed 3/3 cases on each platform.
 
 ## Structure
@@ -35,7 +38,10 @@ coexists with the existing Appium jobs in `ci.yml` and does not replace them.
 By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
 contains an x86_64 ABI and can be installed directly on the hosted x86_64
 emulator. The release artifacts are already signed, so Espresso resigning is
-not required. A `workflow_dispatch` run can override the release tag.
+not required. A `workflow_dispatch` run can override the release tag. The
+workflow runs only when its own tests or workflow change, not when Explorer
+source changes. Its green result must not be presented as current-source
+Explorer validation.
 
 ## Run locally
 
@@ -65,8 +71,15 @@ reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
 Pages, then writes an English Actions Summary with platform totals, durations,
 failure details, and a three-column screenshot grid. Each screenshot and case
-name links to the exact step in the complete HTML report. Pages publication is
-allowed for same-repository pull requests; external forks remain excluded.
+name links to the exact step in the complete HTML report. Published reports use
+`runs/<run-id>-<attempt>/` paths and are retained on the
+`midscene-pages-archive` branch so later Pages deployments do not replace old
+Summary targets. Pages publication is allowed for same-repository pull
+requests. External-fork pull requests run a model-free type and report-contract
+check, but the credentialed Android/iOS jobs remain excluded. Maintainers
+should run the device jobs from a trusted same-repository branch before relying
+on them for an upstream pull request; never remove the credential guard to run
+untrusted fork code.
 
 ## Case-writing guidelines
 
