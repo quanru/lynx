@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@midscene/android": "1.13.1",
+    "@midscene/core": "1.13.1",
     "@midscene/ios": "1.13.1",
     "@midscene/test": "1.13.1",
     "@types/node": "^22.0.0",

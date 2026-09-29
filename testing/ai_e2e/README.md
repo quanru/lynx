@@ -69,9 +69,11 @@ npm test -- --project ios-explorer
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
-Pages, then writes an English Actions Summary with platform totals, durations,
-failure details, and a three-column screenshot grid. Each screenshot and case
-name links to the exact step in the complete HTML report. Published reports use
+Pages. Android, iOS, and the publishing job each write an Actions Summary with
+platform totals, durations, failure details, and linked screenshots. Each
+screenshot and case name opens the exact step in its platform report. The
+publishing summary's HTML link opens Midscene Test's merged report index for
+both platforms. Published reports use
 `runs/<run-id>-<attempt>/` paths and are retained on the
 `midscene-pages-archive` branch so later Pages deployments do not replace old
 Summary targets. Pages publication is allowed for same-repository pull

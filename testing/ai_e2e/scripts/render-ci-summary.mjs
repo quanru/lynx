@@ -303,21 +303,31 @@ export async function preparePagesSite(
       run: entry.report.dump,
     });
   }
-  const links = prepared
-    .filter((entry) => entry.reportPath)
-    .map(
-      (entry) =>
-        `<li><a href="${escapeHtml(entry.reportPath)}">${
-          escapeHtml(entry.label)
-        } Midscene report</a></li>`,
-    )
-    .join('\n');
-  await writeFile(
-    path.join(siteDirectory, 'index.html'),
-    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Midscene reports</title><body><main><h1>Midscene reports</h1><ul>${links}</ul></main></body></html>\n`,
-  );
   await writeFile(path.join(siteDirectory, '.nojekyll'), '');
   return prepared;
+}
+
+export async function mergeNativeReports(entries, siteDirectory, sitePrefix) {
+  if (entries.some((entry) => !entry.reportPath)) return null;
+  const { mergeReportFiles } = await import('@midscene/core');
+  const htmlPaths = entries.map((entry) =>
+    path.join(siteDirectory, entry.reportPath)
+  );
+  const outputDir = path.join(siteDirectory, sitePrefix);
+  const { mergedReportPath } = mergeReportFiles({
+    htmlPaths,
+    outputDir,
+    outputName: 'native-report',
+  });
+  const reportPath = path.relative(siteDirectory, mergedReportPath)
+    .split(path.sep).join('/');
+  await writeFile(
+    path.join(siteDirectory, 'index.html'),
+    `<!doctype html><meta http-equiv="refresh" content="0;url=${
+      escapeHtml(reportPath)
+    }"><a href="${escapeHtml(reportPath)}">Open the Midscene Test report</a>\n`,
+  );
+  return reportPath;
 }
 
 function inlineCell(value) {
@@ -404,14 +414,16 @@ function caseName(pagesUrl, entry, testCase) {
 }
 
 function caseRow(pagesUrl, entry, testCase, detail) {
-  return `| ${inlineCell(entry.label)} | ${caseName(pagesUrl, entry, testCase)} | ${
-    caseScreenshot(pagesUrl, entry, testCase)
-  } | ${inlineCell(detail)} | ${
+  return `| ${inlineCell(entry.label)} | ${
+    caseName(pagesUrl, entry, testCase)
+  } | ${caseScreenshot(pagesUrl, entry, testCase)} | ${inlineCell(detail)} | ${
     formatDuration(testCase.attempts?.at(-1)?.durationMs)
   } |`;
 }
 
-export function renderSummary({ title, runUrl, pagesUrl, entries }) {
+export function renderSummary(
+  { title, runUrl, pagesUrl, entries, nativeReportPath },
+) {
   const allCases = entries.flatMap((entry) =>
     (entry.cases ?? rawCases(entry.run)).map((testCase) => ({
       entry,
@@ -425,17 +437,27 @@ export function renderSummary({ title, runUrl, pagesUrl, entries }) {
     ({ testCase }) => testCase.status === 'success',
   );
   const infrastructureFailures = entries.filter((entry) =>
-    (entry.result !== 'success' || entry.run?.status !== 'success') &&
-    !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
+    (entry.result !== 'success' || entry.run?.status !== 'success')
+    && !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
   );
   const needsAttention = attentionCases.length + infrastructureFailures.length;
   const allPassed = needsAttention === 0 && passedCases.length > 0;
   const sections = [
     `## ${title}`,
     '',
-    `**${allPassed ? '✅ ' : ''}${needsAttention} need attention · ${passedCases.length} passed**`,
+    `**${
+      allPassed ? '✅ ' : ''
+    }${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
+  if (nativeReportPath) {
+    sections.push(
+      `[Open the published HTML report](${
+        pageUrl(pagesUrl, nativeReportPath)
+      })`,
+      '',
+    );
+  }
   if (needsAttention) {
     sections.push(
       '### Needs attention',
@@ -452,17 +474,19 @@ export function renderSummary({ title, runUrl, pagesUrl, entries }) {
       }),
       ...attentionCases
         .sort((a, b) =>
-          Number(a.testCase.status === 'not-run') -
-          Number(b.testCase.status === 'not-run')
+          Number(a.testCase.status === 'not-run')
+          - Number(b.testCase.status === 'not-run')
         )
-        .map(({ entry, testCase }) => caseRow(
-          pagesUrl,
-          entry,
-          testCase,
-          `${testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'}: ${
-            failedReason(testCase)
-          }`,
-        )),
+        .map(({ entry, testCase }) =>
+          caseRow(
+            pagesUrl,
+            entry,
+            testCase,
+            `${testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'}: ${
+              failedReason(testCase)
+            }`,
+          )
+        ),
       '',
     );
   } else if (allPassed) {
@@ -506,11 +530,19 @@ async function main() {
     siteDirectory: required(options, 'site-dir'),
     sitePrefix: options['site-prefix'] ?? '',
   });
+  const nativeReportPath = options['job-summary-only'] === 'true'
+    ? null
+    : await mergeNativeReports(
+      entries,
+      required(options, 'site-dir'),
+      options['site-prefix'] ?? '',
+    );
   const markdown = renderSummary({
     title: required(options, 'title'),
     runUrl: required(options, 'run-url'),
     pagesUrl: required(options, 'pages-url'),
     entries,
+    nativeReportPath,
   });
   await appendFile(required(options, 'output'), markdown);
   const missingReports = entries

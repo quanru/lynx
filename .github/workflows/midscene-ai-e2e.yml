@@ -128,6 +128,7 @@ jobs:
           exit 1
 
       - name: Run Android Midscene cases
+        id: run-cases
         working-directory: testing/ai_e2e
         run: npm test -- --project android-explorer
 
@@ -142,6 +143,7 @@ jobs:
           fi
 
       - name: Upload Android report
+        id: upload-report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -149,6 +151,23 @@ jobs:
           path: ${{ runner.temp }}/midscene-upload/android
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Add Android results to the job Summary
+        if: always()
+        env:
+          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+            --title "Lynx Explorer × Midscene · Android" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --pages-url "https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" \
+            --entry "Android=testing/ai_e2e/midscene_run" \
+            --result "Android=$PRODUCER_RESULT" \
+            --artifact "Android=midscene-ai-e2e-android-$GITHUB_RUN_ATTEMPT" \
+            --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --site-dir "$RUNNER_TEMP/midscene-job-summary" \
+            --job-summary-only true \
+            --output "$GITHUB_STEP_SUMMARY"
 
       - name: Upload emulator log
         if: failure()
@@ -222,6 +241,7 @@ jobs:
           exit 1
 
       - name: Run iOS Midscene cases
+        id: run-cases
         working-directory: testing/ai_e2e
         run: npm test -- --project ios-explorer
 
@@ -236,6 +256,7 @@ jobs:
           fi
 
       - name: Upload iOS report
+        id: upload-report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -243,6 +264,23 @@ jobs:
           path: ${{ runner.temp }}/midscene-upload/ios
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Add iOS results to the job Summary
+        if: always()
+        env:
+          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+            --title "Lynx Explorer × Midscene · iOS" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --pages-url "https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" \
+            --entry "iOS=testing/ai_e2e/midscene_run" \
+            --result "iOS=$PRODUCER_RESULT" \
+            --artifact "iOS=midscene-ai-e2e-ios-$GITHUB_RUN_ATTEMPT" \
+            --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --site-dir "$RUNNER_TEMP/midscene-job-summary" \
+            --job-summary-only true \
+            --output "$GITHUB_STEP_SUMMARY"
 
       - name: Upload WDA log
         if: failure()
@@ -347,6 +385,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: testing/ai_e2e/package-lock.json
+
+      - name: Install Midscene report dependencies
+        working-directory: testing/ai_e2e
+        run: npm ci --no-audit --no-fund
+
       - name: Download combined report bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -386,7 +434,7 @@ jobs:
             git -C "$archive" checkout --orphan midscene-pages-archive
           fi
 
-      - name: Build Pages report and linked screenshot summary
+      - name: Build native Midscene report and linked screenshot summary
         env:
           ANDROID_RESULT: ${{ needs.android-ai-e2e.result }}
           IOS_RESULT: ${{ needs.ios-ai-e2e.result }}

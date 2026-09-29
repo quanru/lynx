@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  mergeNativeReports,
   preparePagesSite,
   renderSummary,
   testRunDump,
@@ -13,14 +14,21 @@ import {
 const run = {
   schemaVersion: 1,
   kind: 'test-runner',
+  runId: 'fixture-run',
   status: 'success',
+  startedAt: '2026-09-23T12:13:38.780Z',
+  endedAt: '2026-09-23T12:14:43.150Z',
   durationMs: 73_000,
   summary: { total: 1, passed: 1, failed: 0, notRun: 0 },
   projects: [
     {
+      projectId: 'project-1',
       name: 'android-explorer',
       documents: [
         {
+          documentId: 'document-1',
+          beforeAll: [],
+          afterAll: [],
           cases: [
             {
               caseId: 'showcase',
@@ -28,7 +36,10 @@ const run = {
               status: 'success',
               attempts: [
                 {
+                  attemptId: 'attempt-1',
                   durationMs: 52_000,
+                  beforeEach: [],
+                  afterEach: [],
                   steps: [
                     {
                       id: 'case:steps:0',
@@ -60,6 +71,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
     title: 'Lynx Explorer × Midscene',
     runUrl: 'https://github.com/example/project/actions/runs/123',
     pagesUrl: 'https://example.github.io/project/',
+    nativeReportPath: 'runs/123-1/native-report/index.html',
     entries: [
       {
         label: 'Android',
@@ -80,6 +92,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.doesNotMatch(summary, /### Needs attention/);
   assert.match(summary, /\*\*✅ 0 need attention · 1 passed\*\*/);
   assert.match(summary, /🎉 All 1 cases passed/);
+  assert.match(summary, /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/);
   assert.match(summary, /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/);
   assert.match(
     summary,
@@ -216,6 +229,13 @@ test('extracts a node screenshot and publishes a linked HTML report', async (con
     await readFile(path.join(site, entry.reportPath), 'utf8'),
     /midscene_test_run_dump/,
   );
+  const nativeReportPath = await mergeNativeReports([entry], site, '');
+  assert.equal(nativeReportPath, 'native-report.html');
+  assert.match(
+    await readFile(path.join(site, nativeReportPath), 'utf8'),
+    /midscene_test_run_dump/,
+  );
+  assert.match(await readFile(path.join(site, 'index.html'), 'utf8'), /native-report\.html/);
 });
 
 test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
