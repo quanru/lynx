@@ -530,13 +530,16 @@ async function main() {
     siteDirectory: required(options, 'site-dir'),
     sitePrefix: options['site-prefix'] ?? '',
   });
-  const nativeReportPath = options['job-summary-only'] === 'true'
-    ? null
-    : await mergeNativeReports(
+  let nativeReportPath;
+  if (options['job-summary-only'] === 'true') {
+    nativeReportPath = entries.length === 1 ? entries[0].reportPath : null;
+  } else {
+    nativeReportPath = await mergeNativeReports(
       entries,
       required(options, 'site-dir'),
       options['site-prefix'] ?? '',
     );
+  }
   const markdown = renderSummary({
     title: required(options, 'title'),
     runUrl: required(options, 'run-url'),

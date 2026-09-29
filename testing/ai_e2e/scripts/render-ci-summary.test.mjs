@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -92,8 +93,14 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.doesNotMatch(summary, /### Needs attention/);
   assert.match(summary, /\*\*✅ 0 need attention · 1 passed\*\*/);
   assert.match(summary, /🎉 All 1 cases passed/);
-  assert.match(summary, /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/);
-  assert.match(summary, /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/);
+  assert.match(
+    summary,
+    /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/,
+  );
+  assert.match(
+    summary,
+    /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/,
+  );
   assert.match(
     summary,
     /<a href="[^\"]+runner-step=case%3Asteps%3A0"><img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Open the Showcase page" width="160"><\/a>/,
@@ -105,7 +112,10 @@ test('shows abnormal cases with screenshots before passed-only appendix', () => 
   const failed = structuredClone(run.projects[0].documents[0].cases[0]);
   failed.name = 'Failed case';
   failed.status = 'failed';
-  failed.attempts[0].steps = [{ status: 'failed', error: { message: 'Assertion failed' } }];
+  failed.attempts[0].steps = [{
+    status: 'failed',
+    error: { message: 'Assertion failed' },
+  }];
   const notRun = structuredClone(run.projects[0].documents[0].cases[0]);
   notRun.name = 'Not-run case';
   notRun.status = 'not-run';
@@ -124,7 +134,11 @@ test('shows abnormal cases with screenshots before passed-only appendix', () => 
       cases: [
         { ...passed, previewPath: 'android/previews/passed.jpg' },
         notRun,
-        { ...failed, previewPath: 'android/previews/failed.jpg', stepId: 'case:steps:0' },
+        {
+          ...failed,
+          previewPath: 'android/previews/failed.jpg',
+          stepId: 'case:steps:0',
+        },
       ],
     }],
   });
@@ -235,7 +249,37 @@ test('extracts a node screenshot and publishes a linked HTML report', async (con
     await readFile(path.join(site, nativeReportPath), 'utf8'),
     /midscene_test_run_dump/,
   );
-  assert.match(await readFile(path.join(site, 'index.html'), 'utf8'), /native-report\.html/);
+  assert.match(
+    await readFile(path.join(site, 'index.html'), 'utf8'),
+    /native-report\.html/,
+  );
+
+  const jobSummary = path.join(root, 'job-summary.md');
+  execFileSync(process.execPath, [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Lynx Explorer × Midscene',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--pages-url',
+    'https://example.github.io/project/',
+    '--entry',
+    `Android=${path.join(root, 'source')}`,
+    '--result',
+    'Android=success',
+    '--site-prefix',
+    'runs/123-1',
+    '--site-dir',
+    path.join(root, 'job-site'),
+    '--job-summary-only',
+    'true',
+    '--output',
+    jobSummary,
+  ]);
+  assert.match(
+    await readFile(jobSummary, 'utf8'),
+    /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/android\/report\/test-run\.html\)/,
+  );
 });
 
 test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
@@ -319,13 +363,23 @@ test('keeps prior run reports at immutable URLs', async (context) => {
   });
   assert.equal(first.reportPath, 'runs/123-1/android/report/test-run.html');
   assert.equal(second.reportPath, 'runs/124-1/android/report/test-run.html');
-  assert.equal(await readFile(path.join(site, first.reportPath), 'utf8'), '<html>first</html>');
-  assert.equal(await readFile(path.join(site, second.reportPath), 'utf8'), '<html>second</html>');
+  assert.equal(
+    await readFile(path.join(site, first.reportPath), 'utf8'),
+    '<html>first</html>',
+  );
+  assert.equal(
+    await readFile(path.join(site, second.reportPath), 'utf8'),
+    '<html>second</html>',
+  );
 });
 
 test('rejects a run prefix that escapes the Pages site', async () => {
   await assert.rejects(
-    preparePagesSite({ entries: [], siteDirectory: '/tmp/unused', sitePrefix: '../bad' }),
+    preparePagesSite({
+      entries: [],
+      siteDirectory: '/tmp/unused',
+      sitePrefix: '../bad',
+    }),
     /sitePrefix must be/,
   );
 });
