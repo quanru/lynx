@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check model endpoint connectivity before spending time starting an emulator or WDA.
+# Verify model image-reading capability before starting an emulator or WDA.
 # Usage: bash scripts/preflight-model.sh
 set -euo pipefail
 
