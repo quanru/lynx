@@ -15,7 +15,7 @@ testing/ai_e2e/
 ├── cases/native/explorer.yaml
 ├── smoke-android.ts / smoke-ios.ts   # Model-free connection checks
 ├── scripts/
-│   ├── preflight-model.sh           # Model endpoint connectivity check
+│   ├── preflight-model.sh           # Image-only visual capability check
 │   ├── start-android-emulator.sh    # Create and start a headless AVD on Linux CI
 │   └── start-wda.sh                 # Build and keep WDA v16.9.3 running on macOS
 └── package.json
@@ -23,6 +23,12 @@ testing/ai_e2e/
 
 The companion workflow is `.github/workflows/midscene-ai-e2e.yml`. It
 coexists with the existing Appium jobs in `ci.yml` and does not replace them.
+
+Before starting an emulator or WDA, preflight verifies an image-only OCR
+challenge. A text reply or HTTP 200 does not establish screenshot-reading
+capability. The historical DeepSeek 0731 path treated image data as base64 text
+and could invent visual observations; use a vision-capable model and inspect
+the actual response model version, not only the configured endpoint ID.
 
 ## Required repository configuration
 
