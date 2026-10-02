@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
 import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
 import { IOSAgent, IOSDevice } from '@midscene/ios';
-import { defineNode } from '@midscene/test';
 import { defineProjectSetup, defineTestProject } from '@midscene/test/config';
 import { createMidsceneNodes } from '@midscene/test/midscene';
 import type { AgentProvider, AgentReleaseResult, MidsceneUIAgent } from '@midscene/test/midscene';
@@ -21,8 +20,6 @@ interface AgentRegistry {
 }
 
 interface ProjectContext {
-  // Used by explorer.open to terminate and launch the app for a specific case run.
-  relaunchExplorer: (runId: string) => Promise<void>;
   agentRegistry: AgentRegistry;
 }
 
@@ -48,19 +45,6 @@ const nodesFor = (
       },
     } satisfies AgentProvider<ProjectContext>,
   });
-
-// Cross-platform node that launches the app and starts from the home screen.
-// It is case-scoped and reads execution.case.runId directly.
-const openExplorerNode = defineNode<void, void, ProjectContext>({
-  name: 'explorer.open',
-  description: 'Open the Lynx Explorer native app home screen.',
-  async execute(execution) {
-    if (execution.scope !== 'case') {
-      throw new Error('explorer.open can only be used as a case-level step.');
-    }
-    await execution.context.relaunchExplorer(execution.case.runId);
-  },
-});
 
 // Android connects directly through adb without Appium or Espresso. Use
 // ANDROID_SERIAL to select a device when several are connected; otherwise use
@@ -88,17 +72,15 @@ const androidSetup = defineProjectSetup<ProjectContext>({
         const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html` });
         entry = { device, agent };
         runs.set(runId, entry);
+        // Bootstrap once per case run, before its first AI node. Store the entry
+        // first so registered teardown can release it even if launch fails.
+        await device.terminate('com.lynx.explorer').catch(() => {});
+        await device.launch('com.lynx.explorer');
       }
       return entry;
     };
 
     return {
-      relaunchExplorer: async (runId) => {
-        const { device } = await ensure(runId);
-        // The signed release launches directly. Terminate first to return home.
-        await device.terminate('com.lynx.explorer').catch(() => {});
-        await device.launch('com.lynx.explorer');
-      },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
         async releaseAgent(runId) {
@@ -136,18 +118,15 @@ const iosSetup = defineProjectSetup<ProjectContext>({
         const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html` });
         entry = { device, agent };
         runs.set(runId, entry);
+        // WDA launch preserves deep navigation state. Terminate and launch once
+        // per case run before its first AI node, preserving home-screen isolation.
+        await device.terminate('com.lynx.LynxExplorer');
+        await device.launch('com.lynx.LynxExplorer');
       }
       return entry;
     };
 
     return {
-      relaunchExplorer: async (runId) => {
-        const { device } = await ensure(runId);
-        // WDA launch only activates the app and preserves deep navigation state.
-        // Terminate first so every case starts on the home screen.
-        await device.terminate('com.lynx.LynxExplorer');
-        await device.launch('com.lynx.LynxExplorer');
-      },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
         async releaseAgent(runId) {
@@ -185,14 +164,14 @@ export default defineTestProject<ProjectContext>({
     {
       name: 'android-explorer',
       setup: bindSetup(androidSetup, androidSlot),
-      nodes: [...nodesFor(AndroidAgent, androidSlot), openExplorerNode],
+      nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
       retry: 1,
     },
     {
       name: 'ios-explorer',
       setup: bindSetup(iosSetup, iosSlot),
-      nodes: [...nodesFor(IOSAgent, iosSlot), openExplorerNode],
+      nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
       retry: 1,
     },

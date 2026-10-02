@@ -24,6 +24,13 @@ testing/ai_e2e/
 The companion workflow is `.github/workflows/midscene-ai-e2e.yml`. It
 coexists with the existing Appium jobs in `ci.yml` and does not replace them.
 
+Only standard Midscene nodes appear in the YAML. On first agent acquisition
+for each case, setup terminates and relaunches Explorer; repeated nodes reuse
+that case's agent without relaunching. `aiWaitFor` handles visible readiness.
+The existing visual assertions are unchanged, and original Appium/pixel tests
+remain separate. The lifecycle regression tests also verify cleanup after a
+launch failure, without requiring devices or model credentials.
+
 Before starting an emulator or WDA, preflight verifies an image-only OCR
 challenge. A text reply or HTTP 200 does not establish screenshot-reading
 capability. The historical DeepSeek 0731 path treated image data as base64 text
