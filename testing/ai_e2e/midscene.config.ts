@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
 import { IOSAgent, IOSDevice } from '@midscene/ios';
@@ -89,7 +90,8 @@ const androidSetup = defineProjectSetup<ProjectContext>({
           runs.delete(runId);
           // agent.destroy() also closes this run's adb device connection.
           await entry.agent.destroy();
-          return { reportPath: reportPath('android', runId) };
+          const report = reportPath('android', runId);
+          return existsSync(report) ? { reportPath: report } : undefined;
         },
       },
     };
@@ -135,7 +137,8 @@ const iosSetup = defineProjectSetup<ProjectContext>({
           runs.delete(runId);
           // agent.destroy() also closes this run's WDA session.
           await entry.agent.destroy();
-          return { reportPath: reportPath('ios', runId) };
+          const report = reportPath('ios', runId);
+          return existsSync(report) ? { reportPath: report } : undefined;
         },
       },
     };

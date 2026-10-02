@@ -61,7 +61,7 @@ for (const name of ['android-explorer', 'ios-explorer']) {
     const context = await project.projects.find(p => p.name === name).setup.setup({});
     await assert.rejects(context.agentRegistry.getAgent('case-1'), /launch failed/);
     const launchedId = events.find(e => e[1] === 'launch')[0];
-    await context.agentRegistry.releaseAgent('case-1');
+    assert.equal(await context.agentRegistry.releaseAgent('case-1'), undefined);
     assert.ok(events.some(e => e[0] === launchedId && e[1] === 'destroy'));
   });
 }
