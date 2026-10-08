@@ -46,7 +46,17 @@ the actual response model version, not only the configured endpoint ID.
 | Secret | `MIDSCENE_MODEL_BASE_URL` | Endpoint such as `https://host/v1` |
 | Secret | `MIDSCENE_MODEL_FAMILY` | Model family, such as `qwen3` or `doubao-seed` |
 | Secret | `MIDSCENE_MODEL_REASONING_ENABLED` | Optional reasoning toggle |
-| Variable | `MIDSCENE_PAGES_BRANCH` | Optional. Set to `develop` to publish HTML reports to Pages after pushes to that branch. |
+| Variable | `MIDSCENE_PAGES_BRANCH` | Optional override. Publication defaults to the repository default branch (`develop` upstream). |
+
+Configure secrets in the destination repository; merging a fork PR does not copy
+its secrets. Before the first run, a repository administrator must enable
+Settings → Pages → Build and deployment → **GitHub Actions**. A normal
+`GITHUB_TOKEN` cannot enable Pages for the first time. Allow the default branch
+in the `github-pages` environment, plus same-repository PR refs if PR publication
+is wanted. Repository rules must allow the workflow to update
+`midscene-pages-archive`. The workflow declares `contents: write`, `pages: write`,
+and `id-token: write` for publication and reports a setup error when Pages is
+not configured. No extra variable is needed to publish after merging to `develop`.
 
 By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
 contains an x86_64 ABI and can be installed directly on the hosted x86_64
@@ -82,7 +92,8 @@ npm test -- --project ios-explorer
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
-Pages. Android, iOS, and the publishing job each write an Actions Summary with
+Pages. Android and iOS always write results and artifact access to Summary.
+After deployment succeeds, the publishing job adds a Summary with
 platform totals, durations, failure details, and linked screenshots. Each
 screenshot and case name opens the exact step in its platform report. The
 publishing summary's HTML link opens Midscene Test's merged report index for
@@ -101,8 +112,8 @@ untrusted fork code.
 - Use `aiAct` for visible user interactions. Describe the user goal instead of
   decomposing it into `aiTap`, `aiScroll`, or other atomic AI operations.
 - Use `aiAssert` for visual outcomes and semantic UI state.
-- Keep lifecycle and navigation setup in deterministic nodes such as
-  `explorer.open`.
+- Keep per-case termination and launch in the agent provider, and use `aiWaitFor`
+  for visible readiness. No custom `explorer.open` node is required.
 
 ## Differences from the Appium suite
 

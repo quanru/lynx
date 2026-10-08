@@ -5,6 +5,27 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+test('unpublished summaries retain results and artifact access without broken Pages links', () => {
+  const summary = renderSummary({
+    title: 'Unpublished report',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [{
+      label: 'Web',
+      result: 'success',
+      run,
+      reportPath: 'runs/123-1/web/report.html',
+      cases: [{
+        ...run.projects[0].documents[0].cases[0],
+        previewPath: 'runs/123-1/web/image.png',
+      }],
+    }],
+    nativeReportPath: 'runs/123-1/report.html',
+  });
+  assert.match(summary, /All 1 cases passed/);
+  assert.match(summary, /actions\/runs\/123#artifacts/);
+  assert.doesNotMatch(summary, /<img|Open the published|github\.io/);
+});
+
 import {
   mergeNativeReports,
   preparePagesSite,
@@ -349,7 +370,7 @@ test('keeps prior run reports at immutable URLs', async (context) => {
   const makeEntry = async (marker) => {
     const html = `<html>${marker}</html>`;
     await writeFile(file, html);
-    return { label: 'Android', report: { file, html, dump: run } };
+    return { label: 'Web', report: { file, html, dump: run } };
   };
   const [first] = await preparePagesSite({
     entries: [await makeEntry('first')],
@@ -361,8 +382,8 @@ test('keeps prior run reports at immutable URLs', async (context) => {
     siteDirectory: site,
     sitePrefix: 'runs/124-1',
   });
-  assert.equal(first.reportPath, 'runs/123-1/android/report/test-run.html');
-  assert.equal(second.reportPath, 'runs/124-1/android/report/test-run.html');
+  assert.equal(first.reportPath, 'runs/123-1/web/report/test-run.html');
+  assert.equal(second.reportPath, 'runs/124-1/web/report/test-run.html');
   assert.equal(
     await readFile(path.join(site, first.reportPath), 'utf8'),
     '<html>first</html>',

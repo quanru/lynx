@@ -397,7 +397,7 @@ function caseUrl(baseUrl, entry, testCase) {
 }
 
 function caseScreenshot(pagesUrl, entry, testCase) {
-  if (!testCase.previewPath || !entry.reportPath) return '—';
+  if (!pagesUrl || !testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
   const image = escapeHtml(pageUrl(pagesUrl, testCase.previewPath));
   const name = escapeHtml(testCase.name)
@@ -408,7 +408,7 @@ function caseScreenshot(pagesUrl, entry, testCase) {
 
 function caseName(pagesUrl, entry, testCase) {
   const name = inlineCell(testCase.name);
-  return entry.reportPath
+  return pagesUrl && entry.reportPath
     ? `[${name}](${caseUrl(pagesUrl, entry, testCase)})`
     : name;
 }
@@ -450,7 +450,7 @@ export function renderSummary(
     }${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
-  if (nativeReportPath) {
+  if (pagesUrl && nativeReportPath) {
     sections.push(
       `[Open the published HTML report](${
         pageUrl(pagesUrl, nativeReportPath)
@@ -506,7 +506,9 @@ export function renderSummary(
     '',
     '</details>',
     '',
-    'Click a screenshot or case name to open the complete HTML report at that exact step.',
+    pagesUrl
+      ? 'Click a screenshot or case name to open the complete HTML report at that exact step.'
+      : `HTML reports and screenshots are available in the [run artifacts](${runUrl}#artifacts). Published links appear after Pages deployment succeeds.`,
     '',
   );
   return sections.join('\n');
@@ -543,7 +545,9 @@ async function main() {
   const markdown = renderSummary({
     title: required(options, 'title'),
     runUrl: required(options, 'run-url'),
-    pagesUrl: required(options, 'pages-url'),
+    pagesUrl: options['links-published'] === 'false'
+      ? undefined
+      : required(options, 'pages-url'),
     entries,
     nativeReportPath,
   });
