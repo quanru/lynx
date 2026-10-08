@@ -28,7 +28,7 @@ test('publication defaults to the default branch and only exposes deployed links
     publication.includes('if: steps.deployment.outcome == \'success\''),
   );
   assert.ok(
-    publication.indexOf('Show verified report links')
+    publication.indexOf('Add published report evidence')
       > publication.indexOf('id: deployment'),
   );
   assert.doesNotMatch(publication, /--output "\$GITHUB_STEP_SUMMARY"/);

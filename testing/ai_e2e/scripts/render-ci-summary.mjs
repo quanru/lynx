@@ -450,7 +450,6 @@ export function renderSummary(
     }${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
-  sections.push(`[Download reports and screenshots](${runUrl}#artifacts)`, '');
   if (pagesUrl && nativeReportPath) {
     sections.push(
       `[Open the published HTML report](${
@@ -509,7 +508,7 @@ export function renderSummary(
     '',
     pagesUrl
       ? 'Click a screenshot or case name to open the complete HTML report at that exact step.'
-      : 'Online reports and screenshots are available after successful Pages publication. Download artifacts while publication is unavailable.',
+      : `HTML reports and screenshots are available in the [run artifacts](${runUrl}#artifacts). Published links appear after Pages deployment succeeds.`,
     '',
   );
   return sections.join('\n');
@@ -546,7 +545,9 @@ async function main() {
   const markdown = renderSummary({
     title: required(options, 'title'),
     runUrl: required(options, 'run-url'),
-    pagesUrl: options['pages-url'] ?? '',
+    pagesUrl: options['links-published'] === 'false'
+      ? undefined
+      : required(options, 'pages-url'),
     entries,
     nativeReportPath,
   });

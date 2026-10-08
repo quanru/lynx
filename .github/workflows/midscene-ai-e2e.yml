@@ -11,8 +11,10 @@ name: Midscene AI E2E (released Lynx Explorer)
 # Optional:
 #   MIDSCENE_MODEL_REASONING_ENABLED
 # Optional repository variables:
-#   MIDSCENE_PAGES_BRANCH  override the publication branch (default: repository default branch).
-# Same-repository pull requests also publish review evidence.
+#   MIDSCENE_PAGES_BRANCH  e.g. "develop" — publish HTML report to GitHub Pages
+#                          (defaults to the repository default branch).
+#                          Same-repository pull
+#                          requests also publish review evidence.
 
 on:
   workflow_dispatch:
@@ -159,6 +161,7 @@ jobs:
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
             --title "Lynx Explorer × Midscene · Android" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --links-published false \
             --entry "Android=testing/ai_e2e/midscene_run" \
             --result "Android=$PRODUCER_RESULT" \
             --artifact "Android=midscene-ai-e2e-android-$GITHUB_RUN_ATTEMPT" \
@@ -271,6 +274,7 @@ jobs:
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
             --title "Lynx Explorer × Midscene · iOS" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --links-published false \
             --entry "iOS=testing/ai_e2e/midscene_run" \
             --result "iOS=$PRODUCER_RESULT" \
             --artifact "iOS=midscene-ai-e2e-ios-$GITHUB_RUN_ATTEMPT" \
@@ -408,6 +412,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/midscene-reports"
           cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
 
+      - name: Verify Pages is configured
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type' | grep -qx workflow; then
+            echo '::error::A repository administrator must enable Settings → Pages → Build and deployment → GitHub Actions. The default GITHUB_TOKEN cannot enable Pages. Reports remain available as run artifacts.'
+            exit 1
+          fi
+
       - id: pages
         continue-on-error: true
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -419,7 +432,7 @@ jobs:
         run: |
           message="GitHub Pages is unavailable. Select Settings > Pages > Build and deployment > Source > GitHub Actions."
           echo "::warning::$message"
-          echo "$message Reports remain available in the test job Summaries and Actions artifacts." >> "$GITHUB_STEP_SUMMARY"
+          echo "$message Results and reports remain available in test job Summaries and Actions artifacts." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Test the evidence renderer
         if: steps.pages.outcome == 'success'
@@ -436,11 +449,16 @@ jobs:
           git init "$archive"
           git -C "$archive" remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
           mkdir -p "$site"
-          if git -C "$archive" fetch --depth=1 origin refs/heads/midscene-pages-archive; then
+          status=0
+          git -C "$archive" ls-remote --exit-code origin refs/heads/midscene-pages-archive || status=$?
+          if [ "$status" = 0 ]; then
+            git -C "$archive" fetch --depth=1 origin refs/heads/midscene-pages-archive
             git -C "$archive" checkout -b midscene-pages-archive FETCH_HEAD
             git -C "$archive" archive HEAD | tar -xf - -C "$site"
-          else
+          elif [ "$status" = 2 ]; then
             git -C "$archive" checkout --orphan midscene-pages-archive
+          else
+            exit "$status"
           fi
 
       - name: Build native Midscene report and linked screenshot summary
@@ -489,11 +507,11 @@ jobs:
         with:
           artifact_name: midscene-pages-${{ github.run_attempt }}
 
-      - name: Show verified report links and screenshots
+      - name: Add published report evidence to Summary
         if: steps.deployment.outcome == 'success'
         run: cat "$RUNNER_TEMP/published-summary.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Explain publication failure
-        if: failure() && steps.pages.outcome == 'success'
+        if: failure()
         run: |
-          echo "Pages publication failed. Reports remain available in the test job Summaries and Actions artifacts." >> "$GITHUB_STEP_SUMMARY"
+          echo '❌ Pages publication failed. Download the combined report artifact from this run. Check Pages setup and the github-pages environment deployment rules.' >> "$GITHUB_STEP_SUMMARY"
