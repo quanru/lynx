@@ -40,6 +40,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  LYNX_RELEASE_REPOSITORY: lynx-family/lynx
   LYNX_RELEASE_TAG: ${{ inputs.release_tag || '4.1.0' }}
   MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
   MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
@@ -107,7 +108,7 @@ jobs:
         run: |
           curl -fL --retry 3 \
             -o LynxExplorer.apk \
-            "https://github.com/lynx-family/lynx/releases/download/${LYNX_RELEASE_TAG}/LynxExplorer-noasan-release.apk"
+            "https://github.com/${LYNX_RELEASE_REPOSITORY}/releases/download/${LYNX_RELEASE_TAG}/LynxExplorer-noasan-release.apk"
 
       - name: Install Explorer
         working-directory: testing/ai_e2e
@@ -215,7 +216,7 @@ jobs:
           echo "downloading $asset"
           mkdir -p LynxExplorer.app
           curl -fL --retry 3 \
-            "https://github.com/lynx-family/lynx/releases/download/${LYNX_RELEASE_TAG}/${asset}" \
+            "https://github.com/${LYNX_RELEASE_REPOSITORY}/releases/download/${LYNX_RELEASE_TAG}/${asset}" \
             | tar -xzv -C LynxExplorer.app
 
       - name: Build and start WebDriverAgent

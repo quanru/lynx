@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+test('both platform downloads share the release repository configuration', async () => {
+  const workflow = await readFile(
+    new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url),
+    'utf8',
+  );
+  assert.equal(workflow.split('lynx-family/lynx').length - 1, 1);
+  assert.equal(
+    workflow.split(
+      'https://github.com/${LYNX_RELEASE_REPOSITORY}/releases/download/',
+    ).length - 1,
+    2,
+  );
+});
+
 test('publication defaults to the default branch and only exposes deployed links', async () => {
   const workflow = await readFile(
     new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url),
