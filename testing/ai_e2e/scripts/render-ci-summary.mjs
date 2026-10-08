@@ -450,7 +450,22 @@ export function renderSummary(
     }${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
-  if (pagesUrl && nativeReportPath) {
+  if (!pagesUrl) {
+    sections.push(
+      allPassed
+        ? `🎉 All ${passedCases.length} cases passed.`
+        : needsAttention
+        ? '⚠️ Tests or infrastructure need attention. See the job logs and artifacts for details.'
+        : 'No cases were reported.',
+      '',
+      `[Download HTML reports and screenshots from the run artifacts](${runUrl}#artifacts).`,
+      '',
+      'The published report Summary contains the case table with clickable screenshots after Pages deployment succeeds. If publication is skipped or fails, use the artifacts above.',
+      '',
+    );
+    return sections.join('\n');
+  }
+  if (nativeReportPath) {
     sections.push(
       `[Open the published HTML report](${
         pageUrl(pagesUrl, nativeReportPath)
@@ -506,9 +521,7 @@ export function renderSummary(
     '',
     '</details>',
     '',
-    pagesUrl
-      ? 'Click a screenshot or case name to open the complete HTML report at that exact step.'
-      : `HTML reports and screenshots are available in the [run artifacts](${runUrl}#artifacts). Published links appear after Pages deployment succeeds.`,
+    'Click a screenshot or case name to open the complete HTML report at that exact step.',
     '',
   );
   return sections.join('\n');

@@ -92,7 +92,8 @@ npm test -- --project ios-explorer
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
-Pages. Android and iOS always write results and artifact access to Summary.
+Pages. Android and iOS write only result counts and artifact access to Summary,
+without duplicate case tables or empty screenshot columns.
 After deployment succeeds, the publishing job adds a Summary with
 platform totals, durations, failure details, and linked screenshots. Each
 screenshot and case name opens the exact step in its platform report. The

@@ -23,7 +23,7 @@ test('unpublished summaries retain results and artifact access without broken Pa
   });
   assert.match(summary, /All 1 cases passed/);
   assert.match(summary, /actions\/runs\/123#artifacts/);
-  assert.doesNotMatch(summary, /<img|Open the published|github\.io/);
+  assert.doesNotMatch(summary, /<img|Open the published|github\.io|\| Platform \||<details>|Appendix:/);
 });
 
 import {
@@ -152,8 +152,31 @@ test('keeps results and downloads without advertising unpublished reports', () =
   assert.match(summary, /actions\/runs\/123#artifacts/);
   assert.doesNotMatch(
     summary,
-    /<img|runner-step=|Open the published HTML report/,
+    /<img|runner-step=|Open the published HTML report|\| Platform \||<details>|Appendix:/,
   );
+});
+
+test('unpublished failed and empty runs keep status and downloads without case tables', () => {
+  for (const entries of [
+    [{ label: 'iOS', result: 'failure', run: undefined }],
+    [{
+      label: 'Web',
+      result: 'failure',
+      run: { status: 'failure' },
+      cases: [{ name: 'Failed case', status: 'failure' }],
+    }],
+    [],
+  ]) {
+    const summary = renderSummary({
+      title: 'Unpublished report',
+      runUrl: 'https://github.com/example/project/actions/runs/123',
+      entries,
+    });
+    assert.match(summary, /run artifacts/);
+    assert.match(summary, /publication is skipped or fails/);
+    assert.match(summary, entries.length ? /1 need attention/ : /No cases were reported/);
+    assert.doesNotMatch(summary, /\| Platform \||<details>|<img|Appendix:|✅/);
+  }
 });
 
 test('shows abnormal cases with screenshots before passed-only appendix', () => {
