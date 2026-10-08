@@ -412,15 +412,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/midscene-reports"
           cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
 
-      - name: Verify Pages is configured
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ! gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.build_type' | grep -qx workflow; then
-            echo '::error::A repository administrator must enable Settings → Pages → Build and deployment → GitHub Actions. The default GITHUB_TOKEN cannot enable Pages. Reports remain available as run artifacts.'
-            exit 1
-          fi
-
       - id: pages
         continue-on-error: true
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

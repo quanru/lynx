@@ -55,7 +55,7 @@ Settings → Pages → Build and deployment → **GitHub Actions**. A normal
 in the `github-pages` environment, plus same-repository PR refs if PR publication
 is wanted. Repository rules must allow the workflow to update
 `midscene-pages-archive`. The workflow declares `contents: write`, `pages: write`,
-and `id-token: write` for publication and reports a setup error when Pages is
+and `id-token: write` for publication and reports a setup warning when Pages is
 not configured. No extra variable is needed to publish after merging to `develop`.
 
 By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
