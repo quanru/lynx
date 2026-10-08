@@ -46,7 +46,7 @@ the actual response model version, not only the configured endpoint ID.
 | Secret | `MIDSCENE_MODEL_BASE_URL` | Endpoint such as `https://host/v1` |
 | Secret | `MIDSCENE_MODEL_FAMILY` | Model family, such as `qwen3` or `doubao-seed` |
 | Secret | `MIDSCENE_MODEL_REASONING_ENABLED` | Optional reasoning toggle |
-| Variable | `MIDSCENE_PAGES_BRANCH` | Optional. Set to `develop` to publish HTML reports to Pages after pushes to that branch. |
+| Variable | `MIDSCENE_PAGES_BRANCH` | Optional publication branch override. Defaults to the repository default branch (`develop` upstream). |
 
 By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
 contains an x86_64 ABI and can be installed directly on the hosted x86_64
@@ -82,8 +82,8 @@ npm test -- --project ios-explorer
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
-Pages. Android, iOS, and the publishing job each write an Actions Summary with
-platform totals, durations, failure details, and linked screenshots. Each
+Pages. Android and iOS immediately write results and artifact links without waiting
+for Pages. After deployment succeeds, the publishing job adds linked screenshots. Each
 screenshot and case name opens the exact step in its platform report. The
 publishing summary's HTML link opens Midscene Test's merged report index for
 both platforms. Published reports use
@@ -95,6 +95,12 @@ check, but the credentialed Android/iOS jobs remain excluded. Maintainers
 should run the device jobs from a trusted same-repository branch before relying
 on them for an upstream pull request; never remove the credential guard to run
 untrusted fork code.
+
+Publication defaults to the repository default branch. Enable Settings → Pages →
+Build and deployment → Source → GitHub Actions once in the repository. Missing
+Pages configuration produces a warning and a Summary with these setup steps,
+without failing the test jobs. Failed or skipped publication never advertises
+unavailable report links or screenshots. Downloaded native reports remain usable.
 
 ## Case-writing guidelines
 

@@ -108,6 +108,33 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.match(summary, /runner-step=case%3Asteps%3A0/);
 });
 
+test('keeps results and downloads without advertising unpublished reports', () => {
+  const summary = renderSummary({
+    title: 'Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: '',
+    nativeReportPath: 'native-report/index.html',
+    entries: [{
+      label: 'Web',
+      result: 'success',
+      run,
+      reportPath: 'web/report/index.html',
+      cases: [{
+        ...run.projects[0].documents[0].cases[0],
+        previewPath: 'web/preview.jpg',
+        stepId: 'case:steps:0',
+      }],
+    }],
+  });
+  assert.match(summary, /1 passed/);
+  assert.match(summary, /Download reports and screenshots/);
+  assert.match(summary, /actions\/runs\/123#artifacts/);
+  assert.doesNotMatch(
+    summary,
+    /<img|runner-step=|Open the published HTML report/,
+  );
+});
+
 test('shows abnormal cases with screenshots before passed-only appendix', () => {
   const failed = structuredClone(run.projects[0].documents[0].cases[0]);
   failed.name = 'Failed case';
