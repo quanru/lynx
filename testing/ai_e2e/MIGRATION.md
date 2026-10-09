@@ -42,6 +42,13 @@ with reports, and a failed probe must make infrastructure status fail even if
 the navigation cases pass. This does not implement CDP assertions or count as
 an equivalent case migration. Real device probe validation is still pending.
 
+The next local foundation adds exact CDP response correlation and read-only
+`DOM.getDocument` validation. Native text, input values and style attributes
+retain the Python driver's value semantics. The expectation helper distinguishes
+immediate assertions from ten-second `wait_for_equal` polling and fails on
+malformed DOM or transport errors. Its 55 model-free checks pass on Node 22;
+this is not device execution or an equivalent migration of any module above.
+
 - Build Explorer at the workflow revision with integration fixtures and
   Sparkling. `build.json` records the commit, platform, capabilities and binary
   checksum; consumers verify it before installation. No model credentials are

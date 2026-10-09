@@ -58,11 +58,24 @@ test('real TCP handshake uses the negotiated sender/runtime identities and fragm
       socket.write(frame.subarray(0, 11));
       socket.write(frame.subarray(11));
     }
+    if (message.data?.type === 'CDP') {
+      const command = JSON.parse(message.data.data.message);
+      socket.write(encodeFrame({ event: 'Customized', data: {
+        type: 'CDP', data: { session_id: 7, message: JSON.stringify({
+          id: command.id, result: { root: { nodeId: 0, nodeName: '#document',
+            children: [{ nodeId: 1, nodeName: 'view' }] } },
+        }) },
+      } }));
+    }
   });
   const result = await probeDevtool({ port });
   assert.deepEqual(result.sessions, [{ session_id: 7 }]);
   assert.deepEqual(observed[1], { event: 'Register', data: { id: 42, type: 'Driver' } });
   assert.deepEqual(observed[2].data, { type: 'ListSession', sender: 42, data: { client_id: 99 } });
+  assert.deepEqual(JSON.parse(observed[3].data.data.message), {
+    id: 2, method: 'DOM.getDocument', params: {},
+  });
+  assert.equal(result.root.children[0].nodeName, 'view');
 });
 
 for (const sessions of [[], [{ session_id: '7' }], null]) {
@@ -96,5 +109,22 @@ test('invalid registration and unsolicited sessions cannot pass the probe', asyn
 test('invalid connection settings reject before opening a socket', async () => {
   for (const options of [{ port: 0 }, { port: 65536 }, { port: 1.5 }, { timeoutMs: 0 }]) {
     await assert.rejects(probeDevtool(options), /Invalid DevTool/);
+  }
+});
+
+test('session discovery cannot hide a CDP error or an empty Lynx document', async t => {
+  for (const result of [{ error: { code: -32601, message: 'Not supported' } },
+    { result: { root: { nodeId: 0, nodeName: '#document', children: [] } } }]) {
+    const port = await mockServer(t, (socket, message) => {
+      if (message.event === 'Initialize') socket.write(encodeFrame({ event: 'Register', data: { id: 152, info: {} } }));
+      if (message.data?.type === 'ListSession') socket.write(encodeFrame({ event: 'Customized', data: { type: 'SessionList', data: [{ session_id: 7 }] } }));
+      if (message.data?.type === 'CDP') {
+        const { id } = JSON.parse(message.data.data.message);
+        socket.write(encodeFrame({ event: 'Customized', data: {
+          type: 'CDP', data: { session_id: 7, message: JSON.stringify({ id, ...result }) },
+        } }));
+      }
+    });
+    await assert.rejects(probeDevtool({ port }), /DOM.getDocument failed|no LynxView/);
   }
 });

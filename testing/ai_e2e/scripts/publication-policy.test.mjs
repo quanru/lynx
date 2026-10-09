@@ -56,5 +56,6 @@ test('DevTool probes are bounded read-only prerequisites, not false migrated cas
   assert.equal(workflow.split('tee midscene_run/devtool-probe.log').length - 1, 2);
   assert.match(workflow, /forward --remove tcp:18901/);
   assert.doesNotMatch(probe, /OpenCard|DOM\.focus|Input\.insertText|execFile|spawn\(/);
-  assert.match(probe, /handshake\/session probe timed out/);
+  const client = await readFile(new URL('./devtool-client.mjs', import.meta.url), 'utf8');
+  assert.match(client, /handshake\/session probe timed out/);
 });

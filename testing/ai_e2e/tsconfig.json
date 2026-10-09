@@ -7,7 +7,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["midscene.config.ts", "smoke-*.ts"]
+  "include": ["midscene.config.ts", "smoke-*.ts", "native-dom.ts", "native-expectation.ts"]
 }
