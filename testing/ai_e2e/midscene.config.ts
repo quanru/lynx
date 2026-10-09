@@ -21,6 +21,9 @@ import type { NativeCommandInput } from './native-command.ts';
 // Sharing one agent would attach details to the wrong scope and mark the summary unresolved.
 const reportDir = resolve('./midscene_run/report');
 const reportPath = (prefix: string, runId: string) => resolve(reportDir, `${prefix}-${runId}.html`);
+const aiContexts = {
+  aiAct: 'Follow the coordinate format requested by the active action protocol. When it requests normalized 0–1000 coordinates, convert screenshot pixel positions using x / screenshot width * 1000 and y / screenshot height * 1000 before emitting locate.point. Do not label raw screenshot pixels as normalized coordinates. The center of the full screenshot is [500, 500] in that normalized format, regardless of its pixel dimensions. Check that the converted point lies inside the described target, using its left/right and upper/lower relationships.',
+};
 
 // Project context produced by setup and available to YAML nodes. Each project
 // has one registry that creates and releases agents lazily by case runId.
@@ -104,7 +107,7 @@ const androidSetup = defineProjectSetup<ProjectContext>({
       if (!entry) {
         const device = new AndroidDevice(udid);
         await device.connect();
-        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html` });
+        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html`, aiContexts });
         entry = { device, agent };
         runs.set(runId, entry);
         // Bootstrap once per case run, before its first AI node. Store the entry
@@ -161,7 +164,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
       if (!entry) {
         const device = new IOSDevice({ wdaPort, wdaHost });
         await device.connect();
-        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html` });
+        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html`, aiContexts });
         entry = { device, agent };
         runs.set(runId, entry);
         // WDA launch preserves deep navigation state. Terminate and launch once

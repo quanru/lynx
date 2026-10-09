@@ -23,6 +23,14 @@ test('native collection preserves original ordered assertions, CDP calls and use
     assert.equal(cases.length, 1);
     assert.equal(cases[0].name, `core/${original}`);
     const steps = cases[0].steps;
+    if (fixture === 'event') {
+      const firstClick = steps.find(step => step.node === 'aiAct').input.prompt;
+      assert.match(firstClick, /uppermost blue rectangular button/);
+      assert.match(firstClick, /below the "View Click" heading and above the "Text Click" heading/);
+      assert.match(firstClick, /no visible text/);
+      assert.match(firstClick, /Stop after that single click/);
+      assert.doesNotMatch(firstClick, /\b\d+\s*(?:px|pixels)\b|\[\d+,\s*\d+\]/);
+    }
     const clicks = expected.filter(step => step.node === 'click');
     let clickIndex = 0;
     const actual = steps.filter(step => ['native.expect', 'native.cdp', 'aiAct'].includes(step.node))

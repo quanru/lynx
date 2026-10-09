@@ -24,7 +24,7 @@ function loadProject(failLaunch = false) {
     async destroy() { events.push([this.id, 'destroy']); }
   }
   class Agent {
-    constructor(device) { this.device = device; }
+    constructor(device, options) { this.device = device; this.options = options; }
     async destroy() { await this.device.destroy(); }
   }
   const modules = {
@@ -57,6 +57,10 @@ for (const name of ['android-explorer', 'ios-explorer']) {
     const second = await context.agentRegistry.getAgent('case-2');
     assert.notEqual(first, second);
     for (const agent of [first, second]) {
+      assert.match(agent.options.aiContexts.aiAct, /active action protocol/);
+      assert.match(agent.options.aiContexts.aiAct, /x \/ screenshot width \* 1000/);
+      assert.match(agent.options.aiContexts.aiAct, /y \/ screenshot height \* 1000/);
+      assert.match(agent.options.aiContexts.aiAct, /Do not label raw screenshot pixels as normalized coordinates/);
       const steps = events.filter(e => e[0] === agent.device.id).map(e => e[1]);
       assert.deepEqual(steps, ['connect', 'terminate', 'launch']);
     }

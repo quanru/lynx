@@ -5,7 +5,7 @@ cases:
     steps:
       - launch: "${eventUri}"
       - aiWaitFor: The Event page shows a counter, View Click, Text Click, and Click to change CSS sections.
-      - aiAct: Click the button labelled "Click to add one" beneath the View Click heading once. Stop after that single click.
+      - aiAct: Click the uppermost blue rectangular button immediately below the "View Click" heading and above the "Text Click" heading once. This first blue button has no visible text; do not choose the lower button containing "Click text to add one". Stop after that single click.
       - native.expect: { fixture: event, tag: count, text: "1" }
       - aiAct: Click the text "Click text to add one" beneath the Text Click heading once. Stop after that single click.
       - native.expect: { fixture: event, tag: count, text: "2" }

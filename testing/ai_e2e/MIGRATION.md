@@ -147,5 +147,15 @@ or claim pixel baseline coverage. Strict numeric, nonempty geometry is required;
 the probe stops the stream and releases its connection on failure. Real frame
 dimensions and crop geometry still need inspection after hosted execution.
 
+Android run 37937713083 passed DomFocus, InputInsertText and all three smoke
+cases, but Event failed its first counter assertion in both attempts. The actual
+1080x2400 screenshot has the first blue button at vertical pixels 365–452;
+the second attempt's raw normalized point `[500,270]` became `[540,648]`, outside
+that button. The first attempt also misidentified the other button's text.
+The first button has no visible label. The next action describes its visible
+heading relationships and both agents receive active-coordinate-protocol guidance,
+without hardcoded coordinates, extra clicks or changed assertions. This is a
+diagnosed localization failure, not yet a device-verified behavioral repair.
+
 Local validation of this next foundation passes 84 Node 22 checks, six Python
 checks, typechecking and actionlint. These are not additional migrated cases.
