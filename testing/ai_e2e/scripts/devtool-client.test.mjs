@@ -100,14 +100,22 @@ test('socket closure rejects pending CDP calls without retries or retained timer
 
 test('late timed-out response IDs cannot resolve a later request', async t => {
   let first;
+  let received;
+  const firstReceived = new Promise(resolve => { received = resolve; });
   const { client, observed } = await connect(t, (socket, request) => {
-    if (!first) first = request;
+    if (!first) { first = request; received(); }
     else {
       reply(socket, first, { result: { value: 'stale' } });
       reply(socket, request, { result: { value: 'current' } });
     }
-  }, 30);
-  await assert.rejects(client.request(7, 'DOM.getDocument'), /timed out/);
+  });
+  // Advance only the request clock, after actual socket delivery. A 30ms
+  // wall-clock race also timed out the valid sibling under emulator CI load.
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const expired = assert.rejects(client.request(7, 'DOM.getDocument'), /timed out/);
+  await firstReceived;
+  t.mock.timers.tick(1000);
+  await expired;
   assert.equal(client.requests.size, 0);
   assert.deepEqual(await client.request(7, 'DOM.getDocument'), { value: 'current' });
   assert.equal(observed.length, 2);
@@ -123,8 +131,14 @@ test('concurrent ListSession refreshes share one request and permit an empty pre
 });
 
 test('uncorrelated session refresh timeout closes the connection before another refresh', async t => {
-  const { client, observed } = await connect(t, () => {}, 20);
-  await assert.rejects(client.refreshSessions(), /session discovery timed out/);
+  let received;
+  const delivered = new Promise(resolve => { received = resolve; });
+  const { client, observed } = await connect(t, () => { received(); });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const expired = assert.rejects(client.refreshSessions(), /session discovery timed out/);
+  await delivered;
+  t.mock.timers.tick(1000);
+  await expired;
   await assert.rejects(client.refreshSessions(), /closed/);
   assert.equal(observed.length, 1);
 });
