@@ -30,7 +30,7 @@ testing/ai_e2e/
 The companion workflow is `.github/workflows/midscene-ai-e2e.yml`. It
 coexists with the existing Appium jobs in `ci.yml` and does not replace them.
 
-After a successful navigation smoke, `scripts/devtool-probe.mjs` checks the
+After case execution, `scripts/devtool-probe.mjs` checks the
 app's existing PeerTalk TCP transport: runtime registration and nonempty Lynx
 session discovery, followed by `DOM.getDocument` for the newest registered session.
 Plain and zlib-compressed DOM roots are decoded without model interpretation.
@@ -48,8 +48,19 @@ Run 37933030865 at `6c68bfd` verified the fix on iOS, including the handshake,
 three-session discovery and nonempty `DOM.getDocument`. Android and publication
 stopped on a separate 30ms wall-clock unit-test race before device/probe execution.
 Pushed head `4226954` replaces that race with controlled timer advancement after
-real socket delivery, retaining assertions and production timeouts. Its original
-contract batch is running in 37937713083; all 76 local checks passed at that head.
+real socket delivery, retaining assertions and production timeouts. Run
+37937713083 passed both builds and all 76 model-free checks. Both platforms
+finished 5/6: DomFocus, InputInsertText and three smoke cases passed on their
+first attempts; Event failed localization in both attempts. Report assembly and
+Pages publication succeeded, and correctly retain the failed status. Raw model
+points and screenshots show clicks outside the intended buttons, not failed
+transport or relaxed assertions. The next correction describes visible targets
+and supplies active-coordinate-protocol guidance, without hardcoded coordinates.
+
+The next foundation passes 84 Node checks and six original-algorithm Python
+differential checks. It captures screencast/rectangle diagnostic artifacts after
+successful or failed cases and gates source builds on model-free checks.
+This is not yet device-verified pixel coverage; see `MIGRATION.md`.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

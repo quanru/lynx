@@ -12,7 +12,7 @@ the original pixel baseline.
 
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
-| core/Event | Exact event counts and final inline style | YAML and source-contract checks prepared; device validation pending |
+| core/Event | Exact event counts and final inline style | Action localization failed on both platforms in run 37937713083; correction pending device validation |
 | core/Image | Cropped LynxView pixel baseline | Pending; additive Image navigation smoke exists |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
 | core/LayoutLinear | Pixel baseline | Pending |
