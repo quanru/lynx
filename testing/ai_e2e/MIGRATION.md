@@ -110,3 +110,11 @@ is `lib/test_runner/mixin/img_diff_mixin.py`, not Playwright pixelmatch:
 These are prerequisites for a future adapter, not implemented pixel coverage.
 A whole-device screenshot, AI visual similarity or Web screenshot matcher does
 not establish the same crop, scale, interpolation or comparison contract.
+
+The next local transport foundation adds exact-session CDP notification waiters
+and `scripts/native-screencast.mjs`. It subscribes before `Page.startScreencast`
+so an early frame is not lost, retains the original JPEG/quality/max-dimension
+parameters, and stops the stream on success or failure. Other sessions' frames
+are not accepted or buffered. Cancellation, timeout and disconnect release
+waiters; capture and cleanup failures retain both causes. This foundation is
+covered by real TCP mocks, not yet device capture or implemented pixel cases.

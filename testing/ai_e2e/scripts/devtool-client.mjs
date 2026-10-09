@@ -18,6 +18,7 @@ class DevtoolClient {
   runtime;
   sessions = [];
   requests = new Map();
+  notifications = new Map();
   nextId = 1;
   closed = false;
   sessionPending;
@@ -75,6 +76,17 @@ class DevtoolClient {
       if (typeof envelope?.message !== 'string') throw new Error('Invalid DevTool CDP envelope.');
       const response = JSON.parse(envelope.message);
       if (!response || typeof response !== 'object') throw new Error('Invalid DevTool CDP response.');
+      if (!Object.hasOwn(response, 'id') && typeof response.method === 'string') {
+        const key = JSON.stringify([envelope.session_id, response.method]);
+        const pending = this.notifications.get(key);
+        if (!pending) return; // Never buffer old frames or another session's events.
+        if (!response.params || typeof response.params !== 'object' || Array.isArray(response.params)) {
+          throw new Error('Invalid DevTool CDP notification params.');
+        }
+        this.notifications.delete(key);
+        pending.resolve(response.params);
+        return;
+      }
       const pending = this.requests.get(response.id);
       if (!pending) return; // Notifications and late responses are not new requests.
       if (envelope.session_id !== pending.sessionId) {
@@ -106,6 +118,31 @@ class DevtoolClient {
       this.close(error);
     }
     return pending.promise;
+  }
+
+  // Subscribe before starting a screencast: a frame may precede its command
+  // response. Explicit cancellation releases the waiter if the command fails.
+  waitForNotification(sessionId, method, timeoutMs = this.timeoutMs) {
+    if (this.closed) throw new Error('DevTool client is closed.');
+    if (!Number.isInteger(sessionId) || sessionId < 0 || typeof method !== 'string'
+      || !method.trim() || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new Error('Invalid DevTool notification subscription.');
+    }
+    const key = JSON.stringify([sessionId, method]);
+    if (this.notifications.has(key)) throw new Error('Duplicate DevTool notification subscription.');
+    const pending = deferred(timeoutMs, () => {
+      this.notifications.delete(key);
+      pending.reject(new Error(method + ' notification timed out.'));
+    });
+    this.notifications.set(key, pending);
+    return {
+      promise: pending.promise,
+      cancel: () => {
+        if (this.notifications.get(key) !== pending) return;
+        this.notifications.delete(key);
+        pending.reject(new Error('DevTool notification subscription cancelled.'));
+      },
+    };
   }
 
   request(sessionId, method, params = {}) {
@@ -142,6 +179,8 @@ class DevtoolClient {
     this.sessionPending = undefined;
     for (const pending of this.requests.values()) pending.reject(error);
     this.requests.clear();
+    for (const pending of this.notifications.values()) pending.reject(error);
+    this.notifications.clear();
     this.socket.destroy();
   }
 }

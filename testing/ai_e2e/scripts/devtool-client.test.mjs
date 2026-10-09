@@ -3,6 +3,7 @@ import net from 'node:net';
 import test from 'node:test';
 import { connectDevtool } from './devtool-client.mjs';
 import { encodeFrame, FrameDecoder } from './devtool-wire.mjs';
+import { captureNativeFrame } from './native-screencast.mjs';
 
 async function connect(t, respond, timeoutMs = 1000) {
   const sockets = new Set();
@@ -154,4 +155,73 @@ test('invalid and unserializable CDP inputs send nothing and release their pendi
   assert.equal(observed.length, 0);
   assert.equal(client.requests.size, 0);
   assert.deepEqual(await client.request(7, 'DOM.getDocument'), {});
+});
+
+function notify(socket, sessionId, method, params) {
+  socket.write(encodeFrame({ event: 'Customized', data: { type: 'CDP', data: {
+    session_id: sessionId, message: JSON.stringify({ method, params }),
+  } } }));
+}
+
+test('screencast binds frame notifications to the original session, even before start response', async t => {
+  const { client, observed } = await connect(t, (socket, request) => {
+    const command = JSON.parse(request.data.data.message);
+    if (command.method === 'Page.startScreencast') {
+      notify(socket, 8, 'Page.screencastFrame', { data: 'd3Jvbmc=' });
+      notify(socket, 7, 'Page.screencastFrame', { data: 'ZnJhbWU=', metadata: { deviceWidth: 1080 } });
+    }
+    reply(socket, request, { result: {} });
+  });
+  assert.deepEqual(await captureNativeFrame(client, 7), { data: 'ZnJhbWU=', metadata: { deviceWidth: 1080 } });
+  assert.deepEqual(observed.map(request => JSON.parse(request.data.data.message)), [
+    { id: 2, method: 'Page.enable', params: {} },
+    { id: 3, method: 'Page.startScreencast', params: { format: 'jpeg', maxHeight: 9999, maxWidth: 9999, quality: 100 } },
+    { id: 4, method: 'Page.stopScreencast', params: {} },
+  ]);
+  assert.equal(client.notifications.size, 0);
+});
+
+test('notification cancellation, expiry and client closure release waiters without stale buffering', async t => {
+  const { client } = await connect(t, () => {});
+  for (const args of [[-1, 'Page.screencastFrame'], [7, ''], [7, 'event', 0]]) {
+    assert.throws(() => client.waitForNotification(...args), /Invalid/);
+  }
+  const cancelled = client.waitForNotification(7, 'Page.screencastFrame');
+  assert.throws(() => client.waitForNotification(7, 'Page.screencastFrame'), /Duplicate/);
+  const rejection = assert.rejects(cancelled.promise, /cancelled/);
+  cancelled.cancel(); cancelled.cancel(); await rejection;
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const expired = client.waitForNotification(7, 'Page.screencastFrame', 1000);
+  const timeout = assert.rejects(expired.promise, /notification timed out/);
+  t.mock.timers.tick(1000); await timeout;
+  const closed = client.waitForNotification(7, 'Page.screencastFrame');
+  const closing = assert.rejects(closed.promise, /closed/);
+  client.close(); await closing;
+  assert.equal(client.notifications.size, 0);
+});
+
+test('failed screencast start cancels its frame waiter and attempts cleanup exactly once', async t => {
+  const { client, observed } = await connect(t, (socket, request) => {
+    const { method } = JSON.parse(request.data.data.message);
+    reply(socket, request, method === 'Page.startScreencast' ? { error: { message: 'capture disabled' } } : { result: {} });
+  });
+  await assert.rejects(captureNativeFrame(client, 7), /capture disabled/);
+  assert.equal(client.notifications.size, 0);
+  assert.deepEqual(observed.map(request => JSON.parse(request.data.data.message).method),
+    ['Page.enable', 'Page.startScreencast', 'Page.stopScreencast']);
+});
+
+test('malformed screencast data cannot pass and cleanup errors retain both causes', async t => {
+  const { client } = await connect(t, (socket, request) => {
+    const { method } = JSON.parse(request.data.data.message);
+    if (method === 'Page.startScreencast') notify(socket, 7, 'Page.screencastFrame', { data: 'not-base64!' });
+    reply(socket, request, method === 'Page.stopScreencast' ? { error: { message: 'stop failed' } } : { result: {} });
+  });
+  await assert.rejects(captureNativeFrame(client, 7), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.match(error.errors[0].message, /Invalid native screencast/);
+    assert.match(error.errors[1].message, /stop failed/);
+    return true;
+  });
+  assert.equal(client.notifications.size, 0);
 });
