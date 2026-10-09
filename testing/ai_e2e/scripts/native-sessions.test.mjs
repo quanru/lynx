@@ -108,3 +108,18 @@ test('teardown during fixture readiness closes exactly once and stops discovery'
   assert.equal(discoveries, 1);
   assert.equal(client.closed, 1);
 });
+
+test('a fixture response racing teardown cannot return a closed session', async () => {
+  const client = connection();
+  let resolve;
+  let requested;
+  const started = new Promise(yes => { requested = yes; });
+  client.request = () => { requested(); return new Promise(yes => { resolve = yes; }); };
+  const registry = createNativeSessions(async () => client);
+  const pending = registry.get('one', ['count']);
+  await started;
+  registry.release('one');
+  resolve({ root: { nodeId: 0, nodeName: 'view', attributes: ['lynx-test-tag', 'count'] } });
+  await assert.rejects(pending, /released during fixture binding/);
+  assert.equal(client.closed, 1);
+});

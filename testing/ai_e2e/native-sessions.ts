@@ -47,7 +47,9 @@ export function createNativeSessions(connect: () => Promise<NativeConnection>, {
         const deadline = Date.now() + bindingTimeoutMs;
         for (;;) {
           try {
-            return await bindFixtureSession(client, tags);
+            const session = await bindFixtureSession(client, tags);
+            if (lease.closed) throw new Error('Native case was released during fixture binding.');
+            return session;
           } catch (error) {
             // Only an absent, not-yet-mounted fixture is a readiness condition.
             // Ambiguous identities, invalid DOM and CDP/transport errors fail.
