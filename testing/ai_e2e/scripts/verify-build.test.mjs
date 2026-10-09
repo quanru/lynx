@@ -44,5 +44,11 @@ test('device-only reruns reuse the newest valid build from the same workflow rev
   assert.deepEqual(await readFile(join(destination, manifest.file)), bytes);
   await writeFile(join(directory, 'midscene-explorer-source-android-10', manifest.file), 'corrupted');
   await assert.rejects(stageLatestBuild(directory, destination, 'android', 'current'), /checksum/);
-  await assert.rejects(stageLatestBuild(directory, destination, 'ios', 'current'), /No source build/);
+  await assert.rejects(stageLatestBuild(directory, destination, 'ios', 'current'));
+  const flat = join(directory, 'flat-download');
+  await mkdir(flat);
+  await writeFile(join(flat, 'build.json'), JSON.stringify(manifest));
+  await writeFile(join(flat, manifest.file), bytes);
+  assert.deepEqual(await stageLatestBuild(flat, destination, 'android', 'current'), manifest);
+  await assert.rejects(stageLatestBuild(flat, destination, 'ios', 'current'), /platform/);
 });

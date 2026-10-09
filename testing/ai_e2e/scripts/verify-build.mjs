@@ -20,8 +20,9 @@ export async function stageLatestBuild(source, destination, platform, sha) {
   const prefix = `midscene-explorer-source-${platform}-`;
   const candidates = (await readdir(source)).filter(name => name.startsWith(prefix) && /^\d+$/.test(name.slice(prefix.length)))
     .sort((a, b) => Number(a.slice(prefix.length)) - Number(b.slice(prefix.length)));
-  if (!candidates.length) throw new Error(`No source build for ${platform}.`);
-  const directory = resolve(source, candidates.at(-1));
+  // download-artifact v8 extracts a single pattern match directly into path,
+  // even with merge-multiple:false; multiple matches retain named directories.
+  const directory = candidates.length ? resolve(source, candidates.at(-1)) : resolve(source);
   // Never fall back to an older build when the newest one has invalid provenance.
   const manifest = await verifyBuild(directory, platform, sha);
   await mkdir(destination, { recursive: true });
