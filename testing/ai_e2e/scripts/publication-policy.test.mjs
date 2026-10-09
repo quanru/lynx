@@ -65,6 +65,8 @@ test('DevTool probes are bounded read-only prerequisites, not false migrated cas
     new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
   const probe = await readFile(new URL('./devtool-probe.mjs', import.meta.url), 'utf8');
   assert.equal(workflow.split('id: probe-devtool').length - 1, 2);
+  assert.equal(workflow.split("if: always() && (steps.run-cases.outcome == 'success' || steps.run-cases.outcome == 'failure')").length - 1, 2);
+  assert.equal(workflow.split('DEVTOOL_CAPTURE_DIR=midscene_run/native-capture').length - 1, 2);
   assert.equal(workflow.split("steps.probe-devtool.outcome == 'success'").length - 1, 2);
   assert.equal(workflow.split('tee midscene_run/devtool-probe.log').length - 1, 2);
   assert.match(workflow, /forward --remove tcp:18901/);

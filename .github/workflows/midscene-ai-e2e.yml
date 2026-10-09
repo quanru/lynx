@@ -218,6 +218,7 @@ jobs:
 
       - name: Verify read-only DevTool transport prerequisite
         id: probe-devtool
+        if: always() && (steps.run-cases.outcome == 'success' || steps.run-cases.outcome == 'failure')
         working-directory: testing/ai_e2e
         shell: bash
         run: |
@@ -352,6 +353,7 @@ jobs:
 
       - name: Verify read-only DevTool transport prerequisite
         id: probe-devtool
+        if: always() && (steps.run-cases.outcome == 'success' || steps.run-cases.outcome == 'failure')
         working-directory: testing/ai_e2e
         shell: bash
         run: |

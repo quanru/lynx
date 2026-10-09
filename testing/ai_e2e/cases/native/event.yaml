@@ -9,7 +9,7 @@ cases:
       - native.expect: { fixture: event, tag: count, text: "1" }
       - aiAct: Click the text "Click text to add one" beneath the Text Click heading once. Stop after that single click.
       - native.expect: { fixture: event, tag: count, text: "2" }
-      - aiAct: Click the inline text "Click Me" to the right of "Test inline-text:" in the Click to change CSS section once. Stop after that single click.
+      - aiAct: Click only the inline text "Click Me" at the right end of "Test inline-text:Click Me" inside the lowest of the three blue buttons, beneath "Click to change CSS", once. Tap inside those letters, not the surrounding button or blank page. Stop after that single click.
       - native.expect:
           fixture: event
           tag: button2

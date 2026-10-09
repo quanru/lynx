@@ -17,8 +17,8 @@ the original pixel baseline.
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
 | core/LayoutLinear | Pixel baseline | Pending |
 | core/TextEvent | Cropped pixel baselines and element existence | Pending |
-| core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | YAML and source-contract checks prepared; device validation pending |
-| core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | YAML and source-contract checks prepared; device validation pending |
+| core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
+| core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Pending, iOS |
 | sparkling/HotExternalURL | Hot external route and container/session ownership | Pending, iOS |
 | sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Pending, iOS |
@@ -146,6 +146,9 @@ persist route URLs or runtime metadata, substitute a whole-device screenshot,
 or claim pixel baseline coverage. Strict numeric, nonempty geometry is required;
 the probe stops the stream and releases its connection on failure. Real frame
 dimensions and crop geometry still need inspection after hosted execution.
+The diagnostic probe runs after successful or failed case execution (not skipped
+or cancelled execution), so an interaction failure does not discard independent
+transport/frame evidence. A passing probe never overrides failed case status.
 
 Android run 37937713083 passed DomFocus, InputInsertText and all three smoke
 cases, but Event failed its first counter assertion in both attempts. The actual
@@ -156,6 +159,12 @@ The first button has no visible label. The next action describes its visible
 heading relationships and both agents receive active-coordinate-protocol guidance,
 without hardcoded coordinates, extra clicks or changed assertions. This is a
 diagnosed localization failure, not yet a device-verified behavioral repair.
+Both platforms finished 5/6, with DomFocus and InputInsertText passing on their
+first attempts. iOS Event reached the inline style assertion on its retry, but
+the raw point `[400,800]` became `[471,2045]`, far below the third blue button
+(vertical pixels 986–1117 in its 1178x2556 screenshot). The counter assertions
+passed on that attempt; the final style remained unchanged. The next description
+also constrains the inline text to the lowest blue button, without coordinates.
 
 Local validation of this next foundation passes 84 Node 22 checks, six Python
 checks, typechecking and actionlint. These are not additional migrated cases.
