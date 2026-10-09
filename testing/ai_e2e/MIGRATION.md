@@ -121,10 +121,11 @@ covered by real TCP mocks, not yet device capture or implemented pixel cases.
 
 The local grayscale comparator in `scripts/native_pixels.py` preserves the
 original pinned OpenCV/NumPy backend, grayscale threshold and mismatch fraction.
-Four Python checks execute the unchanged original comparator AST against the
-same arrays, including threshold boundaries and 120 randomized comparisons.
-This is algorithm conformance only; view/element crop integration and baseline
-device execution remain pending. The next workflow runs all model-free checks
+Six Python checks execute the unchanged original comparator/crop AST against
+the same arrays, including threshold boundaries, 120 randomized comparisons
+and 50 fractional crop/cubic-resize comparisons across Android and iOS scales.
+This is algorithm conformance only; full-frame-to-LynxView geometry integration
+and baseline device execution remain pending. The next workflow runs all model-free checks
 before source builds, without model credentials, rather than discovering unit
 failures after emulator/WDA startup. Original test-script changes also trigger
 the workflow so source-contract drift cannot silently bypass validation.
@@ -137,5 +138,5 @@ python3.13 -m venv /tmp/lynx-pixel-check
 /tmp/lynx-pixel-check/bin/python3 testing/ai_e2e/scripts/native_pixels_test.py < testing/integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py
 ```
 
-Local validation of this next foundation passes 81 Node 22 checks, four Python
+Local validation of this next foundation passes 81 Node 22 checks, six Python
 checks, typechecking and actionlint. These are not additional migrated cases.
