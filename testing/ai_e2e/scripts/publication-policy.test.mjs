@@ -2,18 +2,17 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-test('both platform downloads share the release repository configuration', async () => {
+test('both platforms consume current-source artifacts and verify their revision', async () => {
   const workflow = await readFile(
     new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url),
     'utf8',
   );
-  assert.equal(workflow.split('lynx-family/lynx').length - 1, 1);
-  assert.equal(
-    workflow.split(
-      'https://github.com/${LYNX_RELEASE_REPOSITORY}/releases/download/',
-    ).length - 1,
-    2,
-  );
+  assert.doesNotMatch(workflow, /releases\/download|LYNX_RELEASE_TAG|release_tag:/);
+  assert.equal(workflow.split('needs: build-explorer').length - 1, 2);
+  assert.match(workflow, /node scripts\/verify-build.mjs \. android/);
+  assert.match(workflow, /node scripts\/verify-build.mjs \. ios/);
+  const [build] = workflow.split('  fork-contract-check:');
+  assert.doesNotMatch(build, /secrets\.MIDSCENE/);
 });
 
 test('publication defaults to the default branch and only exposes deployed links', async () => {

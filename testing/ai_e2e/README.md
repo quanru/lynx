@@ -1,11 +1,13 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-This released-artifact compatibility smoke uses Midscene vision models to run
+This current-source smoke uses Midscene vision models to run
 the same YAML cases on Android and iOS. It connects directly through adb or
-WebDriverAgent without Appium. It does not validate Explorer built from the
-current pull-request commit; the existing Explorer build and test jobs retain
-that responsibility.
-Local validation on September 20, 2026 passed 3/3 cases on each platform.
+WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
+integration fixtures and Sparkling enabled. Consumers verify the commit and
+artifact checksum before installation. This is still a three-case smoke per
+platform, not a replacement for the original integration suites.
+Historical local validation on September 20, 2026 passed 3/3 cases on each
+platform using the released app; that result does not validate this source build.
 
 ## Structure
 
@@ -58,13 +60,13 @@ is wanted. Repository rules must allow the workflow to update
 and `id-token: write` for publication and reports a setup warning when Pages is
 not configured. No extra variable is needed to publish after merging to `develop`.
 
-By default, the workflow downloads Lynx Explorer release `4.1.0`. Its APK
-contains an x86_64 ABI and can be installed directly on the hosted x86_64
-emulator. The release artifacts are already signed, so Espresso resigning is
-not required. A `workflow_dispatch` run can override the release tag. The
-workflow runs only when its own tests or workflow change, not when Explorer
-source changes. Its green result must not be presented as current-source
-Explorer validation.
+The model-free build matrix synchronizes pinned public dependencies and builds
+an x86_64 Android debug APK and an iOS simulator app. Both include the original
+integration pages and Sparkling. Each artifact includes `build.json` with the
+workflow commit, platform, capabilities, and SHA-256 checksum. Device jobs fail
+closed if provenance does not match. Source changes also trigger the workflow.
+The smoke targets the current homepage's "Open" and "Lynx Showcases" entries;
+release 4.1.0 used different labels.
 
 ## Run locally
 
@@ -77,7 +79,7 @@ cp .env.example .env       # Add model credentials; do not commit this file.
 set -a && source .env && set +a
 
 # Android: start an emulator and install Explorer first.
-adb install -r LynxExplorer-noasan-release.apk
+adb install -r LynxExplorer.apk
 npm run smoke:android      # Optional model-free adb connection check.
 npm test -- --project android-explorer
 

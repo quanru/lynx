@@ -1,22 +1,22 @@
 cases:
   - name: Explorer home shows URL entry and showcase
     steps:
-      - aiWaitFor: The Lynx Explorer home screen with a URL entry and a Showcase entry is visible.
-      - aiAssert: The Lynx Explorer home screen is visible, showing the title "Lynx Explorer", a URL input card labeled either "Bundle URL" (native) or "Card URL" (web) with an "Enter ... URL" placeholder, a red "Go" button, and a "Showcase" entry row with a colorful grid icon.
+      - aiWaitFor: The Lynx Explorer home screen with a Bundle URL entry and a Lynx Showcases entry is visible.
+      - aiAssert: The Lynx Explorer home screen is visible, showing the title "Lynx Explorer", a URL input card labeled "Bundle URL" with an "Enter Bundle URL" placeholder, an "Open" button, and a "Lynx Showcases" entry.
 
   - name: Open Showcase from home
     tags: [showcase]
     steps:
-      - aiWaitFor: The Lynx Explorer home screen with a Showcase entry is visible.
-      - aiAct: Open the "Showcase" entry with the colorful grid icon.
+      - aiWaitFor: The Lynx Explorer home screen with a Lynx Showcases entry is visible.
+      - aiAct: Open the "Lynx Showcases" entry, not "Sparkling Showcases".
       - aiWaitFor: The Showcase page with demo categories is visible.
       - aiAssert: A showcase page listing Lynx example demos or categories is displayed, not the URL entry home screen.
 
   - name: Browse into Showcase Image examples
     tags: [showcase, deep]
     steps:
-      - aiWaitFor: The Lynx Explorer home screen with a Showcase entry is visible.
-      - aiAct: Open the "Showcase" entry with the colorful grid icon.
+      - aiWaitFor: The Lynx Explorer home screen with a Lynx Showcases entry is visible.
+      - aiAct: Open the "Lynx Showcases" entry, not "Sparkling Showcases".
       - aiWaitFor: The Showcase category list including Image is visible.
       - aiAssert: The Showcase category list is displayed, showing category rows including "Animation", "CSS", "Fetch API", "Image", and "Layout".
       - aiAct: Open the "Image" category with the picture icon and the description about the image component.
