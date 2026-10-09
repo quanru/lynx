@@ -21,8 +21,8 @@ if [ "$platform" = android ]; then
   cp "$apk" "$output/LynxExplorer.apk"
 else
   python3 explorer/scripts/sync_sparkling_source.py \
-    --manifest explorer/sparkling-source.json \
-    --source-root explorer/generated/sparkling-source
+    --manifest "$root/explorer/sparkling-source.json" \
+    --source-root "$root/explorer/generated/sparkling-source"
   export PATH="$root/buildtools/sparkling/node/bin:$root/buildtools/sparkling/corepack/pnpm:$PATH"
   pnpm --dir explorer/generated/sparkling-source install --frozen-lockfile
   pnpm --dir explorer/generated/sparkling-source --filter sparkling-playground build
