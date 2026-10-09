@@ -39,8 +39,10 @@ runtime registration and at least one valid Lynx session, with bounded socket
 timeouts, strict frame lengths/UTF-8 and explicit cleanup. Android forwards only
 the probe's own port; iOS Simulator connects locally. Probe logs are archived
 with reports, and a failed probe must make infrastructure status fail even if
-the navigation cases pass. This does not implement CDP assertions or count as
-an equivalent case migration. Real device probe validation is still pending.
+the navigation cases pass. This does not itself count as an equivalent case
+migration. The iOS probe passed in run 37933030865; Android execution was blocked
+by a model-free test clock race before the probe, not established as a device or
+model failure. Run 37937713083 validates the corrected clock and three original modules.
 
 The next local foundation adds exact CDP response correlation and read-only
 `DOM.getDocument` validation. Native text, input values and style attributes
@@ -138,5 +140,12 @@ python3.13 -m venv /tmp/lynx-pixel-check
 /tmp/lynx-pixel-check/bin/python3 testing/ai_e2e/scripts/native_pixels_test.py < testing/integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py
 ```
 
-Local validation of this next foundation passes 81 Node 22 checks, six Python
+The next probe also captures one JPEG stream frame and the same session's
+physical `Lynx.getRectToWindow` rectangle in the report artifact. It does not
+persist route URLs or runtime metadata, substitute a whole-device screenshot,
+or claim pixel baseline coverage. Strict numeric, nonempty geometry is required;
+the probe stops the stream and releases its connection on failure. Real frame
+dimensions and crop geometry still need inspection after hosted execution.
+
+Local validation of this next foundation passes 84 Node 22 checks, six Python
 checks, typechecking and actionlint. These are not additional migrated cases.

@@ -223,7 +223,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p midscene_run
-          DEVTOOL_PORT=18901 node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
+          DEVTOOL_PORT=18901 DEVTOOL_CAPTURE_DIR=midscene_run/native-capture node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
 
       - name: Release owned native DevTool forward
         id: release-native-forward
@@ -357,7 +357,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p midscene_run
-          node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
+          DEVTOOL_CAPTURE_DIR=midscene_run/native-capture node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
 
       - name: Stage iOS report for this attempt
         if: always()

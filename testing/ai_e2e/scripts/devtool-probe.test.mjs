@@ -99,6 +99,36 @@ test('real TCP handshake uses the negotiated sender/runtime identities and fragm
   assert.equal(result.root.children[0].nodeName, 'view');
 });
 
+for (const rect of [{ left: 0, top: 60, width: 720, height: 876 }, { left: 0, top: 0, width: 0, height: 10 }, { left: 0, top: '60', width: 720, height: 876 }]) {
+  test(`optional capture preserves the same DOM session and rejects invalid geometry: ${JSON.stringify(rect)}`, async t => {
+    const commands = [];
+    const port = await mockServer(t, (socket, message) => {
+      if (message.event === 'Initialize') socket.write(encodeFrame({ event: 'Register', data: { id: 152, info: {} } }));
+      if (message.data?.type === 'ListSession') socket.write(encodeFrame({ event: 'Customized', data: { type: 'SessionList', data: [{ session_id: 7 }] } }));
+      if (message.data?.type !== 'CDP') return;
+      assert.equal(message.data.data.session_id, 7);
+      const command = JSON.parse(message.data.data.message);
+      commands.push(command);
+      let result = {};
+      if (command.method === 'DOM.getDocument') result = { root: { nodeId: 0, nodeName: '#document', children: [{ nodeId: 23, nodeName: 'view' }] } };
+      if (command.method === 'Lynx.getRectToWindow') result = rect;
+      if (command.method === 'Page.startScreencast') socket.write(encodeFrame({ event: 'Customized', data: { type: 'CDP', data: { session_id: 7, message: JSON.stringify({ method: 'Page.screencastFrame', params: { data: 'ZnJhbWU=', privateMetadata: 'must not persist' } }) } } }));
+      socket.write(encodeFrame({ event: 'Customized', data: { type: 'CDP', data: { session_id: 7, message: JSON.stringify({ id: command.id, result }) } } }));
+    });
+    if (rect.width === 720 && typeof rect.top === 'number') {
+      const result = await probeDevtool({ port, captureFrame: true });
+      assert.deepEqual(result.capture, { image: Buffer.from('frame'), rect });
+      assert.deepEqual(commands.map(command => command.method), [
+        'DOM.getDocument', 'Lynx.getRectToWindow', 'Page.enable', 'Page.startScreencast', 'Page.stopScreencast',
+      ]);
+      assert.deepEqual(commands[1].params, { nodeId: 23 });
+    } else {
+      await assert.rejects(probeDevtool({ port, captureFrame: true }), /Invalid LynxView window rectangle/);
+      assert.equal(commands.length, 2);
+    }
+  });
+}
+
 for (const sessions of [[], [{ session_id: '7' }], null]) {
   test(`invalid session discovery is rejected: ${JSON.stringify(sessions)}`, async t => {
     const port = await mockServer(t, (socket, message) => {
