@@ -173,5 +173,16 @@ the raw point `[400,800]` became `[471,2045]`, far below the third blue button
 passed on that attempt; the final style remained unchanged. The next description
 also constrains the inline text to the lowest blue button, without coordinates.
 
-Local validation of this next foundation passes 84 Node 22 checks, eight Python
+Run 37943332119 at `04b3d75` passed both source builds and publication. Android
+passed Event, DomFocus and InputInsertText on their first attempts but failed
+the Showcase-entry smoke (5/6 overall). iOS passed DomFocus, InputInsertText and
+the home smoke, with Event and Showcase navigation still failing (3/6). Native
+capture artifacts exist on both platforms; Android's 1080x2400 frame and
+physical `(0, 210, 1080, 1664)` rectangle crop to the original view dimensions.
+These are not baseline comparisons. The next Event and Showcase-entry actions
+use standard `aiAct` deepLocate with caching disabled to avoid direct planning
+points; dedicated visual grounding still needs device verification. All original
+Event counters, exact style, click count and API contracts remain unchanged.
+
+Local validation of this next foundation passes 85 Node 22 checks, eight Python
 checks, typechecking and actionlint. These are not additional migrated cases.

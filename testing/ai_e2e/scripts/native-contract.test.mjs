@@ -24,6 +24,9 @@ test('native collection preserves original ordered assertions, CDP calls and use
     assert.equal(cases[0].name, `core/${original}`);
     const steps = cases[0].steps;
     if (fixture === 'event') {
+      for (const action of steps.filter(step => step.node === 'aiAct')) {
+        assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
+      }
       const firstClick = steps.find(step => step.node === 'aiAct').input.prompt;
       assert.match(firstClick, /uppermost blue rectangular button/);
       assert.match(firstClick, /below the "View Click" heading and above the "Text Click" heading/);

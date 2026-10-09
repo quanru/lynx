@@ -6,8 +6,9 @@ WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
 integration fixtures and Sparkling enabled. Consumers verify the commit and
 artifact checksum before installation. Each platform now collects three additive
 smoke cases and three original-contract cases (Event, DomFocus, InputInsertText).
-The original-contract batch is locally checked, not yet device-verified or a
-replacement for the original integration suites.
+DomFocus and InputInsertText have passed on both devices; Event has now passed
+on Android but still misses targets on iOS. This is not a replacement for the
+remaining original integration suites.
 The current-source baseline at PR head `3cf1da2` passed both source builds and
 Android 3/3 plus iOS 3/3, including report/Pages publication:
 https://github.com/quanru/lynx/actions/runs/37924452915.
@@ -57,7 +58,25 @@ points and screenshots show clicks outside the intended buttons, not failed
 transport or relaxed assertions. The next correction describes visible targets
 and supplies active-coordinate-protocol guidance, without hardcoded coordinates.
 
-The next foundation passes 84 Node checks and eight original-algorithm Python
+Run 37943332119 at `04b3d75` passed both source builds and the model-free gate.
+Android passed all three original modules on their first attempts, including
+the Event correction. Its overall result is still 5/6 because the Showcase smoke
+clicked Session History instead of the Showcases card. Both failed attempts used
+normalized `[500, 700]`, producing actual `[540, 1680]` taps on recent test
+bundles; screenshots confirm the intended card is above those rows. The local
+smoke goal now names the visible card relationships and requires the actual
+category-list destination. This correction is not device-verified yet. Android
+captured a 1080x2400 screencast and physical rectangle `(0, 210, 1080, 1664)`;
+the crop matches the original view dimensions, not a pixel-baseline pass. iOS
+finished 3/6: DomFocus, InputInsertText and the home smoke passed; Event and both
+Showcase navigation cases failed. Report assembly and Pages publication passed.
+The standard `aiAct` option `deepLocate: true` is now used only for Event and
+Showcase-entry targets, with caching disabled. In SDK 1.13.1, this bypasses the
+planning model's direct point and performs a dedicated visual locate instead.
+It does not add atomic action nodes, selectors, coordinates or extra Event
+clicks. No local model calls were made; this option still needs hosted validation.
+
+The next foundation passes 85 Node checks and eight original-algorithm Python
 differential checks. It captures screencast/rectangle diagnostic artifacts after
 successful or failed cases and gates source builds on model-free checks.
 This is not yet device-verified pixel coverage; see `MIGRATION.md`.

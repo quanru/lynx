@@ -8,7 +8,9 @@ cases:
     tags: [showcase]
     steps:
       - aiWaitFor: The Lynx Explorer home screen with a Lynx Showcases entry is visible.
-      - aiAct: Open the "Lynx Showcases" entry, not "Sparkling Showcases".
+      - aiAct:
+          prompt: Navigate to the Showcase category list by opening the CENTER of the "Lynx Showcases" words in the Showcases card. This row is directly ABOVE "Sparkling Showcases" and the entire card is ABOVE Session History. Do not open any Session History bundle row. Finish only when category rows such as Animation, CSS, Image and Layout are visible; an Event or input test page is not the destination.
+          options: { deepLocate: true, cacheable: false }
       - aiWaitFor: The Showcase page with demo categories is visible.
       - aiAssert: A showcase page listing Lynx example demos or categories is displayed, not the URL entry home screen.
 
@@ -16,7 +18,9 @@ cases:
     tags: [showcase, deep]
     steps:
       - aiWaitFor: The Lynx Explorer home screen with a Lynx Showcases entry is visible.
-      - aiAct: Open the "Lynx Showcases" entry, not "Sparkling Showcases".
+      - aiAct:
+          prompt: Navigate to the Showcase category list by opening the CENTER of the "Lynx Showcases" words in the Showcases card. This row is directly ABOVE "Sparkling Showcases" and the entire card is ABOVE Session History. Do not open any Session History bundle row. Finish only when category rows such as Animation, CSS, Image and Layout are visible; an Event or input test page is not the destination.
+          options: { deepLocate: true, cacheable: false }
       - aiWaitFor: The Showcase category list including Image is visible.
       - aiAssert: The Showcase category list is displayed, showing category rows including "Animation", "CSS", "Fetch API", "Image", and "Layout".
       - aiAct: Open the "Image" category with the picture icon and the description about the image component.

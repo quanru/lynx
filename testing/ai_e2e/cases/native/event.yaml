@@ -5,11 +5,17 @@ cases:
     steps:
       - launch: "${eventUri}"
       - aiWaitFor: The Event page shows a counter, View Click, Text Click, and Click to change CSS sections.
-      - aiAct: Click the uppermost blue rectangular button immediately below the "View Click" heading and above the "Text Click" heading once. This first blue button has no visible text; do not choose the lower button containing "Click text to add one". Stop after that single click.
+      - aiAct:
+          prompt: Click the uppermost blue rectangular button immediately below the "View Click" heading and above the "Text Click" heading once. This first blue button has no visible text; do not choose the lower button containing "Click text to add one". Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
       - native.expect: { fixture: event, tag: count, text: "1" }
-      - aiAct: Click the text "Click text to add one" beneath the Text Click heading once. Stop after that single click.
+      - aiAct:
+          prompt: Click the text "Click text to add one" beneath the Text Click heading once. Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
       - native.expect: { fixture: event, tag: count, text: "2" }
-      - aiAct: Click only the inline text "Click Me" at the right end of "Test inline-text:Click Me" inside the lowest of the three blue buttons, beneath "Click to change CSS", once. Tap inside those letters, not the surrounding button or blank page. Stop after that single click.
+      - aiAct:
+          prompt: Click only the inline text "Click Me" at the right end of "Test inline-text:Click Me" inside the lowest of the three blue buttons, beneath "Click to change CSS", once. Tap inside those letters, not the surrounding button or blank page. Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
       - native.expect:
           fixture: event
           tag: button2
