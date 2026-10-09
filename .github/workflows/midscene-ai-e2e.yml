@@ -200,7 +200,22 @@ jobs:
       - name: Run Android Midscene cases
         id: run-cases
         working-directory: testing/ai_e2e
-        run: npm test -- --project android-explorer
+        run: |
+          npm run typecheck
+          node --test scripts/*.test.mjs
+          npm test -- --project android-explorer
+
+      - name: Verify read-only DevTool transport prerequisite
+        id: probe-devtool
+        working-directory: testing/ai_e2e
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe_adb="$ANDROID_HOME/platform-tools/adb"
+          "$probe_adb" forward tcp:18901 tcp:8901
+          trap '"$probe_adb" forward --remove tcp:18901' EXIT
+          mkdir -p midscene_run
+          DEVTOOL_PORT=18901 node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
 
       - name: Stage Android report for this attempt
         if: always()
@@ -226,7 +241,7 @@ jobs:
       - name: Add Android results to the job Summary
         if: always()
         env:
-          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
+          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
         run: |
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
             --title "Lynx Explorer × Midscene · Android" \
@@ -318,7 +333,19 @@ jobs:
       - name: Run iOS Midscene cases
         id: run-cases
         working-directory: testing/ai_e2e
-        run: npm test -- --project ios-explorer
+        run: |
+          npm run typecheck
+          node --test scripts/*.test.mjs
+          npm test -- --project ios-explorer
+
+      - name: Verify read-only DevTool transport prerequisite
+        id: probe-devtool
+        working-directory: testing/ai_e2e
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p midscene_run
+          node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
 
       - name: Stage iOS report for this attempt
         if: always()
@@ -344,7 +371,7 @@ jobs:
       - name: Add iOS results to the job Summary
         if: always()
         env:
-          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
+          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
         run: |
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
             --title "Lynx Explorer × Midscene · iOS" \

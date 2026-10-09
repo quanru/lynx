@@ -33,6 +33,15 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+The next prerequisite is a read-only DevTool TCP probe after the navigation
+smoke, using the existing PeerTalk wire protocol without Appium. It verifies
+runtime registration and at least one valid Lynx session, with bounded socket
+timeouts, strict frame lengths/UTF-8 and explicit cleanup. Android forwards only
+the probe's own port; iOS Simulator connects locally. Probe logs are archived
+with reports, and a failed probe must make infrastructure status fail even if
+the navigation cases pass. This does not implement CDP assertions or count as
+an equivalent case migration. Real device probe validation is still pending.
+
 - Build Explorer at the workflow revision with integration fixtures and
   Sparkling. `build.json` records the commit, platform, capabilities and binary
   checksum; consumers verify it before installation. No model credentials are

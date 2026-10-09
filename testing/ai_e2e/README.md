@@ -6,8 +6,10 @@ WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
 integration fixtures and Sparkling enabled. Consumers verify the commit and
 artifact checksum before installation. This is still a three-case smoke per
 platform, not a replacement for the original integration suites.
-Historical local validation on September 20, 2026 passed 3/3 cases on each
-platform using the released app; that result does not validate this source build.
+The current-source baseline at PR head `3cf1da2` passed both source builds and
+Android 3/3 plus iOS 3/3, including report/Pages publication:
+https://github.com/quanru/lynx/actions/runs/37924452915.
+The next read-only DevTool transport prerequisite is not covered by that run.
 
 ## Structure
 
@@ -25,6 +27,15 @@ testing/ai_e2e/
 
 The companion workflow is `.github/workflows/midscene-ai-e2e.yml`. It
 coexists with the existing Appium jobs in `ci.yml` and does not replace them.
+
+After a successful navigation smoke, `scripts/devtool-probe.mjs` checks the
+app's existing PeerTalk TCP transport: runtime registration and nonempty Lynx
+session discovery. Android uses an explicitly owned ADB forward; iOS Simulator
+connects directly. The socket has a bounded deadline and is always destroyed.
+The probe does not navigate, focus, insert text or replace original assertions.
+Its log is archived with the report, and failure is infrastructure failure even
+when the smoke cases pass. Real device validation of this new probe is pending;
+37 local model-free checks and typechecking pass.
 
 Only standard Midscene nodes appear in the YAML. On first agent acquisition
 for each case, setup terminates and relaunches Explorer; repeated nodes reuse
