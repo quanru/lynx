@@ -197,6 +197,10 @@ jobs:
           if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
           exit 1
 
+      - name: Forward native DevTool contract transport
+        id: native-forward
+        run: '"$ANDROID_HOME/platform-tools/adb" forward --no-rebind tcp:18901 tcp:8901'
+
       - name: Run Android Midscene cases
         id: run-cases
         working-directory: testing/ai_e2e
@@ -211,11 +215,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          probe_adb="$ANDROID_HOME/platform-tools/adb"
-          "$probe_adb" forward tcp:18901 tcp:8901
-          trap '"$probe_adb" forward --remove tcp:18901' EXIT
           mkdir -p midscene_run
           DEVTOOL_PORT=18901 node scripts/devtool-probe.mjs 2>&1 | tee midscene_run/devtool-probe.log
+
+      - name: Release owned native DevTool forward
+        id: release-native-forward
+        if: always() && steps.native-forward.outcome == 'success'
+        run: '"$ANDROID_HOME/platform-tools/adb" forward --remove tcp:18901'
 
       - name: Stage Android report for this attempt
         if: always()
@@ -241,7 +247,7 @@ jobs:
       - name: Add Android results to the job Summary
         if: always()
         env:
-          PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
+          PRODUCER_RESULT: ${{ steps.native-forward.outcome == 'success' && steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.release-native-forward.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
         run: |
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
             --title "Lynx Explorer × Midscene · Android" \

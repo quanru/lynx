@@ -4,10 +4,11 @@ import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
+import { nativeFixture } from '../native-fixtures.ts';
 
 const source = readFileSync(new URL('../midscene.config.ts', import.meta.url), 'utf8');
 const yaml = readFileSync(new URL('../cases/native/explorer.yaml', import.meta.url), 'utf8');
-const require = createRequire(import.meta.url);
+const require = createRequire(new URL('../midscene.config.ts', import.meta.url));
 
 function loadProject(failLaunch = false) {
   const events = [];
@@ -30,7 +31,15 @@ function loadProject(failLaunch = false) {
     '@midscene/android': { AndroidAgent: Agent, AndroidDevice: Device, getConnectedDevices: async () => [{ udid: 'test-device' }] },
     '@midscene/ios': { IOSAgent: Agent, IOSDevice: Device },
     '@midscene/test/config': { defineProjectSetup: x => x, defineTestProject: x => x },
+    '@midscene/test': { defineNode: x => x },
     '@midscene/test/midscene': { createMidsceneNodes: () => [] },
+    './scripts/devtool-client.mjs': { connectDevtool: async () => ({
+      refreshSessions: async () => [{ session_id: 7 }],
+      request: async () => ({ root: { nodeId: 0, nodeName: 'view', children:
+        nativeFixture('domFocus').tags.map((tag, index) => ({ nodeId: index + 1,
+          nodeName: 'view', attributes: ['lynx-test-tag', tag] })) } }),
+      close: () => events.push(['native', 'close']),
+    }) },
   };
   const module = { exports: {} };
   vm.runInNewContext(ts.transpileModule(source, {
@@ -42,7 +51,7 @@ function loadProject(failLaunch = false) {
 for (const name of ['android-explorer', 'ios-explorer']) {
   test(`${name} restarts once per case, reuses within a case and releases devices`, async () => {
     const { project, events } = loadProject();
-    const context = await project.projects.find(p => p.name === name).setup.setup({});
+    const context = await project.projects.find(p => p.name === name).setup.setup({ onTeardown() {} });
     const first = await context.agentRegistry.getAgent('case-1');
     assert.equal(await context.agentRegistry.getAgent('case-1'), first);
     const second = await context.agentRegistry.getAgent('case-2');
@@ -58,11 +67,28 @@ for (const name of ['android-explorer', 'ios-explorer']) {
 
   test(`${name} retains cleanup ownership when launch fails`, async () => {
     const { project, events } = loadProject(true);
-    const context = await project.projects.find(p => p.name === name).setup.setup({});
+    const context = await project.projects.find(p => p.name === name).setup.setup({ onTeardown() {} });
     await assert.rejects(context.agentRegistry.getAgent('case-1'), /launch failed/);
     const launchedId = events.find(e => e[1] === 'launch')[0];
     assert.equal(await context.agentRegistry.releaseAgent('case-1'), undefined);
     assert.ok(events.some(e => e[0] === launchedId && e[1] === 'destroy'));
+  });
+
+  test(`${name} releases case native sockets before devices and cleans project sockets`, async () => {
+    const { project, events } = loadProject();
+    const teardowns = [];
+    const context = await project.projects.find(p => p.name === name).setup.setup({ onTeardown(fn) { teardowns.push(fn); } });
+    await context.getNativeSession('case-1', 'domFocus');
+    const agent = await context.agentRegistry.getAgent('case-1');
+    await context.agentRegistry.releaseAgent('case-1');
+    const closeIndex = events.findIndex(event => event[0] === 'native');
+    const destroyIndex = events.findIndex(event => event[0] === agent.device.id && event[1] === 'destroy');
+    assert.ok(closeIndex >= 0 && closeIndex < destroyIndex);
+    await context.getNativeSession('case-2', 'domFocus');
+    for (const teardown of teardowns) await teardown();
+    assert.equal(events.filter(event => event[0] === 'native').length, 2);
+    await context.agentRegistry.releaseAgent('case-2');
+    assert.equal(events.filter(event => event[0] === 'native').length, 2);
   });
 }
 

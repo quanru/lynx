@@ -1,0 +1,17 @@
+# core/Event.py: same fixture, three user clicks, exact counters and inline style.
+# Protocol reads retain the original acceptance contract; screenshots are evidence.
+cases:
+  - name: core/Event
+    steps:
+      - launch: "${eventUri}"
+      - aiWaitFor: The Event page shows a counter, View Click, Text Click, and Click to change CSS sections.
+      - aiAct: Click the button labelled "Click to add one" beneath the View Click heading once. Stop after that single click.
+      - native.expect: { fixture: event, tag: count, text: "1" }
+      - aiAct: Click the text "Click text to add one" beneath the Text Click heading once. Stop after that single click.
+      - native.expect: { fixture: event, tag: count, text: "2" }
+      - aiAct: Click the inline text "Click Me" to the right of "Test inline-text:" in the Click to change CSS section once. Stop after that single click.
+      - native.expect:
+          fixture: event
+          tag: button2
+          attribute: style
+          equals: "text-align:right;width:100%;height:max-content;background-color:#ff0000;"

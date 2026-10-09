@@ -2,9 +2,18 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
 import { IOSAgent, IOSDevice } from '@midscene/ios';
+import { defineNode } from '@midscene/test';
 import { defineProjectSetup, defineTestProject } from '@midscene/test/config';
 import { createMidsceneNodes } from '@midscene/test/midscene';
 import type { AgentProvider, AgentReleaseResult, MidsceneUIAgent } from '@midscene/test/midscene';
+import { connectDevtool } from './scripts/devtool-client.mjs';
+import { createNativeSessions } from './native-sessions.ts';
+import { fixtureUri, nativeFixture } from './native-fixtures.ts';
+import type { NativeFixtureName } from './native-fixtures.ts';
+import { expectNativeValue } from './native-expectation.ts';
+import type { NativeExpectInput } from './native-expectation.ts';
+import { runNativeCommand } from './native-command.ts';
+import type { NativeCommandInput } from './native-command.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -22,7 +31,28 @@ interface AgentRegistry {
 
 interface ProjectContext {
   agentRegistry: AgentRegistry;
+  getNativeSession(runId: string, fixture: NativeFixtureName): ReturnType<ReturnType<typeof createNativeSessions>['get']>;
 }
+
+const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixtureName }, void, ProjectContext>({
+  name: 'native.expect',
+  description: 'Preserve original native test-tag text, existence and inline attribute assertions through CDP.',
+  async execute(execution) {
+    if (execution.scope !== 'case') throw new Error('native.expect requires case scope.');
+    const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
+    await expectNativeValue(session.readDocument, execution.input);
+  },
+});
+
+const nativeCommandNode = defineNode<NativeCommandInput & { fixture: NativeFixtureName }, void, ProjectContext>({
+  name: 'native.cdp',
+  description: 'Execute original DOM.focus or Input.insertText protocol contracts against the bound fixture session.',
+  async execute(execution) {
+    if (execution.scope !== 'case') throw new Error('native.cdp requires case scope.');
+    const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
+    await runNativeCommand(session, execution.input);
+  },
+});
 
 // createMidsceneNodes needs a provider while loading the config, but setup
 // creates the registry later. A project-level slot connects those lifecycles.
@@ -36,7 +66,7 @@ const nodesFor = (
   agentClass: Parameters<typeof createMidsceneNodes>[0]['agentClass'],
   slot: RegistrySlot,
 ) =>
-  createMidsceneNodes<ProjectContext>({
+  [...createMidsceneNodes<ProjectContext>({
     agentClass,
     agentProvider: {
       getAgent: (runId, execution) => execution.context.agentRegistry.getAgent(runId),
@@ -45,7 +75,7 @@ const nodesFor = (
         return slot.current.releaseAgent(runId);
       },
     } satisfies AgentProvider<ProjectContext>,
-  });
+  }), nativeExpectNode, nativeCommandNode];
 
 // Android connects directly through adb without Appium or Espresso. Use
 // ANDROID_SERIAL to select a device when several are connected; otherwise use
@@ -53,7 +83,7 @@ const nodesFor = (
 // device and agent pair rather than sharing one AndroidDevice across a project.
 const androidSetup = defineProjectSetup<ProjectContext>({
   name: 'android',
-  async setup() {
+  async setup({ onTeardown }) {
     // Discover the target during setup, then connect separately for each run.
     const devices = await getConnectedDevices();
     if (!devices.length) {
@@ -65,6 +95,10 @@ const androidSetup = defineProjectSetup<ProjectContext>({
       : devices[0].udid;
 
     const runs = new Map<string, { device: AndroidDevice; agent: AndroidAgent }>();
+    const nativeSessions = createNativeSessions(() => connectDevtool({
+      port: Number(process.env.DEVTOOL_PORT ?? 18901),
+    }));
+    onTeardown(() => nativeSessions.releaseAll());
     const ensure = async (runId: string) => {
       let entry = runs.get(runId);
       if (!entry) {
@@ -82,9 +116,15 @@ const androidSetup = defineProjectSetup<ProjectContext>({
     };
 
     return {
+      async getNativeSession(runId, fixture) {
+        const definition = nativeFixture(fixture);
+        await ensure(runId);
+        return nativeSessions.get(runId, [...definition.tags]);
+      },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
         async releaseAgent(runId) {
+          nativeSessions.release(runId);
           const entry = runs.get(runId);
           if (!entry) return;
           runs.delete(runId);
@@ -103,7 +143,7 @@ const androidSetup = defineProjectSetup<ProjectContext>({
 // destroying the agent also destroys the device.
 const iosSetup = defineProjectSetup<ProjectContext>({
   name: 'ios',
-  async setup() {
+  async setup({ onTeardown }) {
     const wdaPort = Number(process.env.WDA_PORT ?? 8100);
     const wdaHost = process.env.WDA_HOST ?? 'localhost';
     // Probe once so configuration errors fail during setup instead of case one.
@@ -112,6 +152,10 @@ const iosSetup = defineProjectSetup<ProjectContext>({
     await probe.destroy();
 
     const runs = new Map<string, { device: IOSDevice; agent: IOSAgent }>();
+    const nativeSessions = createNativeSessions(() => connectDevtool({
+      port: Number(process.env.DEVTOOL_PORT ?? 8901),
+    }));
+    onTeardown(() => nativeSessions.releaseAll());
     const ensure = async (runId: string) => {
       let entry = runs.get(runId);
       if (!entry) {
@@ -129,9 +173,15 @@ const iosSetup = defineProjectSetup<ProjectContext>({
     };
 
     return {
+      async getNativeSession(runId, fixture) {
+        const definition = nativeFixture(fixture);
+        await ensure(runId);
+        return nativeSessions.get(runId, [...definition.tags]);
+      },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
         async releaseAgent(runId) {
+          nativeSessions.release(runId);
           const entry = runs.get(runId);
           if (!entry) return;
           runs.delete(runId);
@@ -166,6 +216,7 @@ export default defineTestProject<ProjectContext>({
   projects: [
     {
       name: 'android-explorer',
+      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -173,6 +224,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
+      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText') },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },

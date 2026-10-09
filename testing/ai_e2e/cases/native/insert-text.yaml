@@ -1,0 +1,44 @@
+# Preserve actual Input.insertText, initial existence checks, no-focus no-op,
+# exact values, event counts and target identity. timeoutMs: 0 means no retry.
+cases:
+  - name: core/InputInsertText
+    steps:
+      - launch: "${insertTextUri}"
+      - recordToReport: Before original Input.insertText protocol checks
+      - native.expect: { fixture: insertText, tag: insert-text-input-a, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-b, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-c, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-a, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-b, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, exists: true, timeoutMs: 0 }
+      - native.cdp: { fixture: insertText, method: Input.insertText, text: ignored before focus }
+      - native.expect: { fixture: insertText, tag: insert-text-value-a, text: "", timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-b, text: "", timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, text: "", timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, text: "0", timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, text: none, timeoutMs: 0 }
+      - recordToReport: Unfocused insertion retained all original empty values and zero event count
+      - native.cdp: { fixture: insertText, method: DOM.focus, tag: insert-text-input-a }
+      - native.cdp: { fixture: insertText, method: Input.insertText, text: first }
+      - native.expect: { fixture: insertText, tag: insert-text-value-a, text: first }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, text: "1" }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, text: input-a }
+      - native.expect: { fixture: insertText, tag: insert-text-value-b, text: "", timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, text: "", timeoutMs: 0 }
+      - recordToReport: Input A insertion retained exact count, target and unrelated values
+      - native.cdp: { fixture: insertText, method: DOM.focus, tag: insert-text-input-b }
+      - native.cdp: { fixture: insertText, method: Input.insertText, text: second }
+      - native.expect: { fixture: insertText, tag: insert-text-value-b, text: second }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, text: "2" }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, text: input-b }
+      - native.expect: { fixture: insertText, tag: insert-text-value-a, text: first, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, text: "", timeoutMs: 0 }
+      - recordToReport: Input B insertion retained exact count, target and unrelated values
+      - native.cdp: { fixture: insertText, method: DOM.focus, tag: insert-text-input-c }
+      - native.cdp: { fixture: insertText, method: Input.insertText, text: "value 123!?" }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, text: "value 123!?" }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, text: "3" }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, text: input-c }
+      - recordToReport: Input C preserved spaces, punctuation, digits and exact event count

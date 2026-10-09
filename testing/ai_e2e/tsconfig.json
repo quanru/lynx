@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["midscene.config.ts", "smoke-*.ts", "native-dom.ts", "native-expectation.ts"]
+  "include": ["midscene.config.ts", "smoke-*.ts", "native-*.ts"]
 }

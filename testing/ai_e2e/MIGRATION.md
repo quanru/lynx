@@ -12,13 +12,13 @@ the original pixel baseline.
 
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
-| core/Event | Exact event counts and final inline style | Pending |
+| core/Event | Exact event counts and final inline style | YAML and source-contract checks prepared; device validation pending |
 | core/Image | Cropped LynxView pixel baseline | Pending; additive Image navigation smoke exists |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
 | core/LayoutLinear | Pixel baseline | Pending |
 | core/TextEvent | Cropped pixel baselines and element existence | Pending |
-| core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Pending; normal UI taps are not equivalent |
-| core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Pending; normal typing is not equivalent |
+| core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | YAML and source-contract checks prepared; device validation pending |
+| core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | YAML and source-contract checks prepared; device validation pending |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Pending, iOS |
 | sparkling/HotExternalURL | Hot external route and container/session ownership | Pending, iOS |
 | sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Pending, iOS |
@@ -57,6 +57,15 @@ own outgoing format. This is covered by an independent server-frame regression
 with old-rejects/new-passes evidence and malformed-length rejection checks.
 Source reference: [DebugRouter writer at fc4ca8c](https://github.com/lynx-family/debug-router/blob/fc4ca8c3b4cd99718b6be551711d1dcf064487d1/debug_router/native/socket/usb_client.cc#L389).
 The fix is not claimed device-verified until a subsequent hosted probe passes.
+
+The next batch collects Event, DomFocus and InputInsertText on both platforms.
+Python AST extraction checks the original ordered assertions and CDP operations
+against collected YAML, including immediate no-op and sibling-value assertions.
+It rejects unsupported source statements rather than silently dropping them.
+Event uses `aiAct` for its three ordinary clicks. API-specific actions retain
+their actual CDP methods; reports capture screenshots around deterministic
+checks. All 74 local model-free checks and typechecking pass. Collection and
+mocked protocol tests do not establish device correctness.
 
 - Build Explorer at the workflow revision with integration fixtures and
   Sparkling. `build.json` records the commit, platform, capabilities and binary

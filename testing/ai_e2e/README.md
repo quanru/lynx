@@ -1,11 +1,13 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-This current-source smoke uses Midscene vision models to run
+This current-source integration uses Midscene vision models to run
 the same YAML cases on Android and iOS. It connects directly through adb or
 WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
 integration fixtures and Sparkling enabled. Consumers verify the commit and
-artifact checksum before installation. This is still a three-case smoke per
-platform, not a replacement for the original integration suites.
+artifact checksum before installation. Each platform now collects three additive
+smoke cases and three original-contract cases (Event, DomFocus, InputInsertText).
+The original-contract batch is locally checked, not yet device-verified or a
+replacement for the original integration suites.
 The current-source baseline at PR head `3cf1da2` passed both source builds and
 Android 3/3 plus iOS 3/3, including report/Pages publication:
 https://github.com/quanru/lynx/actions/runs/37924452915.
@@ -45,15 +47,22 @@ documented conventions while rejecting other lengths. An independent server
 frame reproduces rejection in the pushed decoder and passes in the fixed one.
 The framing fix and CDP/DOM extension still require device validation.
 
-`native-dom.ts` and `native-expectation.ts` prepare the next exact-contract batch:
+`native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline
 attributes follow the original Python driver. Immediate checks (`timeoutMs: 0`)
 do not retry; polling checks default to the original ten-second deadline.
 Malformed DOM, transport failures and late matching responses cannot pass.
-These helpers are not registered YAML nodes yet and do not count as migrated
-Event, DOM focus or Input.insertText cases.
+`native.expect` retains these exact checks; `native.cdp` sends the original
+`DOM.focus` and `Input.insertText` methods without retries. These methods are the
+API under test, not substitutes for ordinary user actions. Ordinary Event clicks
+use `aiAct`. Standard `launch` opens the original bundles with original platform
+scaling parameters. Each case owns its connection and binds the fixture by its
+original test tags, never by the newest session ID. Lost identity, ambiguous
+sessions and protocol errors fail; teardown closes native sockets before devices.
+The batch does not count as migrated until actual Android and iOS reports pass.
 
-Only standard Midscene nodes appear in the YAML. On first agent acquisition
+Smoke YAML uses only standard Midscene nodes; exact-contract YAML also uses the
+two deterministic nodes above. On first agent acquisition
 for each case, setup terminates and relaunches Explorer; repeated nodes reuse
 that case's agent without relaunching. `aiWaitFor` handles visible readiness.
 The complete native inventory and required exact contracts are tracked in
@@ -99,7 +108,9 @@ release 4.1.0 used different labels.
 
 ## Run locally
 
-Node.js 22 or later is required.
+Node.js 22 or later is required. Python 3 is needed only for the model-free
+source-contract tests: they parse the original Python AST without importing
+Appium or executing the original runner.
 
 ```bash
 cd testing/ai_e2e
@@ -110,7 +121,9 @@ set -a && source .env && set +a
 # Android: start an emulator and install Explorer first.
 adb install -r LynxExplorer.apk
 npm run smoke:android      # Optional model-free adb connection check.
+adb forward --no-rebind tcp:18901 tcp:8901 # Required for native contract cases.
 npm test -- --project android-explorer
+adb forward --remove tcp:18901 # Remove only the forward created above.
 
 # iOS: install the app and keep WDA running on port 8100. The script selects
 # the newest available iPhone simulator dynamically.
@@ -144,6 +157,8 @@ untrusted fork code.
 - Use `aiAct` for visible user interactions. Describe the user goal instead of
   decomposing it into `aiTap`, `aiScroll`, or other atomic AI operations.
 - Use `aiAssert` for visual outcomes and semantic UI state.
+- Preserve original exact assertions with `native.expect`, and protocol methods
+  under test with `native.cdp`. Do not replace them with visual approximations.
 - Keep per-case termination and launch in the agent provider, and use `aiWaitFor`
   for visible readiness. No custom `explorer.open` node is required.
 
@@ -151,7 +166,8 @@ untrusted fork code.
 
 - Removed from this path: the Appium server, Espresso/XCUITest drivers,
   Espresso resigning, the `lynx-e2e-appium` Python framework, and white-box
-  `get_by_test_tag` lookups.
+  Python-driver execution. Deterministic CDP test-tag reads remain where original
+  acceptance requires exact native values.
 - Retained: Explorer artifacts, the simulator matrix, and WebDriverAgent,
   which Midscene iOS uses directly.
 - Not covered: pixel-baseline comparison and Espresso white-box access. Keep

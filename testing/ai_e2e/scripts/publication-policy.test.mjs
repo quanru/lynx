@@ -55,6 +55,10 @@ test('DevTool probes are bounded read-only prerequisites, not false migrated cas
   assert.equal(workflow.split("steps.probe-devtool.outcome == 'success'").length - 1, 2);
   assert.equal(workflow.split('tee midscene_run/devtool-probe.log').length - 1, 2);
   assert.match(workflow, /forward --remove tcp:18901/);
+  assert.match(workflow, /forward --no-rebind tcp:18901 tcp:8901/);
+  assert.match(workflow, /if: always\(\) && steps\.native-forward\.outcome == 'success'/);
+  assert.ok(workflow.indexOf('id: native-forward') < workflow.indexOf('name: Run Android Midscene cases'));
+  assert.ok(workflow.includes("steps.release-native-forward.outcome == 'success'"));
   assert.doesNotMatch(probe, /OpenCard|DOM\.focus|Input\.insertText|execFile|spawn\(/);
   const client = await readFile(new URL('./devtool-client.mjs', import.meta.url), 'utf8');
   assert.match(client, /handshake\/session probe timed out/);
