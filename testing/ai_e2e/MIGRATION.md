@@ -123,11 +123,18 @@ covered by real TCP mocks, not yet device capture or implemented pixel cases.
 
 The local grayscale comparator in `scripts/native_pixels.py` preserves the
 original pinned OpenCV/NumPy backend, grayscale threshold and mismatch fraction.
-Six Python checks execute the unchanged original comparator/crop AST against
+Eight Python checks cover the unchanged original comparator/crop AST against
 the same arrays, including threshold boundaries, 120 randomized comparisons
 and 50 fractional crop/cubic-resize comparisons across Android and iOS scales.
-This is algorithm conformance only; full-frame-to-LynxView geometry integration
-and baseline device execution remain pending. The next workflow runs all model-free checks
+`crop_native_view` additionally preserves the public driver's full-frame crop:
+physical rectangles are normalized by the original platform ratio, multiplied
+back in the original operation order, and sliced with Python ties-even rounding.
+The local public `lynx_e2e_appium` 0.0.15 wheel's unchanged normalization and
+screenshot AST produced identical arrays for 200 Android/iOS crops. Invalid or
+out-of-frame geometry fails without clamping or resizing. No Appium dependency
+is added to the new runner. This is algorithm conformance only; hosted geometry
+integration and baseline device execution remain pending.
+The next workflow runs all model-free checks
 before source builds, without model credentials, rather than discovering unit
 failures after emulator/WDA startup. Original test-script changes also trigger
 the workflow so source-contract drift cannot silently bypass validation.
@@ -166,5 +173,5 @@ the raw point `[400,800]` became `[471,2045]`, far below the third blue button
 passed on that attempt; the final style remained unchanged. The next description
 also constrains the inline text to the lowest blue button, without coordinates.
 
-Local validation of this next foundation passes 84 Node 22 checks, six Python
+Local validation of this next foundation passes 84 Node 22 checks, eight Python
 checks, typechecking and actionlint. These are not additional migrated cases.

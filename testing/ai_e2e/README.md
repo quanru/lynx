@@ -57,7 +57,7 @@ points and screenshots show clicks outside the intended buttons, not failed
 transport or relaxed assertions. The next correction describes visible targets
 and supplies active-coordinate-protocol guidance, without hardcoded coordinates.
 
-The next foundation passes 84 Node checks and six original-algorithm Python
+The next foundation passes 84 Node checks and eight original-algorithm Python
 differential checks. It captures screencast/rectangle diagnostic artifacts after
 successful or failed cases and gates source builds on model-free checks.
 This is not yet device-verified pixel coverage; see `MIGRATION.md`.

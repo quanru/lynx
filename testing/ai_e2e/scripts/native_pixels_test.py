@@ -10,7 +10,7 @@ import unittest
 import cv2
 import numpy as np
 
-from native_pixels import compare_native_pixels, crop_native_element, NativePixelMismatch
+from native_pixels import compare_native_pixels, crop_native_view, crop_native_element, NativePixelMismatch
 
 
 source = ast.parse(sys.stdin.read())
@@ -75,6 +75,37 @@ def original_crop(image, bounds, platform):
 
 
 class NativePixelsTest(unittest.TestCase):
+    def test_view_crop_preserves_original_normalization_and_ties_even_rounding(self):
+        image = np.arange(20 * 30 * 3, dtype=np.uint8).reshape(20, 30, 3)
+        rect = dict(left=1.5, top=2.5, width=3, height=3)
+        for platform in ("android", "ios"):
+            np.testing.assert_array_equal(crop_native_view(image, rect, platform), image[2:6, 2:4])
+        # On iOS, dividing and then multiplying is deliberately not collapsed.
+        rng = np.random.default_rng(20261010)
+        for platform, scale in (("android", 1), ("ios", 3)):
+            for _ in range(100):
+                left, top = rng.uniform(0, 5, 2)
+                width, height = rng.uniform(2, 8, 2)
+                rect = dict(left=float(left), top=float(top), width=float(width), height=float(height))
+                logical = {key: value / scale for key, value in rect.items()}
+                expected = image[
+                    int(round(logical["top"] * scale)):int(round((logical["top"] + logical["height"]) * scale)),
+                    int(round(logical["left"] * scale)):int(round((logical["left"] + logical["width"]) * scale))]
+                np.testing.assert_array_equal(crop_native_view(image, rect, platform), expected)
+
+    def test_invalid_view_crop_fails_without_clamping_or_resizing(self):
+        image = np.zeros((20, 30, 3), dtype=np.uint8)
+        rect = dict(left=1, top=2, width=3, height=4)
+        for override in [dict(left=-1), dict(top=True), dict(width=0), dict(height=float("inf")),
+                         dict(width=100), dict(height=0.1), dict(extra=1)]:
+            with self.assertRaises(ValueError):
+                crop_native_view(image, {**rect, **override}, "android")
+        for invalid in [None, image.astype(np.float64), image[:, :, 0], image[:0]]:
+            with self.assertRaises(ValueError):
+                crop_native_view(invalid, rect, "android")
+        with self.assertRaises(ValueError):
+            crop_native_view(image, rect, "unknown")
+
     def test_original_crop_and_cubic_resize_on_both_platforms(self):
         rng = np.random.default_rng(20261009)
         image = rng.integers(0, 256, (120, 150, 3), dtype=np.uint8)

@@ -12,6 +12,38 @@ class NativePixelMismatch(RuntimeError):
         super().__init__(f"Native image comparison failed: mismatch rate {mismatch_rate}")
 
 
+def crop_native_view(frame_image, physical_rect, platform):
+    """Crop the screencast to the original driver's LynxView window rectangle.
+
+    getRectToWindow supplies physical pixels. Preserve the original iOS
+    normalization followed by pixel_ratio multiplication and Python's ties-even
+    round; collapsing these operations can change fractional boundary pixels.
+    """
+    if platform not in ("android", "ios"):
+        raise ValueError("Unknown native pixel platform")
+    if (not isinstance(frame_image, np.ndarray) or frame_image.dtype != np.uint8
+            or frame_image.ndim != 3 or frame_image.shape[2] != 3 or not frame_image.size):
+        raise ValueError("Native view crop requires a nonempty uint8 BGR screencast")
+    if (not isinstance(physical_rect, dict) or set(physical_rect) != {"left", "top", "width", "height"}
+            or any(not isinstance(value, (int, float)) or isinstance(value, bool)
+                   or not math.isfinite(value) for value in physical_rect.values())
+            or physical_rect["left"] < 0 or physical_rect["top"] < 0
+            or physical_rect["width"] <= 0 or physical_rect["height"] <= 0):
+        raise ValueError("Invalid physical LynxView rectangle")
+    scale = 1 if platform == "android" else 3
+    left, top, width, height = (physical_rect[key] / scale
+                                for key in ("left", "top", "width", "height"))
+    top_edge = int(round(top * scale))
+    bottom_edge = int(round((top + height) * scale))
+    left_edge = int(round(left * scale))
+    right_edge = int(round((left + width) * scale))
+    if (left_edge < 0 or top_edge < 0 or right_edge > frame_image.shape[1]
+            or bottom_edge > frame_image.shape[0] or right_edge <= left_edge
+            or bottom_edge <= top_edge):
+        raise ValueError("Native LynxView crop is empty or outside the screencast")
+    return frame_image[top_edge:bottom_edge, left_edge:right_edge].copy()
+
+
 def crop_native_element(view_image, bounds, platform):
     """Crop an already LynxView-cropped image, using original relative bounds."""
     if platform not in ("android", "ios"):
