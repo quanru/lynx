@@ -9,8 +9,8 @@ test('both platforms consume current-source artifacts and verify their revision'
   );
   assert.doesNotMatch(workflow, /releases\/download|LYNX_RELEASE_TAG|release_tag:/);
   assert.equal(workflow.split('needs: build-explorer').length - 1, 2);
-  assert.match(workflow, /node scripts\/verify-build.mjs \. android/);
-  assert.match(workflow, /node scripts\/verify-build.mjs \. ios/);
+  assert.match(workflow, /node scripts\/verify-build.mjs source-builds android \./);
+  assert.match(workflow, /node scripts\/verify-build.mjs source-builds ios \./);
   const [build] = workflow.split('  fork-contract-check:');
   assert.doesNotMatch(build, /secrets\.MIDSCENE/);
 });

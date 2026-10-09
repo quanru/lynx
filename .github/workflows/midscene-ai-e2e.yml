@@ -163,11 +163,12 @@ jobs:
       - name: Download current-source Explorer APK
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: midscene-explorer-source-android-${{ github.run_attempt }}
-          path: testing/ai_e2e
+          pattern: midscene-explorer-source-android-*
+          path: testing/ai_e2e/source-builds
+          merge-multiple: false
       - name: Verify Explorer build revision and checksum
         working-directory: testing/ai_e2e
-        run: node scripts/verify-build.mjs . android
+        run: node scripts/verify-build.mjs source-builds android .
 
       - name: Preflight model endpoint
         run: bash testing/ai_e2e/scripts/preflight-model.sh
@@ -282,12 +283,13 @@ jobs:
       - name: Download current-source Explorer app
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: midscene-explorer-source-ios-${{ github.run_attempt }}
-          path: testing/ai_e2e
+          pattern: midscene-explorer-source-ios-*
+          path: testing/ai_e2e/source-builds
+          merge-multiple: false
       - name: Verify and unpack current-source Explorer
         working-directory: testing/ai_e2e
         run: |
-          node scripts/verify-build.mjs . ios
+          node scripts/verify-build.mjs source-builds ios .
           tar -xzf LynxExplorer.app.tar.gz
 
       - name: Build and start WebDriverAgent
