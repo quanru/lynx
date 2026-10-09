@@ -78,7 +78,12 @@ for statement in run.body:
         entry.update(tag=value(call.args[1]), text=value(call.args[2]), timeoutMs=0)
         steps.append({'node': 'native.expect', 'input': entry})
     elif name == 'test.assert_existing':
-        entry.update(tag=tag(call.args[0]), exists=True, timeoutMs=0)
+        timeout = value(call.args[2]) if len(call.args) > 2 else 3
+        for keyword in call.keywords:
+            assert keyword.arg in ('timeout', 'message')
+            if keyword.arg == 'timeout':
+                timeout = value(keyword.value)
+        entry.update(tag=tag(call.args[0]), exists=True, timeoutMs=timeout * 1000)
         steps.append({'node': 'native.expect', 'input': entry})
     elif isinstance(call.func, ast.Attribute) and call.func.attr == 'click':
         steps.append({'node': 'click', 'input': {'tag': tag(call.func.value)}})

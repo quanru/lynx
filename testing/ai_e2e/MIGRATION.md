@@ -64,7 +64,9 @@ against collected YAML, including immediate no-op and sibling-value assertions.
 It rejects unsupported source statements rather than silently dropping them.
 Event uses `aiAct` for its three ordinary clicks. API-specific actions retain
 their actual CDP methods; reports capture screenshots around deterministic
-checks. All 75 local model-free checks and typechecking pass. Collection and
+checks. Existence assertions retain the original three-second helper timeout;
+`assert_text` checks remain immediate. All 76 local model-free checks and
+typechecking pass. Collection and
 mocked protocol tests do not establish device correctness.
 
 - Build Explorer at the workflow revision with integration fixtures and

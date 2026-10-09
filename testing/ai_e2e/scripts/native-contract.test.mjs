@@ -61,3 +61,13 @@ test('standard launch retains original native bundle and platform scaling parame
     }
   }
 });
+
+test('existence checks retain the original three-second helper timeout on both platforms', () => {
+  for (const platform of ['android', 'ios']) {
+    const source = readFileSync(new URL(`../../integration_test/test_script/lib/${platform}/test.py`, import.meta.url), 'utf8');
+    assert.match(source, /def assert_existing\(self, element, message='not exist', timeout=3\)/);
+    assert.match(source, /element\.wait_for_existing\(timeout\)/);
+  }
+  assert.deepEqual(extract('def run(test):\n    test.assert_existing(lynxview.get_by_test_tag("x"), timeout=2)\n', 'insertText'),
+    [{ node: 'native.expect', input: { fixture: 'insertText', tag: 'x', exists: true, timeoutMs: 2000 } }]);
+});

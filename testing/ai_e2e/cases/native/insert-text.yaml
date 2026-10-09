@@ -5,14 +5,14 @@ cases:
     steps:
       - launch: "${insertTextUri}"
       - recordToReport: Before original Input.insertText protocol checks
-      - native.expect: { fixture: insertText, tag: insert-text-input-a, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-input-b, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-input-c, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-value-a, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-value-b, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-value-c, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-input-count, exists: true, timeoutMs: 0 }
-      - native.expect: { fixture: insertText, tag: insert-text-last-input, exists: true, timeoutMs: 0 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-a, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-b, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-c, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-a, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-b, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-value-c, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-input-count, exists: true, timeoutMs: 3000 }
+      - native.expect: { fixture: insertText, tag: insert-text-last-input, exists: true, timeoutMs: 3000 }
       - native.cdp: { fixture: insertText, method: Input.insertText, text: ignored before focus }
       - native.expect: { fixture: insertText, tag: insert-text-value-a, text: "", timeoutMs: 0 }
       - native.expect: { fixture: insertText, tag: insert-text-value-b, text: "", timeoutMs: 0 }
