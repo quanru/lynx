@@ -88,3 +88,25 @@ mocked protocol tests do not establish device correctness.
 The existing Appium suite remains unchanged and available until equivalent
 assertions are executed successfully. Harmony device execution remains a
 separate signing/device-runner prerequisite, not a passing native target.
+
+## Pixel migration contract
+
+Image, LayoutLinear and TextEvent have checked-in baselines under
+`testing/integration_test/test_script/resources/{android,ios}/`. Their comparator
+is `lib/test_runner/mixin/img_diff_mixin.py`, not Playwright pixelmatch:
+
+- Capture the original Lynx screencast and crop the LynxView using its original
+  rectangle and pixel ratio, then crop the requested view/element relative to it.
+- Preserve the platform crop scales (Android 1, iOS 3), integer slicing and
+  OpenCV cubic resize from `lib/{android,ios}/test.py`.
+- Convert both images from BGR to grayscale with the pinned original OpenCV
+  4.12.0.88 / NumPy 2.2.6 behavior. Reject unequal dimensions and missing baselines.
+- A pixel differs only when absolute grayscale difference is greater than
+  `int(0.1 * 255)` (25); fail only when the mismatch fraction exceeds 0.01.
+  Preserve the original baseline bytes; never regenerate them to make a run pass.
+- TextEvent additionally checks the original exact text target's existence with
+  the original three-second timeout. Its cropped screenshot alone is incomplete.
+
+These are prerequisites for a future adapter, not implemented pixel coverage.
+A whole-device screenshot, AI visual similarity or Web screenshot matcher does
+not establish the same crop, scale, interpolation or comparison contract.
