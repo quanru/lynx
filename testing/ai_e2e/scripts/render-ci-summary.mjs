@@ -194,19 +194,25 @@ function screenshotForStep(step, evidence) {
         (entry) => entry.id === detail.executionId,
       );
       for (const task of [...(execution?.tasks ?? [])].reverse()) {
-        const reference = task?.uiContext?.screenshot;
-        const embedded = evidence.images.get(reference?.id);
-        if (embedded) return embedded;
-        if (
-          reference?.storage === 'file'
-          && typeof reference.path === 'string'
-        ) {
-          const extension = reference.mimeType === 'image/jpeg'
-            ? 'jpg'
-            : reference.mimeType?.replace('image/', '')
-              ?? path.extname(reference.path).slice(1)
-              ?? 'jpg';
-          return { extension, path: reference.path };
+        const references = [
+          task?.uiContext?.screenshot,
+          ...(task?.recorder ?? []).filter(item => item.type === 'screenshot')
+            .map(item => item.screenshot),
+        ].filter(Boolean);
+        for (const reference of references) {
+          const embedded = evidence.images.get(reference?.id);
+          if (embedded) return embedded;
+          if (
+            reference?.storage === 'file'
+            && typeof reference.path === 'string'
+          ) {
+            const extension = reference.mimeType === 'image/jpeg'
+              ? 'jpg'
+              : reference.mimeType?.replace('image/', '')
+                ?? path.extname(reference.path).slice(1)
+                ?? 'jpg';
+            return { extension, path: reference.path };
+          }
         }
       }
     }
@@ -276,7 +282,13 @@ export async function preparePagesSite(
     const cases = [];
     for (const [index, testCase] of rawCases(entry.report.dump).entries()) {
       const step = selectedStep(testCase);
-      const screenshot = screenshotForStep(step, evidence);
+      // Exact assertion nodes may fail without an agent trace. Keep the link
+      // on the failed step, but use the nearest preceding screenshot as preview.
+      const steps = allAttemptSteps(testCase.attempts?.at(-1));
+      const preceding = steps.slice(0, steps.indexOf(step) + 1).reverse();
+      const screenshot = preceding.map(item =>
+        screenshotForStep(item, evidence)
+      ).find(Boolean);
       const screenshotContent = await screenshotBytes(
         screenshot,
         entry.report.file,

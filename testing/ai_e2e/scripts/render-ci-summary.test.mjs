@@ -23,7 +23,10 @@ test('unpublished summaries retain results and artifact access without broken Pa
   });
   assert.match(summary, /All 1 cases passed/);
   assert.match(summary, /actions\/runs\/123#artifacts/);
-  assert.doesNotMatch(summary, /<img|Open the published|github\.io|\| Platform \||<details>|Appendix:/);
+  assert.doesNotMatch(
+    summary,
+    /<img|Open the published|github\.io|\| Platform \||<details>|Appendix:/,
+  );
 });
 
 import {
@@ -157,16 +160,18 @@ test('keeps results and downloads without advertising unpublished reports', () =
 });
 
 test('unpublished failed and empty runs keep status and downloads without case tables', () => {
-  for (const entries of [
-    [{ label: 'iOS', result: 'failure', run: undefined }],
-    [{
-      label: 'Web',
-      result: 'failure',
-      run: { status: 'failure' },
-      cases: [{ name: 'Failed case', status: 'failure' }],
-    }],
-    [],
-  ]) {
+  for (
+    const entries of [
+      [{ label: 'iOS', result: 'failure', run: undefined }],
+      [{
+        label: 'Web',
+        result: 'failure',
+        run: { status: 'failure' },
+        cases: [{ name: 'Failed case', status: 'failure' }],
+      }],
+      [],
+    ]
+  ) {
     const summary = renderSummary({
       title: 'Unpublished report',
       runUrl: 'https://github.com/example/project/actions/runs/123',
@@ -174,7 +179,10 @@ test('unpublished failed and empty runs keep status and downloads without case t
     });
     assert.match(summary, /run artifacts/);
     assert.match(summary, /publication is skipped or fails/);
-    assert.match(summary, entries.length ? /1 need attention/ : /No cases were reported/);
+    assert.match(
+      summary,
+      entries.length ? /1 need attention/ : /No cases were reported/,
+    );
     assert.doesNotMatch(summary, /\| Platform \||<details>|<img|Appendix:|✅/);
   }
 });
@@ -236,6 +244,49 @@ test('reports infrastructure failures when no Midscene report exists', () => {
     ],
   });
   assert.match(summary, /iOS.*Failed before report/);
+});
+
+test('standard report captures survive a later exact assertion failure without moving its report link', async t => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-capture-preview-'),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dump = structuredClone(run);
+  const item = dump.projects[0].documents[0].cases[0];
+  item.status = 'failed';
+  item.attempts[0].steps.push({
+    id: 'case:steps:1',
+    status: 'failed',
+    error: { message: 'Exact value mismatch' },
+  });
+  const html = `<script type="midscene_web_dump" data-report-id="report-1">${
+    JSON.stringify({
+      executions: [{
+        id: 'execution-1',
+        tasks: [{
+          recorder: [{ type: 'screenshot', screenshot: { id: 'capture' } }],
+        }],
+      }],
+    })
+  }</script><script type="midscene-image" data-id="capture">data:image/png;base64,AQID</script>`;
+  await mkdir(path.join(root, 'source'));
+  const file = path.join(root, 'source', 'report.html');
+  await writeFile(file, html);
+  const [entry] = await preparePagesSite({
+    entries: [{
+      label: 'Web',
+      result: 'failure',
+      report: { dump, file, html },
+    }],
+    siteDirectory: path.join(root, 'site'),
+    sitePrefix: 'runs/123-1',
+  });
+  assert.equal(entry.cases[0].stepId, 'case:steps:1');
+  assert.ok(entry.cases[0].previewPath);
+  assert.deepEqual(
+    await readFile(path.join(root, 'site', entry.cases[0].previewPath)),
+    Buffer.from([1, 2, 3]),
+  );
 });
 
 test('escapes report-provided Markdown in failure rows', () => {
