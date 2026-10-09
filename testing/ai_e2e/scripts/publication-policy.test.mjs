@@ -11,8 +11,21 @@ test('both platforms consume current-source artifacts and verify their revision'
   assert.equal(workflow.split('needs: build-explorer').length - 1, 2);
   assert.match(workflow, /node scripts\/verify-build.mjs source-builds android \./);
   assert.match(workflow, /node scripts\/verify-build.mjs source-builds ios \./);
-  const [build] = workflow.split('  fork-contract-check:');
+  const [build] = workflow.split('  contract-check:');
   assert.doesNotMatch(build, /secrets\.MIDSCENE/);
+});
+
+test('model-free contracts gate source builds before credentialed device jobs', async () => {
+  const workflow = await readFile(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  const build = workflow.split('  build-explorer:')[1].split('  contract-check:')[0];
+  const contracts = workflow.split('  contract-check:')[1].split('  android-ai-e2e:')[0];
+  assert.match(build, /needs: contract-check/);
+  assert.doesNotMatch(contracts, /secrets\.|\n    if:/);
+  assert.match(contracts, /node --test scripts\/\*\.test\.mjs/);
+  assert.match(contracts, /python-version: '3\.13'/);
+  assert.match(contracts, /native_pixels_test\.py < testing\/integration_test\/test_script\/lib\/test_runner\/mixin\/img_diff_mixin\.py/);
+  assert.equal(workflow.split('node --test scripts/*.test.mjs').length - 1, 1);
+  assert.match(workflow, /'testing\/integration_test\/test_script\/\*\*'/);
 });
 
 test('publication defaults to the default branch and only exposes deployed links', async () => {

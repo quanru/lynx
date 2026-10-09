@@ -23,6 +23,7 @@ on:
       - '.github/workflows/midscene-ai-e2e.yml'
       - 'testing/ai_e2e/**'
       - 'testing/integration_test/demo_pages/**'
+      - 'testing/integration_test/test_script/**'
       - 'explorer/**'
       - 'core/**'
       - 'devtool/**'
@@ -48,6 +49,7 @@ env:
 jobs:
   build-explorer:
     name: Build current-source Explorer · ${{ matrix.platform }}
+    needs: contract-check
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     strategy:
       fail-fast: false
@@ -109,9 +111,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  fork-contract-check:
-    name: Midscene contract check (external fork)
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+  contract-check:
+    name: Midscene contracts (no model credentials)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -122,12 +123,19 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
       - name: Check types and report contract without model credentials
         working-directory: testing/ai_e2e
         run: |
           npm ci --no-audit --no-fund
           npm run typecheck
           node --test scripts/*.test.mjs
+      - name: Check native pixel comparison against the original algorithm
+        run: |
+          python3 -m pip install --disable-pip-version-check -r testing/ai_e2e/scripts/requirements-pixels.txt
+          python3 testing/ai_e2e/scripts/native_pixels_test.py < testing/integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py
 
   android-ai-e2e:
     name: Midscene AI E2E · Android (Explorer)
@@ -206,7 +214,6 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           npm run typecheck
-          node --test scripts/*.test.mjs
           npm test -- --project android-explorer
 
       - name: Verify read-only DevTool transport prerequisite
@@ -341,7 +348,6 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           npm run typecheck
-          node --test scripts/*.test.mjs
           npm test -- --project ios-explorer
 
       - name: Verify read-only DevTool transport prerequisite
@@ -535,7 +541,7 @@ jobs:
 
       - name: Test the evidence renderer
         if: steps.pages.outcome == 'success'
-        run: node --test testing/ai_e2e/scripts/*.test.mjs
+        run: node --test testing/ai_e2e/scripts/render-ci-summary.test.mjs
 
       - name: Restore previously published reports
         if: steps.pages.outcome == 'success'

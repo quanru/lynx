@@ -118,3 +118,24 @@ parameters, and stops the stream on success or failure. Other sessions' frames
 are not accepted or buffered. Cancellation, timeout and disconnect release
 waiters; capture and cleanup failures retain both causes. This foundation is
 covered by real TCP mocks, not yet device capture or implemented pixel cases.
+
+The local grayscale comparator in `scripts/native_pixels.py` preserves the
+original pinned OpenCV/NumPy backend, grayscale threshold and mismatch fraction.
+Four Python checks execute the unchanged original comparator AST against the
+same arrays, including threshold boundaries and 120 randomized comparisons.
+This is algorithm conformance only; view/element crop integration and baseline
+device execution remain pending. The next workflow runs all model-free checks
+before source builds, without model credentials, rather than discovering unit
+failures after emulator/WDA startup. Original test-script changes also trigger
+the workflow so source-contract drift cannot silently bypass validation.
+
+To reproduce the comparator checks with Python 3.13 in an isolated environment:
+
+```bash
+python3.13 -m venv /tmp/lynx-pixel-check
+/tmp/lynx-pixel-check/bin/python3 -m pip install -r testing/ai_e2e/scripts/requirements-pixels.txt
+/tmp/lynx-pixel-check/bin/python3 testing/ai_e2e/scripts/native_pixels_test.py < testing/integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py
+```
+
+Local validation of this next foundation passes 81 Node 22 checks, four Python
+checks, typechecking and actionlint. These are not additional migrated cases.
