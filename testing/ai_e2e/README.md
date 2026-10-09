@@ -37,9 +37,13 @@ connects directly. The socket has a bounded deadline and is always destroyed.
 The probe does not navigate, focus, insert text or replace original assertions.
 Its log is archived with the report, and failure is infrastructure failure even
 when the smoke cases pass. Real device validation of this new probe is pending;
-55 local model-free checks on Node 22 and typechecking pass. The currently running
-hosted run at `9088c66` checks handshake/session discovery only; the subsequent
-CDP/DOM extension is still local and not device-verified.
+56 local model-free checks on Node 22 and typechecking pass. Hosted run `9088c66`
+passed Android 3/3 and iOS 3/3 on the first attempt, then exposed a server-direction framing
+error in the probe. The native DebugRouter writer uses JSON length + 20 for its
+outer length, unlike the client's JSON length + 4. The decoder now accepts both
+documented conventions while rejecting other lengths. An independent server
+frame reproduces rejection in the pushed decoder and passes in the fixed one.
+The framing fix and CDP/DOM extension still require device validation.
 
 `native-dom.ts` and `native-expectation.ts` prepare the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

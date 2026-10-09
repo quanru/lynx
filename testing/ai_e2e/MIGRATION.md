@@ -46,8 +46,17 @@ The next local foundation adds exact CDP response correlation and read-only
 `DOM.getDocument` validation. Native text, input values and style attributes
 retain the Python driver's value semantics. The expectation helper distinguishes
 immediate assertions from ten-second `wait_for_equal` polling and fails on
-malformed DOM or transport errors. Its 55 model-free checks pass on Node 22;
+malformed DOM or transport errors. Its 56 model-free checks pass on Node 22;
 this is not device execution or an equivalent migration of any module above.
+
+Run 37928363584 passed Android 3/3 and iOS 3/3 on the first attempt, but both probes rejected
+the server's frame header. DebugRouter's native `UsbClient::WrapHeader` writes
+JSON length + 20, whereas the client's PeerTalk encoder writes JSON length + 4.
+The receive decoder must support both documented conventions, not demand its
+own outgoing format. This is covered by an independent server-frame regression
+with old-rejects/new-passes evidence and malformed-length rejection checks.
+Source reference: [DebugRouter writer at fc4ca8c](https://github.com/lynx-family/debug-router/blob/fc4ca8c3b4cd99718b6be551711d1dcf064487d1/debug_router/native/socket/usb_client.cc#L389).
+The fix is not claimed device-verified until a subsequent hosted probe passes.
 
 - Build Explorer at the workflow revision with integration fixtures and
   Sparkling. `build.json` records the commit, platform, capabilities and binary

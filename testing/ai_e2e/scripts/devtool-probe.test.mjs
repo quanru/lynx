@@ -29,6 +29,27 @@ test('invalid lengths, types, JSON and UTF-8 fail closed', () => {
   assert.throws(() => new FrameDecoder().push(utf8));
 });
 
+test('native DebugRouter total-frame length is accepted without accepting arbitrary lengths', () => {
+  // Independent server-direction fixture, matching UsbClient::WrapHeader in
+  // lynx-family/debug-router at fc4ca8c3b4cd99718b6be551711d1dcf064487d1.
+  // The Python 0.0.15 receiver also documents this +20 convention.
+  const message = { event: 'Register', data: { id: 152, info: {} } };
+  const body = Buffer.from(JSON.stringify(message));
+  const frame = Buffer.alloc(20 + body.length);
+  [1, 101, 0, frame.length, body.length].forEach((value, i) => frame.writeUInt32BE(value, i * 4));
+  body.copy(frame, 20);
+  assert.notEqual(frame.readUInt32BE(12), body.length + 4);
+  const decoder = new FrameDecoder();
+  assert.deepEqual(decoder.push(frame.subarray(0, 19)), []);
+  assert.deepEqual(decoder.push(Buffer.concat([frame.subarray(19), encodeFrame(message)])), [message, message]);
+  assert.equal(decoder.buffer.length, 0);
+  for (const overhead of [0, 1, 5, 16, 19, 21]) {
+    const malformed = Buffer.from(frame);
+    malformed.writeUInt32BE(body.length + overhead, 12);
+    assert.throws(() => new FrameDecoder().push(malformed), /Invalid DevTool frame/);
+  }
+});
+
 async function mockServer(t, handle) {
   const sockets = new Set();
   const server = net.createServer(socket => {

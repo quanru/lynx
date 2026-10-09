@@ -21,8 +21,13 @@ export class FrameDecoder {
       const type = this.buffer.readUInt32BE(4);
       const outerLength = this.buffer.readUInt32BE(12);
       const length = this.buffer.readUInt32BE(16);
-      if (type !== 101 || length > MAX_MESSAGE_BYTES || outerLength !== length + 4) {
-        throw new Error('Invalid DevTool frame type or length.');
+      // PeerTalk clients write payload size (+4); native DebugRouter
+      // UsbClient::WrapHeader writes total frame size (+20). The JSON length
+      // at offset 16 remains authoritative in both directions. Do not require
+      // the client's convention when decoding native server responses.
+      if (type !== 101 || length > MAX_MESSAGE_BYTES
+        || (outerLength !== length + 4 && outerLength !== length + 20)) {
+        throw new Error(`Invalid DevTool frame type or length: type=${type}, outer=${outerLength}, json=${length}.`);
       }
       if (this.buffer.length < 20 + length) break;
       const json = new TextDecoder('utf-8', { fatal: true })
