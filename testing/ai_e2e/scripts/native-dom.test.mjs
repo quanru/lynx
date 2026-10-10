@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { deflateSync } from 'node:zlib';
 import test from 'node:test';
-import { decodeDocumentRoot, findTaggedNode, nativeAttributes, readNativeText, readNativeAttribute } from '../native-dom.ts';
+import { decodeDocumentRoot, findTaggedNode, findNativeTextAttribute, nativeAttributes, readNativeText, readNativeAttribute } from '../native-dom.ts';
 
 const raw = (id, text) => ({ nodeId: id, nodeName: 'RAW-TEXT', attributes: ['text', text] });
 const root = { nodeId: 1, nodeName: '#document', children: [
@@ -10,6 +10,20 @@ const root = { nodeId: 1, nodeName: '#document', children: [
   { nodeId: 5, nodeName: 'TEXT', attributes: ['lynx-test-tag', 'button2', 'style', 'text-align:right;width:100%;height:max-content;background-color:#ff0000;'],
     children: [raw(6, 'Test inline-text:'), { nodeId: 7, nodeName: 'INLINE-TEXT', children: [raw(8, 'Click Me')] }] },
 ] };
+
+test('get_by_text matches original text attributes, not aggregated rendered descendants', () => {
+  const text = 'Test text bindlayout event....';
+  const doc = { nodeId: 0, nodeName: '#document', children: [{ nodeId: 1, nodeName: 'PAGE', children: [
+    { nodeId: 2, nodeName: 'TEXT', children: [{ nodeId: 3, nodeName: 'RAW-TEXT', attributes: ['text', text] }] },
+    { nodeId: 4, nodeName: 'RAW-TEXT', attributes: ['text', text] },
+  ] }] };
+  assert.equal(findNativeTextAttribute(doc, text).nodeId, 4); // Breadth-first, not pre-order.
+  assert.equal(findNativeTextAttribute(doc, text, 1).nodeId, 3);
+  assert.throws(() => findNativeTextAttribute(doc, text + ' '), /not found/);
+  assert.throws(() => findNativeTextAttribute(doc, 'Test text'), /not found/);
+  assert.equal(findNativeTextAttribute(doc, 'bindlayout').nodeId, 4);
+  assert.throws(() => findNativeTextAttribute(doc, ''), /Invalid/);
+});
 
 test('plain and zlib-compressed CDP documents retain the same original DOM values', () => {
   const encoded = deflateSync(JSON.stringify(root)).toString('base64');

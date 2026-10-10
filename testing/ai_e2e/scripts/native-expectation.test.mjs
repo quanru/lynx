@@ -7,6 +7,20 @@ const document = value => ({ nodeId: 0, nodeName: '#document', children: [
     'style', 'text-align:right;width:100%;height:max-content;background-color:#ff0000;'] },
 ] });
 
+test('original get_by_text existence uses exact attribute selection and rejects mixed selectors', async () => {
+  const text = 'Test text bindlayout event....';
+  const doc = { nodeId: 0, nodeName: '#document', children: [{ nodeId: 1, nodeName: 'PAGE', children: [
+    { nodeId: 2, nodeName: 'RAW-TEXT', attributes: ['text', text] },
+  ] }] };
+  await expectNativeValue(async () => doc, { matchingText: text, exists: true, timeoutMs: 0 });
+  await assert.rejects(expectNativeValue(async () => doc, {
+    matchingText: text + ' ', exists: true, timeoutMs: 0,
+  }), /failed/);
+  for (const input of [{ matchingText: text, text }, { tag: 'tag', matchingText: text, exists: true }]) {
+    await assert.rejects(expectNativeValue(async () => { throw new Error('must not read'); }, input), /native.expect requires/);
+  }
+});
+
 test('immediate native assertions never poll an incorrect or missing value into a pass', async () => {
   for (const value of ['first ', 'first1', '', null]) {
     let reads = 0;

@@ -12,11 +12,11 @@ the original pixel baseline.
 
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
-| core/Event | Exact event counts and final inline style | Action localization failed on both platforms in run 37937713083; correction pending device validation |
+| core/Event | Exact event counts and final inline style | Passed both platforms, first attempts, run 37948887444 |
 | core/Image | Cropped LynxView pixel baseline | Pending; additive Image navigation smoke exists |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
 | core/LayoutLinear | Pixel baseline | Pending |
-| core/TextEvent | Cropped pixel baselines and element existence | Pending |
+| core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Implemented; 91 local Node checks and pixel differential checks pass; Android/iOS validation pending |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Pending, iOS |
@@ -186,3 +186,32 @@ Event counters, exact style, click count and API contracts remain unchanged.
 
 Local validation of this next foundation passes 85 Node 22 checks, eight Python
 checks, typechecking and actionlint. These are not additional migrated cases.
+
+Run 37948887444 at `3ebd94d` subsequently passed both builds, Android 6/6,
+iOS 6/6 and Pages. All 12 cases passed first attempt, including the three
+original modules on each platform. All 15 unique public report/image URLs
+returned HTTP 200; each case has a linked screenshot.
+
+The next batch collects seven cases per platform by adding original TextEvent.
+Source AST extraction now checks its ordered three-second wait, exact
+`flatten-text` crop and `text_flattern_element` baseline, followed by the
+three-second bindlayout text-attribute existence assertion. The bound session
+is revalidated before and after JPEG capture; no newest-session fallback is
+allowed. Original baselines and comparator thresholds are unchanged. Failures
+preserve frame, geometry, crop and baseline in the case artifact. Python 3.13,
+OpenCV 4.12.0.88 and NumPy 2.2.6 are installed in each device job.
+
+Local checks pass: 91 Node 22 tests, ten comparator/crop/geometry tests, one
+real JPEG bridge test, typechecking and actionlint. A separate offline AST
+differential against the public driver wheel matches 2,000 randomized
+Android/iOS geometries:
+
+```bash
+python3 testing/ai_e2e/scripts/native_capture_test.py
+python3 testing/ai_e2e/scripts/native_geometry_reference_test.py /path/to/lynx_e2e_appium-0.0.15-py3-none-any.whl
+```
+
+The wheel is a read-only reference, not a runner dependency. These checks do
+not establish a passing TextEvent baseline on either device; hosted validation
+is still required. Disabled ListBase remains disabled, and Image/LayoutLinear
+are not counted as pixel migrations.

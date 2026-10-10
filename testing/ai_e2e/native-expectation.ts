@@ -1,8 +1,9 @@
-import { findTaggedNode, MissingNativeTagError, readNativeAttribute, readNativeText } from './native-dom.ts';
+import { findTaggedNode, findNativeTextAttribute, MissingNativeTagError, readNativeAttribute, readNativeText } from './native-dom.ts';
 import type { NativeNode } from './native-dom.ts';
 
 export interface NativeExpectInput {
-  tag: string;
+  tag?: string;
+  matchingText?: string;
   index?: number;
   text?: string;
   attribute?: string;
@@ -17,8 +18,11 @@ export async function expectNativeValue(
   readDocument: () => Promise<NativeNode>,
   input: NativeExpectInput,
 ): Promise<void> {
-  const { tag, index = 0, text, attribute, equals, exists, timeoutMs = 10_000 } = input;
-  if (typeof tag !== 'string' || !tag || !Number.isInteger(index) || index < 0
+  const { tag, matchingText, index = 0, text, attribute, equals, exists, timeoutMs = 10_000 } = input;
+  if ((tag === undefined) === (matchingText === undefined)
+    || (tag !== undefined && (typeof tag !== 'string' || !tag))
+    || (matchingText !== undefined && (typeof matchingText !== 'string' || !matchingText || exists !== true))
+    || !Number.isInteger(index) || index < 0
     || [text !== undefined, attribute !== undefined, exists !== undefined].filter(Boolean).length !== 1
     || (text !== undefined && typeof text !== 'string')
     || (attribute !== undefined && (typeof attribute !== 'string' || !attribute || typeof equals !== 'string'))
@@ -35,7 +39,7 @@ export async function expectNativeValue(
     const root = await readDocument();
     let target: NativeNode | undefined;
     try {
-      target = findTaggedNode(root, tag, index);
+      target = tag !== undefined ? findTaggedNode(root, tag, index) : findNativeTextAttribute(root, matchingText!, index);
     } catch (error) {
       if (!(error instanceof MissingNativeTagError)) throw error;
     }
@@ -49,7 +53,7 @@ export async function expectNativeValue(
     }
     const remaining = deadline - Date.now();
     if (remaining <= 0) {
-      throw new Error(`native.expect ${JSON.stringify(tag)}[${index}] ${attribute ?? 'text'} failed; expected ${
+      throw new Error(`native.expect ${JSON.stringify(tag ?? matchingText)}[${index}] ${attribute ?? 'text'} failed; expected ${
         exists ? 'an existing node' : JSON.stringify(text ?? equals)
       }, got ${JSON.stringify(actual)}`);
     }

@@ -136,6 +136,7 @@ jobs:
         run: |
           python3 -m pip install --disable-pip-version-check -r testing/ai_e2e/scripts/requirements-pixels.txt
           python3 testing/ai_e2e/scripts/native_pixels_test.py < testing/integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py
+          python3 testing/ai_e2e/scripts/native_capture_test.py
 
   android-ai-e2e:
     name: Midscene AI E2E · Android (Explorer)
@@ -208,6 +209,12 @@ jobs:
       - name: Forward native DevTool contract transport
         id: native-forward
         run: '"$ANDROID_HOME/platform-tools/adb" forward --no-rebind tcp:18901 tcp:8901'
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install original native pixel backend
+        run: python3 -m pip install --disable-pip-version-check -r testing/ai_e2e/scripts/requirements-pixels.txt
 
       - name: Run Android Midscene cases
         id: run-cases
@@ -343,6 +350,12 @@ jobs:
           latest_log="$(find "$HOME/.npm/_logs" -maxdepth 1 -type f -name '*-debug-0.log' -print 2>/dev/null | sort | tail -n 1)"
           if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
           exit 1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install original native pixel backend
+        run: python3 -m pip install --disable-pip-version-check -r testing/ai_e2e/scripts/requirements-pixels.txt
 
       - name: Run iOS Midscene cases
         id: run-cases

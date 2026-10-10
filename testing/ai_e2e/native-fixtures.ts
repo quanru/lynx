@@ -1,4 +1,6 @@
 const fixtures = {
+  textEvent: { path: 'showcase/text/text_event', tags: ['container', 'inline-view-text-count',
+    'inline-image-count', 'flatten-text', 'non-flatten-text'] },
   event: { path: 'automation/event/main', tags: ['count', 'button0', 'button-text1', 'button2'] },
   domFocus: { path: 'automation/dom-focus/main', tags: ['focus-state', 'blur-state', 'focus-input-a', 'focus-input-b'] },
   insertText: { path: 'automation/input_insert_text/main', tags: [

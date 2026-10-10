@@ -7,6 +7,7 @@ module = ast.parse(sys.stdin.read())
 fixture = sys.argv[1]
 constants = {}
 tags = {}
+text_selectors = {}
 steps = []
 
 
@@ -36,6 +37,10 @@ for statement in run.body:
             if expression.func.attr == 'get_by_test_tag':
                 tags[statement.targets[0].id] = tag(expression)
                 continue
+            if expression.func.attr == 'get_by_text':
+                assert len(expression.args) == 1 and not expression.keywords
+                text_selectors[statement.targets[0].id] = value(expression.args[0])
+                continue
             if expression.func.attr in ('get_lynxview', 'get_session_id'):
                 continue
         if isinstance(expression, ast.Attribute) and expression.attr == 'rect':
@@ -47,7 +52,20 @@ for statement in run.body:
     call = statement.value
     name = ast.unparse(call.func)
     entry = {'fixture': fixture}
-    if name in ('test.start_step', 'time.sleep'):
+    if name == 'test.start_step':
+        continue
+    if name == 'time.sleep':
+        if fixture == 'textEvent':
+            assert len(call.args) == 1 and not call.keywords
+            steps.append({'node': 'wait', 'input': {'duration': value(call.args[0]) * 1000, 'unit': 'ms'}})
+        continue
+    if name == 'utils.take_screenshot_check':
+        assert fixture == 'textEvent' and len(call.args) == 4 and not call.keywords
+        assert isinstance(call.args[0], ast.Name) and call.args[0].id == 'test'
+        assert value(call.args[2]) == ''
+        assert isinstance(call.args[3], ast.Attribute) and call.args[3].attr == 'rect'
+        entry.update(baseline=value(call.args[1]), tag=tag(call.args[3].value))
+        steps.append({'node': 'native.pixels', 'input': entry})
         continue
     if name == 'send_cdp':
         entry['method'] = value(call.args[2])
@@ -83,7 +101,9 @@ for statement in run.body:
             assert keyword.arg in ('timeout', 'message')
             if keyword.arg == 'timeout':
                 timeout = value(keyword.value)
-        entry.update(tag=tag(call.args[0]), exists=True, timeoutMs=timeout * 1000)
+        target = call.args[0]
+        selector = {'matchingText': text_selectors[target.id]} if isinstance(target, ast.Name) and target.id in text_selectors else {'tag': tag(target)}
+        entry.update(**selector, exists=True, timeoutMs=timeout * 1000)
         steps.append({'node': 'native.expect', 'input': entry})
     elif isinstance(call.func, ast.Attribute) and call.func.attr == 'click':
         steps.append({'node': 'click', 'input': {'tag': tag(call.func.value)}})

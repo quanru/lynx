@@ -12,6 +12,51 @@ class NativePixelMismatch(RuntimeError):
         super().__init__(f"Native image comparison failed: mismatch rate {mismatch_rate}")
 
 
+def native_element_bounds(physical_rect, body_padding, element_padding, platform):
+    """Preserve LynxDriver.get_rect and the original element-crop offsets.
+
+    DOM padding quads are absolute internal coordinates, not screenshot pixels.
+    Keep the rated-rectangle intermediate and Python's two-decimal rounding;
+    simplifying the arithmetic changes fractional crop edges on iOS.
+    """
+    if platform not in ("android", "ios"):
+        raise ValueError("Unknown native pixel platform")
+    if (not isinstance(physical_rect, dict)
+            or set(physical_rect) != {"left", "top", "width", "height"}
+            or any(not isinstance(value, (int, float)) or isinstance(value, bool)
+                   or not math.isfinite(value) for value in physical_rect.values())
+            or physical_rect["left"] < 0 or physical_rect["top"] < 0
+            or physical_rect["width"] <= 0 or physical_rect["height"] <= 0):
+        raise ValueError("Invalid physical LynxView rectangle")
+    for padding in (body_padding, element_padding):
+        if (not isinstance(padding, list) or len(padding) != 8
+                or any(not isinstance(value, (int, float)) or isinstance(value, bool)
+                       or not math.isfinite(value) for value in padding)
+                or padding[2] <= padding[0] or padding[5] <= padding[1]):
+            raise ValueError("Invalid native padding quad")
+    scale = 1 if platform == "android" else 3
+    left, top, width, height = (physical_rect[key] / scale
+                                for key in ("left", "top", "width", "height"))
+    body_width = body_padding[2] - body_padding[0]
+    body_height = body_padding[5] - body_padding[1]
+    width_scale, height_scale = width / body_width, height / body_height
+    rated_left = (element_padding[0] - left / width_scale) / body_width
+    rated_top = (element_padding[1] - top / height_scale) / body_height
+    rated_width = (element_padding[2] - element_padding[0]) / body_width
+    rated_height = (element_padding[5] - element_padding[1]) / body_height
+    absolute_left = round(left + width * rated_left, 2)
+    absolute_top = round(top + height * rated_top, 2)
+    element_width = round(width * rated_width, 2)
+    element_height = round(height * rated_height, 2)
+    bounds = dict(left=absolute_left - left, top=absolute_top - top,
+                  right=absolute_left + element_width - left,
+                  bottom=absolute_top + element_height - top,
+                  width=element_width, height=element_height)
+    if any(not math.isfinite(value) for value in bounds.values()):
+        raise ValueError("Native element geometry overflow")
+    return bounds
+
+
 def crop_native_view(frame_image, physical_rect, platform):
     """Crop the screencast to the original driver's LynxView window rectangle.
 

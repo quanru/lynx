@@ -1,9 +1,14 @@
 import { decodeDocumentRoot, findTaggedNode, MissingNativeTagError } from './native-dom.ts';
 import type { NativeNode } from './native-dom.ts';
+import { captureNativeFrame } from './scripts/native-screencast.mjs';
 
 export interface NativeClient {
   refreshSessions(): Promise<Array<{ session_id: number }>>;
   request(sessionId: number, method: string, params?: Record<string, unknown>): Promise<unknown>;
+  waitForNotification?(sessionId: number, method: string, timeoutMs: number): {
+    promise: Promise<Record<string, unknown>>;
+    cancel(): void;
+  };
 }
 
 export class NativeFixtureBindingError extends Error {
@@ -51,17 +56,25 @@ export async function bindFixtureSession(client: NativeClient, tags: string[]) {
     throw new NativeFixtureBindingError(candidates.length);
   }
   const sessionId = candidates[0];
+  async function readDocument(): Promise<NativeNode> {
+    const root = decodeDocumentRoot(await client.request(sessionId, 'DOM.getDocument'));
+    if (!matchesFixture(root, tags)) {
+      throw new Error('Bound native fixture is no longer present; refusing to rebind to another session.');
+    }
+    return root;
+  }
   return {
     sessionId,
     request(method: string, params: Record<string, unknown> = {}) {
       return client.request(sessionId, method, params);
     },
-    async readDocument(): Promise<NativeNode> {
-      const root = decodeDocumentRoot(await client.request(sessionId, 'DOM.getDocument'));
-      if (!matchesFixture(root, tags)) {
-        throw new Error('Bound native fixture is no longer present; refusing to rebind to another session.');
-      }
-      return root;
+    readDocument,
+    async captureFrame() {
+      if (!client.waitForNotification) throw new Error('Native transport cannot capture screencast frames.');
+      await readDocument();
+      const frame = await captureNativeFrame(client, sessionId);
+      await readDocument(); // A navigation during capture must not borrow the next fixture's image.
+      return frame;
     },
   };
 }

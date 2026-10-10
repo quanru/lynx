@@ -54,6 +54,26 @@ function childrenOf(node: NativeNode): NativeNode[] {
 
 export class MissingNativeTagError extends Error {}
 
+// get_by_text searches the DOM text attribute, not aggregated rendered text.
+// Keep its breadth-first descendant search and exact/full-or-token predicate.
+export function findNativeTextAttribute(root: NativeNode, text: string, index = 0): NativeNode {
+  if (typeof text !== 'string' || !text || !Number.isInteger(index) || index < 0) {
+    throw new Error('Invalid native text selector.');
+  }
+  const body = childrenOf(root)[0];
+  if (!body) throw new Error('Missing native LynxView body.');
+  const queue = [...childrenOf(body)];
+  let ordinal = 0;
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const node = queue[cursor];
+    const value = nativeAttributes(node).get('text');
+    if (value !== undefined && (value === text || value.split(/\s+/u).filter(Boolean).includes(text))
+      && ordinal++ === index) return node;
+    queue.push(...childrenOf(node));
+  }
+  throw new MissingNativeTagError(`Native text attribute ${JSON.stringify(text)}[${index}] was not found.`);
+}
+
 export function findTaggedNode(root: NativeNode, tag: string, index = 0): NativeNode {
   if (typeof tag !== 'string' || !tag || !Number.isInteger(index) || index < 0) {
     throw new Error('Invalid Lynx test tag or index.');

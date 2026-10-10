@@ -74,12 +74,27 @@ The standard `aiAct` option `deepLocate: true` is now used only for Event and
 Showcase-entry targets, with caching disabled. In SDK 1.13.1, this bypasses the
 planning model's direct point and performs a dedicated visual locate instead.
 It does not add atomic action nodes, selectors, coordinates or extra Event
-clicks. No local model calls were made; this option still needs hosted validation.
+clicks. No local model calls were made. Run 37948887444 at `3ebd94d` then passed
+both source builds, Android 6/6, iOS 6/6 and Pages. All 12 cases passed first
+attempt, with 12 linked screenshots and all 15 public image/report URLs HTTP 200.
 
 The next foundation passes 85 Node checks and eight original-algorithm Python
 differential checks. It captures screencast/rectangle diagnostic artifacts after
 successful or failed cases and gates source builds on model-free checks.
 This is not yet device-verified pixel coverage; see `MIGRATION.md`.
+
+The next batch adds `core/TextEvent` on both platforms (seven cases each).
+It retains the original three-second wait, `flatten-text` element geometry,
+`text_flattern_element.png` baseline and three-second exact `get_by_text`
+existence check. `native.pixels` is a deterministic original-contract assertion,
+not a custom UI action. It captures the bound fixture's JPEG stream and uses the
+original Python coordinate arithmetic, iOS scaling, cubic crop/resize and
+grayscale mismatch thresholds. It never rewrites baselines. Failures retain
+frame, geometry, actual crop and baseline under `midscene_run/native-pixels/`.
+Local validation: 91 Node checks, ten original-algorithm Python checks, one real
+JPEG/evidence bridge check, typechecking and actionlint pass. An offline check
+against the unmodified public driver classes also matches 2,000 randomized
+geometries. This batch still requires Android/iOS execution before acceptance.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline
@@ -204,8 +219,9 @@ untrusted fork code.
   acceptance requires exact native values.
 - Retained: Explorer artifacts, the simulator matrix, and WebDriverAgent,
   which Midscene iOS uses directly.
-- Not covered: pixel-baseline comparison and Espresso white-box access. Keep
-  the existing jobs available as an opt-in complement.
+- Pending device validation: the TextEvent pixel contract. Image/LayoutLinear
+  pixel migration and Espresso white-box access remain uncovered. Keep the
+  existing jobs available as an opt-in complement.
 
 ### Pages setup fallback
 

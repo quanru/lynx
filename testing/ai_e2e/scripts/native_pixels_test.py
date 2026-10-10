@@ -10,7 +10,7 @@ import unittest
 import cv2
 import numpy as np
 
-from native_pixels import compare_native_pixels, crop_native_view, crop_native_element, NativePixelMismatch
+from native_pixels import compare_native_pixels, crop_native_view, crop_native_element, native_element_bounds, NativePixelMismatch
 
 
 source = ast.parse(sys.stdin.read())
@@ -75,6 +75,29 @@ def original_crop(image, bounds, platform):
 
 
 class NativePixelsTest(unittest.TestCase):
+    def test_element_geometry_preserves_original_driver_rounding(self):
+        body = [0, 0, 360, 0, 360, 554.6666666666666, 0, 554.6666666666666]
+        element = [0, 70, 360, 70, 360, 93.66666666666667, 0, 93.66666666666667]
+        physical = dict(left=0, top=210, width=1080, height=1664)
+        for platform, expected in (("android", dict(left=0, top=0, right=1080, bottom=71, width=1080, height=71)),
+                                   ("ios", dict(left=0, top=0, right=360, bottom=23.67, width=360, height=23.67))):
+            self.assertEqual(native_element_bounds(physical, body, element, platform), expected)
+
+    def test_invalid_element_geometry_fails(self):
+        rect = dict(left=0, top=210, width=1080, height=1664)
+        quad = [0, 0, 360, 0, 360, 500, 0, 500]
+        for invalid in [None, [], quad[:-1], [True] + quad[1:], [float("nan")] + quad[1:],
+                        [0, 0, 0, 0, 0, 500, 0, 500]]:
+            with self.assertRaises(ValueError):
+                native_element_bounds(rect, invalid, quad, "ios")
+            with self.assertRaises(ValueError):
+                native_element_bounds(rect, quad, invalid, "android")
+        for override in [dict(left=-1), dict(top=True), dict(width=0), dict(height=float("inf"))]:
+            with self.assertRaises(ValueError):
+                native_element_bounds({**rect, **override}, quad, quad, "ios")
+        with self.assertRaises(ValueError):
+            native_element_bounds(rect, quad, quad, "unknown")
+
     def test_view_crop_preserves_original_normalization_and_ties_even_rounding(self):
         image = np.arange(20 * 30 * 3, dtype=np.uint8).reshape(20, 30, 3)
         rect = dict(left=1.5, top=2.5, width=3, height=3)

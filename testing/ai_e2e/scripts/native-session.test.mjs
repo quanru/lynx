@@ -63,3 +63,25 @@ test('invalid marker definitions reject before opening session discovery', async
       /requires distinct nonempty test tags/);
   }
 });
+
+test('bound screencast revalidates fixture before and after capture and never switches sessions', async () => {
+  const documents = new Map([[7, document(['flatten-text'])], [99, document(['homepage'])]]);
+  const client = clientFor(documents);
+  const waits = [];
+  client.waitForNotification = (sessionId, method) => {
+    waits.push([sessionId, method]);
+    return { promise: Promise.resolve({ data: Buffer.from('jpeg').toString('base64') }), cancel() {} };
+  };
+  const bound = await bindFixtureSession(client, ['flatten-text']);
+  client.calls.length = 0;
+  assert.equal((await bound.captureFrame()).data, Buffer.from('jpeg').toString('base64'));
+  assert.deepEqual(waits, [[7, 'Page.screencastFrame']]);
+  assert.ok(client.calls.every(call => call.sessionId === 7));
+  assert.deepEqual(client.calls.map(call => call.method), ['DOM.getDocument', 'Page.enable',
+    'Page.startScreencast', 'Page.stopScreencast', 'DOM.getDocument']);
+  client.waitForNotification = () => {
+    documents.set(7, document(['homepage']));
+    return { promise: Promise.resolve({ data: Buffer.from('jpeg').toString('base64') }), cancel() {} };
+  };
+  await assert.rejects(bound.captureFrame(), /refusing to rebind/);
+});

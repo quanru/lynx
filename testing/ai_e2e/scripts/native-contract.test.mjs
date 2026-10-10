@@ -11,7 +11,8 @@ test('native collection preserves original ordered assertions, CDP calls and use
   const root = fileURLToPath(new URL('../', import.meta.url));
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const [fixture, original, file] of [['event', 'Event', 'event'],
-    ['domFocus', 'DomFocus', 'dom-focus'], ['insertText', 'InputInsertText', 'insert-text']]) {
+    ['domFocus', 'DomFocus', 'dom-focus'], ['insertText', 'InputInsertText', 'insert-text'],
+    ['textEvent', 'TextEvent', 'text-event']]) {
   const source = readFileSync(new URL(`../../integration_test/test_script/case_sets/core/${original}.py`, import.meta.url), 'utf8');
   const expected = extract(source, fixture);
   for (const project of loaded.projects) {
@@ -36,14 +37,14 @@ test('native collection preserves original ordered assertions, CDP calls and use
     }
     const clicks = expected.filter(step => step.node === 'click');
     let clickIndex = 0;
-    const actual = steps.filter(step => ['native.expect', 'native.cdp', 'aiAct'].includes(step.node))
+    const actual = steps.filter(step => ['native.expect', 'native.cdp', 'native.pixels', 'wait', 'aiAct'].includes(step.node))
       .map(step => step.node === 'aiAct' ? clicks[clickIndex++] : { node: step.node, input: step.input });
     assert.deepEqual(actual, expected, `${project.name}/${original}`);
     assert.equal(clickIndex, clicks.length);
     const platform = project.name.startsWith('android') ? 'android' : 'ios';
     assert.equal(steps[0].node, 'launch');
     assert.equal(steps[0].input.uri, fixtureUri(platform, fixture));
-    assert.ok(steps.every(step => ['launch', 'aiWaitFor', 'aiAct', 'native.expect', 'native.cdp', 'recordToReport'].includes(step.node)));
+    assert.ok(steps.every(step => ['launch', 'aiWaitFor', 'aiAct', 'native.expect', 'native.cdp', 'native.pixels', 'wait', 'recordToReport'].includes(step.node)));
   }
   }
 });

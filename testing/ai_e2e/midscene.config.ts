@@ -14,6 +14,7 @@ import { expectNativeValue } from './native-expectation.ts';
 import type { NativeExpectInput } from './native-expectation.ts';
 import { runNativeCommand } from './native-command.ts';
 import type { NativeCommandInput } from './native-command.ts';
+import { expectNativePixels } from './native-pixels.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -33,6 +34,7 @@ interface AgentRegistry {
 }
 
 interface ProjectContext {
+  platform: 'android' | 'ios';
   agentRegistry: AgentRegistry;
   getNativeSession(runId: string, fixture: NativeFixtureName): ReturnType<ReturnType<typeof createNativeSessions>['get']>;
 }
@@ -57,6 +59,17 @@ const nativeCommandNode = defineNode<NativeCommandInput & { fixture: NativeFixtu
   },
 });
 
+const nativePixelsNode = defineNode<{ fixture: 'textEvent'; baseline: 'text_flattern_element'; tag: 'flatten-text' }, void, ProjectContext>({
+  name: 'native.pixels',
+  description: 'Preserve the original cropped native JPEG-stream pixel baseline and grayscale threshold.',
+  async execute(execution) {
+    if (execution.scope !== 'case' || execution.input.fixture !== 'textEvent') throw new Error('Invalid native pixel fixture.');
+    const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
+    await expectNativePixels(session, execution.context.platform, execution.case.runId,
+      execution.input.baseline, execution.input.tag);
+  },
+});
+
 // createMidsceneNodes needs a provider while loading the config, but setup
 // creates the registry later. A project-level slot connects those lifecycles.
 // getAgent uses execution.context directly; releaseAgent only receives runId
@@ -78,7 +91,7 @@ const nodesFor = (
         return slot.current.releaseAgent(runId);
       },
     } satisfies AgentProvider<ProjectContext>,
-  }), nativeExpectNode, nativeCommandNode];
+  }), nativeExpectNode, nativeCommandNode, nativePixelsNode];
 
 // Android connects directly through adb without Appium or Espresso. Use
 // ANDROID_SERIAL to select a device when several are connected; otherwise use
@@ -119,6 +132,7 @@ const androidSetup = defineProjectSetup<ProjectContext>({
     };
 
     return {
+      platform: 'android',
       async getNativeSession(runId, fixture) {
         const definition = nativeFixture(fixture);
         await ensure(runId);
@@ -176,6 +190,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
     };
 
     return {
+      platform: 'ios',
       async getNativeSession(runId, fixture) {
         const definition = nativeFixture(fixture);
         await ensure(runId);
@@ -219,7 +234,7 @@ export default defineTestProject<ProjectContext>({
   projects: [
     {
       name: 'android-explorer',
-      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText') },
+      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -227,7 +242,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText') },
+      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent') },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
