@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 100 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 102 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 
@@ -127,6 +127,17 @@ capture coordinates. All 2,000 optional unchanged-public-driver geometry
 comparisons pass; 2,005 rectangle-correspondence comparisons match the original
 Sparkling helper, including tolerance boundaries. These are binding prerequisites,
 not device acceptance or additional cases.
+
+Current-source run 38018791030 at `c4498d4` completed with Android 9/9
+(Event retried once) and iOS 6/9. Image and LayoutLinear passed first attempt
+on Android; iOS captures are 720×906 while both unchanged baselines are
+720×876. TextEvent retains its previously reproduced 0.01277078965758211
+mismatch. Reports and Pages published despite these failures.
+The next head archives displayed WDA view frames in `geometry.json` alongside
+the CDP capture rectangle through the case-owned device's public SDK read API.
+This diagnostic does not select a session, crop to baseline dimensions or
+change comparisons. It distinguishes native-view versus CDP rectangle drift
+from a changed environment; no root cause is inferred from dimensions alone.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findTaggedNode } from './native-dom.ts';
 import type { bindFixtureSession } from './native-session.ts';
+import type { NativeRect } from './native-wda.ts';
 
 type BoundSession = Awaited<ReturnType<typeof bindFixtureSession>>;
 export async function captureNativePixels(session: BoundSession, tag?: string) {
@@ -31,12 +32,14 @@ export async function captureNativePixels(session: BoundSession, tag?: string) {
 }
 
 export async function expectNativePixels(session: BoundSession, platform: 'android' | 'ios',
-  runId: string, baseline: 'text_flattern_element' | 'image' | 'layout_linear', tag?: string): Promise<void> {
+  runId: string, baseline: 'text_flattern_element' | 'image' | 'layout_linear', tag?: string,
+  nativeViewEvidence?: () => Promise<NativeRect[]>): Promise<void> {
   if (!['android', 'ios'].includes(platform)
     || !['text_flattern_element', 'image', 'layout_linear'].includes(baseline)
     || (baseline === 'text_flattern_element' ? tag !== 'flatten-text' : tag !== undefined)
     || !/^[a-zA-Z0-9_-]+$/.test(runId)) throw new Error('Invalid native pixel contract.');
-  const payload = { ...await captureNativePixels(session, tag), platform };
+  const nativeViews = nativeViewEvidence ? await nativeViewEvidence() : undefined;
+  const payload = { ...await captureNativePixels(session, tag), platform, ...(nativeViews ? { nativeViews } : {}) };
   const root = fileURLToPath(new URL('./', import.meta.url));
   const script = resolve(root, 'scripts/compare-native-capture.py');
   const baselinePath = resolve(root, '../integration_test/test_script/resources', platform, baseline + '.png');

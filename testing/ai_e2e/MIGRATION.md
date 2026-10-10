@@ -125,7 +125,7 @@ The next local Summary renderer change accepts an immediate first afterEach
 capture when the final failed assertion has no prior screenshot. It keeps the
 HTML link on the failed step, prefers preceding captures and rejects images
 after intervening actions or from older attempts. Both repository copies and
-regression tests are identical; 100 Node 22 checks pass locally. This is report
+regression tests are identical; 102 Node 22 checks pass locally. This is report
 evidence handling, not a pixel-baseline or assertion change.
 
 The next Sparkling foundation is a read-only WDA visibility reader, attached to
@@ -138,6 +138,14 @@ preserves native-point normalization, original operation order and Python
 two-decimal rounding. It matches 2,000 unchanged-public-driver geometries and
 2,005 original Sparkling rectangle-correspondence results. No physical-pixel
 coordinates, enlarged tolerances or JavaScript rounding approximation are used.
+
+Run 38018791030 at `c4498d4` completed: Android 9/9 (Event retried once),
+iOS 6/9 (all six first attempt), reports and Pages published. Both full-view
+pixel cases fail twice on iOS because actual dimensions are 720×906 versus
+unchanged 720×876 baselines. TextEvent still fails twice at its known mismatch
+fraction. The next head retains visible WDA frames alongside CDP geometry as
+diagnostic evidence only, with no pixel/crop/baseline/tolerance change. Two
+checks cover malformed data, timeout and no follow-up reads after late replies.
 
 ### Preserved algorithm
 

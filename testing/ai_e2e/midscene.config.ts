@@ -15,6 +15,7 @@ import type { NativeExpectInput } from './native-expectation.ts';
 import { runNativeCommand } from './native-command.ts';
 import type { NativeCommandInput } from './native-command.ts';
 import { expectNativePixels } from './native-pixels.ts';
+import { readVisibleViewEvidence } from './native-view-evidence.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -37,6 +38,7 @@ interface ProjectContext {
   platform: 'android' | 'ios';
   agentRegistry: AgentRegistry;
   getNativeSession(runId: string, fixture: NativeFixtureName): ReturnType<ReturnType<typeof createNativeSessions>['get']>;
+  getNativeViewEvidence?(runId: string): ReturnType<typeof readVisibleViewEvidence>;
 }
 
 const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixtureName }, void, ProjectContext>({
@@ -69,7 +71,8 @@ const nativePixelsNode = defineNode<{ fixture: 'textEvent' | 'image' | 'layoutLi
       || contracts[execution.input.fixture] !== execution.input.baseline) throw new Error('Invalid native pixel fixture.');
     const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
     await expectNativePixels(session, execution.context.platform, execution.case.runId,
-      execution.input.baseline, execution.input.tag);
+      execution.input.baseline, execution.input.tag,
+      execution.context.getNativeViewEvidence ? () => execution.context.getNativeViewEvidence!(execution.case.runId) : undefined);
   },
 });
 
@@ -194,6 +197,11 @@ const iosSetup = defineProjectSetup<ProjectContext>({
 
     return {
       platform: 'ios',
+      async getNativeViewEvidence(runId) {
+        const { device } = await ensure(runId);
+        // Public SDK API scopes these reads to this case's existing WDA session.
+        return readVisibleViewEvidence((method, endpoint, data) => device.runWdaRequest(method, endpoint, data));
+      },
       async getNativeSession(runId, fixture) {
         const definition = nativeFixture(fixture);
         await ensure(runId);
