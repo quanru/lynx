@@ -7,8 +7,17 @@ integration fixtures and Sparkling enabled. Consumers verify the commit and
 artifact checksum before installation. Each platform now collects three additive
 smoke cases and six original-contract cases, including three pixel contracts.
 The local extension additionally collects all seven original Sparkling cases on
-iOS and VideoModes on both platforms: Android 10 / iOS 17. These additions have
-not yet run in hosted device CI. All 133 model-free Node 22 checks pass.
+iOS and VideoModes on both platforms: Android 10 / iOS 17. Run 38024427888
+has passed the Android job; iOS and whole-run publication are still pending.
+The next local extension adds VideoBoundary on both platforms: Android 11 /
+iOS 18. All 136 model-free Node 22 checks and typechecking pass. VideoBoundary
+retains all 36 original button actions, three fixed sleeps, count/occurrence
+assertions, immediate negative checks and platform-specific bridge errors.
+Combined cancellation actions remain one original button click, not a sequence
+of AI-paced operations. Original Python run/helpers are replayed in full and
+visible button labels are read from the unchanged fixture AST. Unicode count
+parsing is checked against the original Python regex/int; duplicate callbacks
+fail immediately. This local addition is not yet pushed or device accepted.
 Native run 38021364503 passed Android 9/9 on first attempts and iOS 6/9;
 reports and Pages published. Independent WDA view rectangles agree exactly with
 CDP capture rectangles. Replaying unchanged original driver/helper AST using

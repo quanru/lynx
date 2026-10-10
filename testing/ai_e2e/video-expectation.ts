@@ -5,7 +5,26 @@ export type VideoExpectation = {
   tag: string;
   immediate?: true;
   timeoutMs?: number;
-} & ({ equal: string } | { contains: string } | { notContains: string } | { order: string[] });
+} & ({ equal: string } | { contains: string } | { notContains: string } | { order: string[] }
+  | { countAtLeast: { key: string; value: number } }
+  | { occurrences: { text: string; count: number } }
+  | { errorDetails: true });
+
+export function parseVideoCount(text: string, key: string): bigint {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`(?:^|;)${escaped}=([\\p{Decimal_Number}]+)`, 'u').exec(text);
+  if (!match) throw new Error(`Missing ${key} in event counts: ${text}`);
+  // Python re \d/int accept Unicode decimal digits. Contiguous Nd blocks can
+  // contain multiple adjacent alphabets, each resetting after ten digits.
+  let digits = '';
+  for (const character of match[1]) {
+    const point = character.codePointAt(0)!;
+    let start = point;
+    while (start > 0 && /\p{Decimal_Number}/u.test(String.fromCodePoint(start - 1))) start--;
+    digits += (point - start) % 10;
+  }
+  return BigInt(digits);
+}
 
 // Preserve video_utils.py independently of core's different polling contract.
 // In particular, video wait_until captures evidence and performs ONE final read
@@ -16,20 +35,31 @@ export async function expectVideoValue(
   input: VideoExpectation,
   clock = { now: Date.now, sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)) },
 ) {
-  const keys = ['equal', 'contains', 'notContains', 'order'].filter(key => Object.hasOwn(input, key));
+  const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'occurrences', 'errorDetails'].filter(key => Object.hasOwn(input, key));
   const timeoutMs = input.timeoutMs ?? 20_000;
   if (typeof input.tag !== 'string' || !input.tag || keys.length !== 1
     || !Number.isFinite(timeoutMs) || timeoutMs < 0
     || (input.immediate !== undefined && input.immediate !== true)
-    || ('order' in input ? !Array.isArray(input.order) || input.order.some(value => typeof value !== 'string')
+    || ('countAtLeast' in input ? !input.countAtLeast || typeof input.countAtLeast.key !== 'string'
+      || !Number.isSafeInteger(input.countAtLeast.value) || input.countAtLeast.value < 0
+      : 'occurrences' in input ? !input.occurrences || typeof input.occurrences.text !== 'string'
+      || !Number.isSafeInteger(input.occurrences.count) || input.occurrences.count < 0
+      : 'errorDetails' in input ? input.errorDetails !== true
+      : 'order' in input ? !Array.isArray(input.order) || input.order.some(value => typeof value !== 'string')
       : typeof (input as unknown as Record<string, unknown>)[keys[0]] !== 'string')
-    || (('notContains' in input || 'order' in input) && input.immediate !== true)) {
+    || (('notContains' in input || 'order' in input || 'occurrences' in input) && input.immediate !== true)) {
     throw new Error('Invalid original video assertion.');
   }
   const matches = (text: string) => {
     if ('equal' in input) return text === input.equal;
     if ('contains' in input) return text.includes(input.contains);
     if ('notContains' in input) return !text.includes(input.notContains);
+    if ('countAtLeast' in input) return parseVideoCount(text, input.countAtLeast.key) >= BigInt(input.countAtLeast.value);
+    if ('occurrences' in input) {
+      const count = input.occurrences.text === '' ? [...text].length + 1 : text.split(input.occurrences.text).length - 1;
+      return count === input.occurrences.count;
+    }
+    if ('errorDetails' in input) return text !== 'none' && text.includes(':');
     let cursor = -1;
     for (const entry of input.order) {
       // Python text.find(entry, cursor + 1), NOT cursor + entry.length.

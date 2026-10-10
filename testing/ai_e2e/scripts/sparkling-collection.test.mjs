@@ -8,7 +8,7 @@ import { collectWorkflowDocument } from '@midscene/test';
 import { discoverTestFiles, loadTestProject } from '@midscene/test/config';
 import { mappedProperties, sparklingRoutes } from '../sparkling-contracts.ts';
 
-test('real SDK collects ten Android and seventeen iOS cases with Sparkling excluded from Android', async () => {
+test('real SDK collects eleven Android and eighteen iOS cases with Sparkling excluded from Android', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const project of loaded.projects) {
@@ -21,7 +21,7 @@ test('real SDK collects ten Android and seventeen iOS cases with Sparkling exclu
       names.push(...doc.cases.map(c => c.definition.name));
     }
     const ios = project.name === 'ios-explorer';
-    assert.equal(names.length, ios ? 17 : 10);
+    assert.equal(names.length, ios ? 18 : 11);
     assert.equal(new Set(names).size, names.length);
     assert.equal(names.filter(name => name.startsWith('sparkling/')).length, ios ? 7 : 0);
   }

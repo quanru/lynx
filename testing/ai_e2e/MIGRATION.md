@@ -27,11 +27,23 @@ the original pixel baseline.
 | sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Implemented locally; iOS device validation pending |
 | sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Implemented locally; iOS device validation pending |
 | xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
-| xelement/VideoBoundary | Original boundary/error callback contracts | Pending |
+| xelement/VideoBoundary | Original boundary/error callback contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoModes | Original mode-specific callback/state contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoAttributes | Original attribute, timing and event contracts | Pending |
 
 ## Prerequisites and acceptance
+
+The latest local extension collects Android 11 / iOS 18 with 136 model-free
+Node 22 checks and typechecking passing. VideoBoundary retains all original
+36 button actions, three fixed sleeps, ordered assertions, exact failure/error
+messages, callback occurrences and platform-specific unknown-method errors.
+Each cancellation burst remains one original button action through aiAct.
+Source AST replay executes the unchanged run and both assertion helpers on
+each platform; original fixture labels map ordinary actions to aiAct without
+direct DOM/CDP clicks. Count parsing is compared with Python regex/int, and
+occurrences use immediate non-overlapping Python semantics. This addition
+remains local while run 38024427888 is active. That run's Android 10-case job
+has passed; iOS and whole-run publication are pending.
 
 Run 38021364503 at `32efbfc` passed Android 9/9 on first attempts, iOS 6/9,
 both builds and report/Pages publication. All six iOS pixel-attempt artifacts
