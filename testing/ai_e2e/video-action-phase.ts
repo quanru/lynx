@@ -5,7 +5,7 @@ import { prepareVideoButtons, tapPreparedVideoButton } from './video-button-prep
 
 export type VideoActionPhase = 'replace-playing-source' | 'stop-play-null';
 export interface VideoTimedAgent {
-  aiAct(prompt: string, options: { deepLocate: false; cacheable: false }): Promise<unknown>;
+  aiAct(prompt: string, options: { deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
   addProgressListener(listener: AgentProgressListener): () => void;
   aiLocate(prompt: string, options: { deepLocate: false; cacheable: false }): Promise<{ center: number[] }>;
   callActionInActionSpace(type: string, input: unknown): Promise<unknown>;
@@ -33,14 +33,17 @@ export async function executeVideoActionPhase(
   phase: VideoActionPhase,
   assertSource: (input: VideoExpectation) => Promise<void>,
   captureEvidence: () => Promise<void>,
+  signal?: AbortSignal,
 ) {
   const expected = videoActionPhaseChecks(phase);
   const labels = videoActionPhaseTargets(phase);
-  const points = await prepareVideoButtons(agent, labels);
-  const tap = (index: number) => tapPreparedVideoButton(agent, labels[index], points);
+  const points = await prepareVideoButtons(agent, labels, signal);
+  const tap = (index: number) => tapPreparedVideoButton(agent, labels[index], points, signal);
   await tap(0);
-  for (const input of expected) await assertSource(structuredClone(input));
+  for (const input of expected) { signal?.throwIfAborted(); await assertSource(structuredClone(input)); }
+  signal?.throwIfAborted();
   await captureEvidence();
+  signal?.throwIfAborted();
   // Even capture/device overhead must not allow an ended video to pass.
   await assertSource({ tag: 'status-text', equal: 'playing', immediate: true });
   await tap(1);

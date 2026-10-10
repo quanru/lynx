@@ -82,6 +82,7 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
   name: 'native.videoPhase',
   description: 'Execute a closed original video timing fragment with visual prelocation and real SDK taps, preserving every original assertion and sample.',
   async execute(execution) {
+    execution.signal?.throwIfAborted();
     if (execution.scope !== 'case' || Object.keys(execution.input).length !== 1) throw new Error('Invalid video phase scope or input.');
     const playback = isVideoPlaybackPhase(execution.input.phase);
     if (!playback) videoActionPhaseChecks(execution.input.phase as VideoActionPhase);
@@ -91,25 +92,35 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
     const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoTimedAgent;
     if (typeof agent.aiLocate !== 'function' || typeof agent.callActionInActionSpace !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and physical action APIs.');
     const session = await execution.context.getNativeSession(runId, 'video');
+    const readDocument = async () => {
+      execution.signal?.throwIfAborted();
+      const document = await session.readDocument();
+      execution.signal?.throwIfAborted();
+      return document;
+    };
     if (isVideoPlaybackPhase(execution.input.phase)) {
-      await executeVideoPlaybackPhase(agent, execution.input.phase, session.readDocument, async title => {
+      await executeVideoPlaybackPhase(agent, execution.input.phase, readDocument, async title => {
+        execution.signal?.throwIfAborted();
         const frame = await session.captureFrame();
+        execution.signal?.throwIfAborted();
         if (typeof frame.data !== 'string' || !frame.data) throw new Error('Missing original video playback frame.');
         await agent.recordToReport('Original video source screenshot: ' + title, {
           screenshots: [{ base64: `data:image/jpeg;base64,${frame.data}`, description: 'Captured at the original source checkpoint, without intervening model calls.' }],
         });
-      });
+      }, undefined, execution.signal);
       return;
     }
     const capture: VideoPhaseEvidence['capture'] = {};
     const evidence = await executeVideoActionPhase(agent, execution.input.phase as VideoActionPhase,
-      input => expectVideoValue(session.readDocument,
+      input => expectVideoValue(readDocument,
         () => captureVideoWaitDiagnostic(session, execution.context.platform, runId), input),
       async () => {
+        execution.signal?.throwIfAborted();
         const frame = await session.captureFrame();
+        execution.signal?.throwIfAborted();
         if (typeof frame.data !== 'string' || !frame.data) throw new Error('Missing original action-time video frame.');
         capture.screenshot = `data:image/jpeg;base64,${frame.data}`;
-      });
+      }, execution.signal);
     phases.set(runId, { evidence, capture });
   },
 });

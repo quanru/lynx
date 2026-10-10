@@ -4,6 +4,35 @@ import { executeVideoActionPhase, videoActionPhaseChecks, videoActionPhaseTarget
 
 const playing = { tag: 'status-text', equal: 'playing', timeoutMs: 20000 };
 
+test('runner cancellation reaches preparation and late planning/location results cannot start physical playback', async () => {
+  for (const stage of ['prepare', 'locate']) {
+    const controller = new AbortController();
+    const reason = new Error('Original node deadline');
+    let removed = 0, locations = 0, taps = 0;
+    const agent = {
+      addProgressListener: () => () => removed++,
+      aiAct: async (_prompt, options) => {
+        assert.equal(options.abortSignal, controller.signal);
+        if (stage === 'prepare') controller.abort(reason);
+      },
+      aiLocate: async () => { locations++; controller.abort(reason); return { center: [100, 100] }; },
+      callActionInActionSpace: async () => taps++,
+    };
+    await assert.rejects(executeVideoActionPhase(agent, 'replace-playing-source', async () => assert.fail(), async () => assert.fail(), controller.signal), error => error === reason);
+    assert.equal(removed, 1);
+    assert.equal(locations, stage === 'prepare' ? 0 : 1);
+    assert.equal(taps, 0);
+  }
+});
+
+test('cancellation during a source assertion cannot capture or issue the second tap', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  const reason = new Error('Original node deadline');
+  await assert.rejects(executeVideoActionPhase(f.agent, 'replace-playing-source', async () => controller.abort(reason), async () => assert.fail(), controller.signal), error => error === reason);
+  assert.equal(f.trace.filter(item => item[0] === 'tap').length, 1);
+});
+
 test('actual SDK Tap schema and task execution deliver prelocated points to the device primitive without model access', async () => {
   const { TaskBuilder } = await import(new URL('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs', import.meta.url));
   const { defineActionTap } = await import('@midscene/core/device');

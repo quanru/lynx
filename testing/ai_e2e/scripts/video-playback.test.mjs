@@ -12,6 +12,16 @@ import { parseVideoFloat } from '../video-float.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dom = (tag, text) => ({ nodeId: 0, nodeName: '#document', children: [{ nodeId: 1, nodeName: 'TEXT', attributes: ['lynx-test-tag', tag], children: [{ nodeId: 2, nodeName: 'RAW-TEXT', attributes: ['text', text] }] }] });
 
+test('cancelled complete playback cannot continue from preparation into source reads or actions', async () => {
+  const controller = new AbortController();
+  const reason = new Error('Original node deadline');
+  controller.abort(reason);
+  const agent = { aiAct: async () => assert.fail(), aiLocate: async () => assert.fail(), addProgressListener: () => assert.fail(), callActionInActionSpace: async () => assert.fail() };
+  for (const phase of ['basic-ready', 'basic-playback', 'basic-loop', 'attributes-playback']) {
+    await assert.rejects(executeVideoPlaybackPhase(agent, phase, async () => assert.fail(), async () => assert.fail(), undefined, controller.signal), error => error === reason);
+  }
+});
+
 test('both complete original playback cases collect on Android/iOS with every action, wait, predicate and source sample retained', async () => {
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   const allPhases = {};

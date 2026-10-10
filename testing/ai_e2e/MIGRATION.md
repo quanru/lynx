@@ -33,6 +33,18 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+Current pushed `7446d29` is executing Android/iOS device cases in run
+38056035286; its remote contract gate and both source builds passed. No device
+acceptance is inferred while these jobs execute. The next local correction
+passes 169 Node 22 model-free checks and typechecking. It forwards the runner's
+step cancellation signal into video preparation aiAct and checks cancellation
+after every uncancellable location result, before/after SDK taps and between
+original playback operations. Late custom-node work cannot start subsequent
+taps after its original deadline. The pinned SDK has no public aiLocate
+cancellation option; this guard does not claim to abort an in-flight model
+request or an already-started physical action. No timeout is extended. This
+correction is held locally while the useful current-head device run completes.
+
 Latest completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
 14/18; builds and report publication passed. Android's first VideoBoundary
 attempt passed its prelocated playing/source-switch fragment, then failed the

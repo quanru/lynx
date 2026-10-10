@@ -51,13 +51,15 @@ export async function executeVideoPlaybackPhase(
   readDocument: () => Promise<NativeNode>,
   capture: (title: string) => Promise<void>,
   clock = defaultClock,
+  signal?: AbortSignal,
 ) {
   const operations = videoPlaybackOperations(phase);
-  const points = await prepareVideoButtons(agent, operations.filter(op => op.type === 'tap').map(op => op.label));
+  const points = await prepareVideoButtons(agent, operations.filter(op => op.type === 'tap').map(op => op.label), signal);
   const samples = new Map<string, number | bigint>();
   for (const op of operations) {
+    signal?.throwIfAborted();
     if (op.type === 'section') continue;
-    if (op.type === 'tap') await tapPreparedVideoButton(agent, op.label, points);
+    if (op.type === 'tap') await tapPreparedVideoButton(agent, op.label, points, signal);
     else if (op.type === 'sleep') await clock.sleep(op.ms);
     else if (op.type === 'capture') await capture(op.title);
     else if (op.type === 'core') await expectCoreVideoValue(readDocument, () => capture('core_wait_failure'), op.input, clock.now);
@@ -77,4 +79,5 @@ export async function executeVideoPlaybackPhase(
       if (count < 30n) throw new Error('tiny positive timeupdate interval should not be clamped; count=' + count);
     } else throw new Error('Unknown original video sampling guard.');
   }
+  signal?.throwIfAborted();
 }

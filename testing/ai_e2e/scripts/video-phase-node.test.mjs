@@ -5,6 +5,7 @@ import { loadTestProject } from '@midscene/test/config';
 const root = fileURLToPath(new URL('../', import.meta.url));
 let nextRunId = 0;
 async function fixture() {
+  const controller = new AbortController();
   const project = (await loadTestProject(root + 'midscene.config.ts')).projects[0];
   const reports = [], reads = [], taps = [];
   let state = 'ready';
@@ -28,9 +29,20 @@ async function fixture() {
       captureFrame: async () => ({ data: Buffer.from('protocol-frame-marker').toString('base64') }),
     }) };
   const runId = 'phase-node-' + ++nextRunId;
-  return { reports, reads, taps,
-    run: (name, input) => project.nodes.get(name).execute({ scope: 'case', case: { runId }, context, input }) };
+  return { reports, reads, taps, controller,
+    run: (name, input) => project.nodes.get(name).execute({ scope: 'case', case: { runId }, context, input, signal: controller.signal }) };
 }
+test('the registered native node rejects an expired runner signal before readiness reads or playback', async () => {
+  const f = await fixture();
+  const reason = new Error('Original runner timeout');
+  f.controller.abort(reason);
+  for (const phase of ['basic-ready', 'basic-playback', 'replace-playing-source']) {
+    await assert.rejects(f.run('native.videoPhase', { phase }), error => error === reason);
+  }
+  assert.deepEqual(f.reads, []);
+  assert.deepEqual(f.taps, []);
+  assert.deepEqual(f.reports, []);
+});
 test('collected timed node preserves the SDK action contract and reports source-time evidence after exact consumption', async () => {
   const f = await fixture();
   await f.run('native.videoPhase', { phase: 'replace-playing-source' });
