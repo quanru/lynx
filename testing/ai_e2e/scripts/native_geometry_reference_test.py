@@ -12,6 +12,7 @@ import zipfile
 import numpy as np
 
 from native_pixels import native_element_bounds
+from native_visible_geometry import visible_element_rect
 
 
 with zipfile.ZipFile(sys.argv[1]) as reference:
@@ -43,6 +44,18 @@ def quad(left, top, width, height):
 
 
 class NativeGeometryReferenceTest(unittest.TestCase):
+    def test_visible_geometry_matches_original_driver_in_native_points(self):
+        rng = np.random.default_rng(20261011)
+        for _ in range(2000):
+            view = dict(zip(("x", "y", "width", "height"), map(float, rng.uniform(1, 2000, 4))))
+            body, element = (quad(*map(float, rng.uniform(1, 2000, 4))) for _ in range(2))
+            container = Rectangle(*(view[key] for key in ("x", "y", "width", "height")))
+            def box(padding):
+                return LynxRect(Rectangle(padding[0], padding[1], padding[2] - padding[0], padding[5] - padding[1]), True)
+            original = box(element).get_rated_rect(container, box(body).get_relative_rect(container, box(body).value)).scale_to_rect(container)
+            self.assertEqual(visible_element_rect(view, body, element),
+                             dict(x=original.left, y=original.top, width=original.width, height=original.height))
+
     def test_original_driver_geometry_on_both_platforms(self):
         rng = np.random.default_rng(20261010)
         for platform in ("android", "ios"):

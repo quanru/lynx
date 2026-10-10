@@ -125,7 +125,7 @@ The next local Summary renderer change accepts an immediate first afterEach
 capture when the final failed assertion has no prior screenshot. It keeps the
 HTML link on the failed step, prefers preceding captures and rejects images
 after intervening actions or from older attempts. Both repository copies and
-regression tests are identical; 98 Node 22 checks pass locally. This is report
+regression tests are identical; 100 Node 22 checks pass locally. This is report
 evidence handling, not a pixel-baseline or assertion change.
 
 The next Sparkling foundation is a read-only WDA visibility reader, attached to
@@ -133,7 +133,11 @@ an explicit case-owned session. It preserves displayed-view scoping, ordered
 anchors, native text sources and duplicate input types from the original helper.
 Four HTTP/source-parity checks include malformed visibility and a stalled JSON
 body deadline. It is not wired into device cases yet and adds no case count;
-visible-native/DevTool geometry binding and route phase ownership remain required.
+route phase ownership and integration remain required. The geometry foundation
+preserves native-point normalization, original operation order and Python
+two-decimal rounding. It matches 2,000 unchanged-public-driver geometries and
+2,005 original Sparkling rectangle-correspondence results. No physical-pixel
+coordinates, enlarged tolerances or JavaScript rounding approximation are used.
 
 ### Preserved algorithm
 

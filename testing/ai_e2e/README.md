@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 98 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 100 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 
@@ -120,6 +120,13 @@ Requests share a bounded deadline, including response-body decoding. It exposes
 no action or session-management methods. Four HTTP/source-parity tests cover
 these boundaries. This foundation is not yet wired into device cases and adds
 no migrated or accepted cases.
+
+`native-visible-geometry.ts` also preserves the original WDA-point coordinate
+normalization and Python two-decimal rounding, separately from physical pixel
+capture coordinates. All 2,000 optional unchanged-public-driver geometry
+comparisons pass; 2,005 rectangle-correspondence comparisons match the original
+Sparkling helper, including tolerance boundaries. These are binding prerequisites,
+not device acceptance or additional cases.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline
