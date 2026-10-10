@@ -8,7 +8,11 @@ artifact checksum before installation. Each platform now collects three additive
 smoke cases and six original-contract cases, including three pixel contracts.
 The local extension additionally collects all seven original Sparkling cases on
 iOS and VideoModes on both platforms: Android 10 / iOS 17. Run 38024427888
-has passed the Android job; iOS and whole-run publication are still pending.
+passed Android 10/10 (one Event retry), but iOS passed 14/17. All three
+previously failing iOS pixel cases passed first attempts with unchanged PNGs,
+crop and thresholds after selecting the original toolchain/device environment.
+RawOpenSparkling, RouterOpenClose and VideoModes failed; this is not full
+cross-platform acceptance. Reports and Pages published successfully.
 The next local extension adds VideoBoundary on both platforms: Android 11 /
 iOS 18. All 136 model-free Node 22 checks and typechecking pass. VideoBoundary
 retains all 36 original button actions, three fixed sleeps, count/occurrence
@@ -17,7 +21,17 @@ Combined cancellation actions remain one original button click, not a sequence
 of AI-paced operations. Original Python run/helpers are replayed in full and
 visible button labels are read from the unchanged fixture AST. Unicode count
 parsing is checked against the original Python regex/int; duplicate callbacks
-fail immediately. This local addition is not yet pushed or device accepted.
+fail immediately. This addition is not yet device accepted.
+Failed-run screenshot/action records show the Open action landed in the upper
+runtime selector instead of the lower card button, and video scrolling landed
+in white space below the small left-hand fixture. RouterClose's first attempt
+actually returned to the parent, but the model then rejected the disappeared
+Close button. Action intents now distinguish the lower Open card, constrain
+scrolling to the actual gray panel, and describe parent return as the successful
+end state after exactly one Close tap. No coordinates, selectors, additional
+taps, timeout extensions or weakened assertions are introduced. Model-free
+source replay checks the original assertions/action counts; hosted rerun must
+establish whether these intent corrections resolve the device failures.
 Native run 38021364503 passed Android 9/9 on first attempts and iOS 6/9;
 reports and Pages published. Independent WDA view rectangles agree exactly with
 CDP capture rectangles. Replaying unchanged original driver/helper AST using
@@ -28,7 +42,7 @@ to Xcode 26.3 / iPhone 17. Both build and execution now select Xcode 26.3,
 require simulator SDK 26.2 and exactly one available iPhone 17; build provenance
 records and verifies these actual toolchain versions. Missing tools/devices fail
 instead of falling back. No baseline or threshold is changed. Whether this
-alignment resolves all three pixel failures awaits the next device run.
+alignment resolves all three pixel failures is now proven by run 38024427888.
 Event, DomFocus and InputInsertText have passed on both platforms. TextEvent
 passed Android in run 38016020854, but its iOS pixel baseline failed at the
 unchanged 1% threshold. Image and LayoutLinear await device validation.

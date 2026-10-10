@@ -67,6 +67,8 @@ print(json.dumps(events))`], { input: JSON.stringify({ helpers, case: source }),
     assert.equal(actions.length, open[3] ? 3 : 2);
     assert.ok(actions.at(-2).input.prompt.includes(open[1]), 'Exact unchanged route URL');
     assert.match(actions.at(-1).input.prompt, /Open button directly to the right/);
+    assert.match(actions.at(-1).input.prompt, /BELOW its heading and ABOVE the Fullscreen/);
+    assert.match(actions.at(-1).input.prompt, /Do not tap the separate Sparkling Go runtime selector/);
     for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
     const contracts = steps.filter(s => s.node === 'native.sparkling').map(s => s.input);
     assert.deepEqual(contracts.slice(0, open[3] ? 3 : 2), open[3]
@@ -137,6 +139,9 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
   assert.match(actions[1].input.prompt, /Open button directly to the right/);
   assert.match(actions[2].input.prompt, /Open child with router.open/);
   assert.match(actions[3].input.prompt, /Close child with router.close/);
+  assert.match(actions[3].input.prompt, /exactly once/);
+  assert.match(actions[3].input.prompt, /parent page.*expected successful result/);
+  assert.match(actions[3].input.prompt, /Do not tap anything on the returned parent page/);
   for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
   assert.deepEqual(steps[1].input, { duration: 10000, unit: 'ms' });
 });

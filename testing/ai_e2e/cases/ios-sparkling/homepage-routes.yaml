@@ -16,7 +16,7 @@ cases:
           prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
           options: { deepLocate: true, cacheable: false }
       - aiAct:
-          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
           options: { deepLocate: true, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: legacy }
@@ -33,7 +33,7 @@ cases:
           prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
           options: { deepLocate: true, cacheable: false }
       - aiAct:
-          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
           options: { deepLocate: true, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: role }
@@ -47,7 +47,7 @@ cases:
           prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${canonicalParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
           options: { deepLocate: true, cacheable: false }
       - aiAct:
-          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
           options: { deepLocate: true, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: role }
@@ -65,7 +65,7 @@ cases:
           prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${mappedLegacyUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
           options: { deepLocate: true, cacheable: false }
       - aiAct:
-          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
           options: { deepLocate: true, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: sparkling }

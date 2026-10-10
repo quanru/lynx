@@ -42,7 +42,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
       const label = labels.get(value);
       assert.ok(label, 'Missing original visible label for ' + value);
       return { aiAct: {
-        prompt: `Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
+        prompt: `When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
         options: { deepLocate: true, cacheable: false },
       } };
     }),

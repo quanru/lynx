@@ -13,10 +13,10 @@ the original pixel baseline.
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
 | core/Event | Exact event counts and final inline style | Passed both platforms, first attempts, run 37948887444 |
-| core/Image | Cropped LynxView pixel baseline | Android passed first attempt, run 38018791030; iOS size mismatch, not accepted cross-platform |
+| core/Image | Cropped LynxView pixel baseline | Both platforms passed first attempts in run 38024427888; unchanged PNGs/thresholds |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
-| core/LayoutLinear | Pixel baseline | Android passed first attempt, run 38018791030; iOS size mismatch, not accepted cross-platform |
-| core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Android passed first attempt in run 38016020854; iOS pixel comparison fails at the unchanged threshold; not accepted cross-platform |
+| core/LayoutLinear | Pixel baseline | Both platforms passed first attempts in run 38024427888; unchanged PNGs/thresholds |
+| core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Both platforms passed first attempts in run 38024427888; unchanged PNGs/thresholds |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Implemented locally; iOS device validation pending |
@@ -42,8 +42,17 @@ Source AST replay executes the unchanged run and both assertion helpers on
 each platform; original fixture labels map ordinary actions to aiAct without
 direct DOM/CDP clicks. Count parsing is compared with Python regex/int, and
 occurrences use immediate non-overlapping Python semantics. This addition
-remains local while run 38024427888 is active. That run's Android 10-case job
-has passed; iOS and whole-run publication are pending.
+awaits hosted validation. Run 38024427888 passed Android 10/10 (one Event
+retry), iOS 14/17 and report/Pages publication. All three iOS pixel cases
+passed first attempts without changing baselines, cropping or thresholds.
+RawOpenSparkling, RouterOpenClose and VideoModes failed. Actual screenshots
+and recorded gestures show Open landing on the upper runtime selector and
+video scrolls below the left-hand gray fixture; RouterClose did return to the
+parent, then the model wrongly failed because Close was no longer visible.
+Intent corrections disambiguate the lower Open card, actual scrollable panel
+and expected post-close parent state. All original exact assertions and button
+counts remain; no selector/coordinate action or timeout relaxation is added.
+The corrections are not claimed device-verified until a new hosted run passes.
 
 Run 38021364503 at `32efbfc` passed Android 9/9 on first attempts, iOS 6/9,
 both builds and report/Pages publication. All six iOS pixel-attempt artifacts
@@ -62,9 +71,9 @@ Both source build and device execution now explicitly select the baseline
 toolchain and original iPhone 17. Simulator JSON selection rejects missing,
 ambiguous, unavailable, wrong-runtime and newer-device alternatives. Actual
 toolchain metadata is recorded and checked with the source SHA/checksum.
-All 133 model-free checks, typechecking and actionlint pass locally. Environment
-alignment is not yet a proven pixel fix; the next real device run must confirm
-old-fails/new-passes without changing any PNG, crop, comparator or threshold.
+All 133 model-free checks, typechecking and actionlint passed at that head.
+Environment alignment now has real old-fails/new-passes evidence in run
+38024427888 without changing any PNG, crop, comparator or threshold.
 
 The next prerequisite is a read-only DevTool TCP probe after the navigation
 smoke, using the existing PeerTalk wire protocol without Appium. It verifies
