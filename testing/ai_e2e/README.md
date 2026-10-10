@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 102 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 105 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 
@@ -138,6 +138,16 @@ the CDP capture rectangle through the case-owned device's public SDK read API.
 This diagnostic does not select a session, crop to baseline dimensions or
 change comparisons. It distinguishes native-view versus CDP rectangle drift
 from a changed environment; no root cause is inferred from dimensions alone.
+
+The next local `native-visible-session.ts` foundation correlates a displayed
+native view with exactly one DevTool session using unique requested/anchor tags,
+untrimmed original text and original native-point frame matching. A regression
+keeps an older, larger-ID parent alive at the same frame and still binds the
+displayed child; duplicate/ambiguous bindings, malformed DOM, transport errors
+and late responses fail. Three checks pass; this remains unwired and adds no
+device cases. Full-view replay of both captured iOS failures through unchanged
+driver/helper AST produces identical images and the same size rejection when
+given the same capture rectangle; WDA-frame equivalence is not yet established.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

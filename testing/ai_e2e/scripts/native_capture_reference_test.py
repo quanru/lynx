@@ -49,9 +49,13 @@ def replay_reference(wheel, evidence):
     def box(padding):
         return lynx_rect(rectangle(padding[0], padding[1], padding[2] - padding[0],
                                   padding[5] - padding[1]), is_absolute=True)
-    body = box(geometry["bodyPadding"])
-    element = box(geometry["elementPadding"])
-    absolute = element.get_rated_rect(rect, body.get_relative_rect(rect, body.value)).scale_to_rect(rect)
+    if geometry.get("elementPadding") is not None:
+        body = box(geometry["bodyPadding"])
+        element = box(geometry["elementPadding"])
+        absolute = element.get_rated_rect(rect, body.get_relative_rect(rect, body.value)).scale_to_rect(rect)
+    else:
+        # Original Image/LayoutLinear pass the entire native view rectangle.
+        absolute = rect
     helper_source = Path(__file__).resolve().parents[2] / "integration_test/test_script/lib/test_runner/mixin/img_diff_mixin.py"
     helper_classes = [node for node in ast.parse(helper_source.read_text()).body
                       if isinstance(node, ast.ClassDef)]
@@ -91,7 +95,7 @@ def replay_reference(wheel, evidence):
         migrated_error = None
         try:
             compare_native_pixels(migrated_actual, cv2.imread(str(evidence / "baseline.png")))
-        except NativePixelMismatch as error:
+        except (NativePixelMismatch, ValueError) as error:
             migrated_error = str(error)
         assert bool(original_error) == bool(migrated_error), (original_error, migrated_error)
         return {"platform": platform, "identicalPixels": True,

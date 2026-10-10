@@ -125,7 +125,7 @@ The next local Summary renderer change accepts an immediate first afterEach
 capture when the final failed assertion has no prior screenshot. It keeps the
 HTML link on the failed step, prefers preceding captures and rejects images
 after intervening actions or from older attempts. Both repository copies and
-regression tests are identical; 102 Node 22 checks pass locally. This is report
+regression tests are identical; 105 Node 22 checks pass locally. This is report
 evidence handling, not a pixel-baseline or assertion change.
 
 The next Sparkling foundation is a read-only WDA visibility reader, attached to
@@ -146,6 +146,15 @@ unchanged 720×876 baselines. TextEvent still fails twice at its known mismatch
 fraction. The next head retains visible WDA frames alongside CDP geometry as
 diagnostic evidence only, with no pixel/crop/baseline/tolerance change. Two
 checks cover malformed data, timeout and no follow-up reads after late replies.
+
+The next local visible-session resolver implements unique native-view/session
+pairing with exact requested/anchor tags and text, native-point geometry and
+bounded observations. Three regressions cover a surviving larger-ID parent,
+ambiguous/duplicate/malformed evidence and late responses. It is not connected
+to device cases yet. Optional full-view replay of Image/LayoutLinear captures
+through unchanged driver/helper AST gives identical pixels and size rejection
+for the same supplied rectangle; whether that rectangle matches the original
+native WDA wrapper still awaits current-run diagnostics.
 
 ### Preserved algorithm
 
