@@ -1,0 +1,1066 @@
+{
+  "basic-playback": [
+    {
+      "section": 2,
+      "type": "section",
+      "title": "--------Test2: Test play;-------"
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 2,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "playing",
+        "timeoutMs": 10000,
+        "message": "Play failed"
+      }
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "play_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "playing",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "timeupdate",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 2,
+      "type": "sleep",
+      "ms": 3000
+    },
+    {
+      "section": 3,
+      "type": "section",
+      "title": "--------Test3: Test pause;-------"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-pause",
+      "label": "Pause"
+    },
+    {
+      "section": 3,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "paused",
+        "timeoutMs": 10000,
+        "message": "Pause failed"
+      }
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "pause_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "paused",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 3,
+      "type": "sleep",
+      "ms": 1200
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "timeupdate",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 3,
+      "type": "sleep",
+      "ms": 2000
+    },
+    {
+      "section": 4,
+      "type": "section",
+      "title": "--------Test4: Test seek;-------"
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-seek",
+      "label": "Seek 2s"
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "seek_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 4,
+      "type": "sleep",
+      "ms": 1200
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "timeupdate",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 4,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "playing",
+        "timeoutMs": 10000,
+        "message": "Play after seek failed"
+      }
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "time-text",
+        "timeoutMs": 5000,
+        "currentTimeRange": {
+          "min": 2,
+          "max": 6,
+          "minInclusive": true
+        }
+      }
+    },
+    {
+      "section": 5,
+      "type": "section",
+      "title": "--------Test5: Test stop;-------"
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-stop",
+      "label": "Stop"
+    },
+    {
+      "section": 5,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "stopped",
+        "timeoutMs": 10000,
+        "message": "Stop failed"
+      }
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "stop_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "stopped",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 5,
+      "type": "sleep",
+      "ms": 1200
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "timeupdate",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 5,
+      "type": "sleep",
+      "ms": 2000
+    },
+    {
+      "section": 5,
+      "type": "capture",
+      "title": "stopped"
+    },
+    {
+      "section": 6,
+      "type": "section",
+      "title": "--------Test6: Test play after stop;-------"
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 6,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "playing",
+        "timeoutMs": 10000,
+        "message": "Play after stop failed"
+      }
+    },
+    {
+      "section": 6,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "play_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 6,
+      "type": "video",
+      "input": {
+        "tag": "time-text",
+        "timeoutMs": 5000,
+        "currentTimeRange": {
+          "min": 0,
+          "max": 5,
+          "minInclusive": false
+        }
+      }
+    },
+    {
+      "section": 6,
+      "type": "sleep",
+      "ms": 2000
+    },
+    {
+      "section": 7,
+      "type": "section",
+      "title": "--------Test7: Test play after ended;-------"
+    },
+    {
+      "section": 7,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 7,
+      "type": "tap",
+      "tag": "btn-seek-near-end",
+      "label": "Near End"
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "seek_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 7,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "ended",
+        "timeoutMs": 8000,
+        "message": "Video did not reach ended state"
+      }
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "ended",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "looped",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 7,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 7,
+      "type": "sleep",
+      "ms": 1200
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "timeupdate",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 7,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 7,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "playing",
+        "timeoutMs": 5000,
+        "message": "Play after ended failed"
+      }
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "callback-log",
+        "contains": "play_ok",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "playing",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 7,
+      "type": "video",
+      "input": {
+        "tag": "time-text",
+        "timeoutMs": 5000,
+        "currentTimeRange": {
+          "min": 0,
+          "max": 5,
+          "minInclusive": false
+        }
+      }
+    },
+    {
+      "section": 7,
+      "type": "sleep",
+      "ms": 2000
+    }
+  ],
+  "basic-loop": [
+    {
+      "section": 9,
+      "type": "section",
+      "title": "--------Test9: Test play to end with loop;-------"
+    },
+    {
+      "section": 9,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 9,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "playing",
+        "timeoutMs": 10000,
+        "message": "Loop play failed"
+      }
+    },
+    {
+      "section": 9,
+      "type": "tap",
+      "tag": "btn-seek-near-end",
+      "label": "Near End"
+    },
+    {
+      "section": 9,
+      "type": "core",
+      "input": {
+        "tag": "looped-state",
+        "text": "looped",
+        "timeoutMs": 15000,
+        "message": "Loop event not observed"
+      }
+    },
+    {
+      "section": 9,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "looped",
+          "value": 1
+        },
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "section": 9,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countEquals": {
+          "key": "ended",
+          "value": 0
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 9,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 9,
+      "type": "video",
+      "input": {
+        "tag": "time-text",
+        "timeoutMs": 5000,
+        "currentTimeRange": {
+          "min": 0,
+          "max": 5,
+          "minInclusive": false
+        }
+      }
+    },
+    {
+      "section": 9,
+      "type": "capture",
+      "title": "loop"
+    }
+  ],
+  "basic-ready": [
+    {
+      "section": 1,
+      "type": "core",
+      "input": {
+        "tag": "status-text",
+        "text": "ready",
+        "timeoutMs": 10000,
+        "message": "Video not ready"
+      }
+    }
+  ],
+  "attributes-playback": [
+    {
+      "section": 2,
+      "type": "section",
+      "title": "--------Test2: Test object-fit attrs with screenshots;-------"
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-object-contain",
+      "label": "Contain"
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "fit=contain",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 2,
+      "type": "capture",
+      "title": "fit_contain"
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-object-cover",
+      "label": "Cover"
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "fit=cover",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 2,
+      "type": "capture",
+      "title": "fit_cover"
+    },
+    {
+      "section": 2,
+      "type": "tap",
+      "tag": "btn-object-fill",
+      "label": "Fill"
+    },
+    {
+      "section": 2,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "fit=fill",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 2,
+      "type": "capture",
+      "title": "fit_fill"
+    },
+    {
+      "section": 3,
+      "type": "section",
+      "title": "--------Test3: Test speed attr affects playback progress;-------"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-pause",
+      "label": "Pause"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "paused",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-speed-half",
+      "label": "0.5x"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "speed=0.5",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-seek-start",
+      "label": "Seek 0s"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "sleep",
+      "ms": 2500
+    },
+    {
+      "section": 3,
+      "type": "sample",
+      "variable": "slow_time",
+      "tag": "time-text"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-pause",
+      "label": "Pause"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "paused",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-speed-double",
+      "label": "2x"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "speed=2.0",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-seek-start",
+      "label": "Seek 0s"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 3,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 3,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 3,
+      "type": "sleep",
+      "ms": 2500
+    },
+    {
+      "section": 3,
+      "type": "sample",
+      "variable": "fast_time",
+      "tag": "time-text"
+    },
+    {
+      "section": 3,
+      "type": "guard",
+      "condition": "fast_time < 3.0 or fast_time <= slow_time + 1.5"
+    },
+    {
+      "section": 4,
+      "type": "section",
+      "title": "--------Test4: Test timeupdate interval attr;-------"
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-pause",
+      "label": "Pause"
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "paused",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-speed-normal",
+      "label": "1x"
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "speed=1.0",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-timeupdate-slow",
+      "label": "1s Tick"
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "requestedInterval=1.0",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-seek-start",
+      "label": "Seek 0s"
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 4,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtLeast": {
+          "key": "timeupdate",
+          "value": 3
+        },
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "section": 4,
+      "type": "video",
+      "input": {
+        "tag": "min-timeupdate-delta",
+        "timeoutMs": 3000,
+        "floatAtLeast": 0.85
+      }
+    },
+    {
+      "section": 5,
+      "type": "section",
+      "title": "--------Test5: Test invalid timeupdate interval keeps previous valid value;-------"
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-pause",
+      "label": "Pause"
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "paused",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-timeupdate-zero",
+      "label": "Invalid 0s"
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "attr-state",
+        "contains": "requestedInterval=0.0",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-seek-start",
+      "label": "Seek 0s"
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 5,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 5,
+      "type": "sleep",
+      "ms": 3600
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "event-counts",
+        "countAtMost": {
+          "key": "timeupdate",
+          "value": 5
+        },
+        "immediate": true
+      }
+    },
+    {
+      "section": 5,
+      "type": "video",
+      "input": {
+        "tag": "min-timeupdate-delta",
+        "timeoutMs": 3000,
+        "floatAtLeast": 0.85
+      }
+    },
+    {
+      "section": 6,
+      "type": "section",
+      "title": "--------Test6: Test tiny positive timeupdate interval is accepted;-------"
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-stop",
+      "label": "Stop"
+    },
+    {
+      "section": 6,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "stopped",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-timeupdate-fast",
+      "label": "Fast Tick"
+    },
+    {
+      "section": 6,
+      "type": "video",
+      "input": {
+        "tag": "interval-state",
+        "equal": "0.001",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-seek-start",
+      "label": "Seek 0s"
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-clear-signals",
+      "label": "Clear"
+    },
+    {
+      "section": 6,
+      "type": "tap",
+      "tag": "btn-play",
+      "label": "Play"
+    },
+    {
+      "section": 6,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "playing",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "section": 6,
+      "type": "sleep",
+      "ms": 1200
+    },
+    {
+      "section": 6,
+      "type": "sample",
+      "variable": "fast_count",
+      "tag": "event-counts"
+    },
+    {
+      "section": 6,
+      "type": "guard",
+      "condition": "fast_count < 30"
+    }
+  ]
+}

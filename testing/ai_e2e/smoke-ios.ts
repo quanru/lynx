@@ -1,0 +1,11 @@
+import { writeFileSync } from 'node:fs';
+import { IOSDevice } from '@midscene/ios';
+const device = new IOSDevice({ wdaPort: 8100, wdaHost: 'localhost' });
+await device.connect();
+console.log('ios device connected via WDA');
+await device.launch('com.lynx.LynxExplorer');
+await new Promise((r) => setTimeout(r, 6000));
+const dataUrl: string = await device.screenshotBase64();
+writeFileSync('/tmp/midscene-ios.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
+console.log('screenshot saved');
+await device.destroy();

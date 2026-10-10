@@ -1,0 +1,55 @@
+afterEach:
+  - recordToReport: VideoAttributes final evidence, including failures
+cases:
+  - name: xelement/VideoAttributes
+    steps:
+      - recordToReport: Start isolated Explorer for VideoAttributes
+      - wait:
+          duration: 5000
+          unit: ms
+      - launch: ${videoUri}
+      - wait:
+          duration: 2000
+          unit: ms
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Vol 0.3" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: volume=0.3
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Mute" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: muted=true
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Unmute" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: muted=false
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Vol 1" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: volume=1.0
+          timeoutMs: 20000
+      - native.videoPhase:
+          phase: attributes-playback

@@ -1,0 +1,27 @@
+afterEach:
+  - recordToReport: Original router.open and router.close contract result
+cases:
+  - name: sparkling/RouterOpenClose
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${canonicalParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: sparkling }
+      - native.sparkling: { contract: rememberParent }
+      - aiAct:
+          prompt: Tap the button labelled "Open child with router.open" once. Do not tap "Open malformed canonical". Stop after the single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: child }
+      - native.sparkling: { contract: sparkling }
+      - native.sparkling: { contract: childIdentity }
+      - aiAct:
+          prompt: Return to the parent page by tapping the blue button labelled "Close child with router.close" exactly once. After that tap, the child page and its Close button disappear and the parent page with "Open child with router.open" appears; that is the expected successful result. Do not tap anything on the returned parent page.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: restoredParent }

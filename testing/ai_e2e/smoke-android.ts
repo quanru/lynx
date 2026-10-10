@@ -1,0 +1,12 @@
+import { writeFileSync } from 'node:fs';
+import { AndroidDevice, getConnectedDevices } from '@midscene/android';
+const devices = await getConnectedDevices();
+const device = new AndroidDevice(devices[0].udid);
+await device.connect();
+console.log('android device connected');
+await device.launch('com.lynx.explorer');
+await new Promise((r) => setTimeout(r, 6000));
+const dataUrl: string = await device.screenshotBase64();
+writeFileSync('/tmp/midscene-android.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
+console.log('screenshot saved');
+await device.destroy();
