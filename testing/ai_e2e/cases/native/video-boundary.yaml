@@ -16,10 +16,15 @@ cases:
           tag: status-text
           equal: ready
           timeoutMs: 20000
+      - native.videoPhase:
+          phase: replace-playing-source
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Play"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: In one interaction phase, click the single button labeled exactly "Play"
+            ONCE, then IMMEDIATELY click the single button labeled exactly "Src
+            B" ONCE while playback is still active. Plan both clicks together.
+            Do not wait for playback to end, repeat either click, or perform
+            another action. When scrolling, stay inside the actual video demo
+            panel, not the blank area outside it.
           options:
             deepLocate: true
             cacheable: false
@@ -27,13 +32,6 @@ cases:
           tag: status-text
           equal: playing
           timeoutMs: 20000
-      - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src B"
-            once. Do not click similarly named buttons or perform another
-            action.
-          options:
-            deepLocate: true
-            cacheable: false
       - native.video:
           tag: event-counts
           countAtLeast:
@@ -57,9 +55,11 @@ cases:
       - recordToReport:
           title: "Original VideoBoundary diagnostic screenshot: src_secondary"
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src Bad"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src Bad" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -78,9 +78,11 @@ cases:
           errorDetails: true
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src Empty"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src Empty" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -89,15 +91,19 @@ cases:
           equal: empty
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Play"
-            once. Do not click similarly named buttons or perform another
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Play" once. Do not click similarly named buttons or perform another
             action.
           options:
             deepLocate: true
@@ -133,15 +139,19 @@ cases:
             value: 1
           timeoutMs: 10000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Stop"
-            once. Do not click similarly named buttons or perform another
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
             deepLocate: true
@@ -155,9 +165,11 @@ cases:
           contains: stop_ok
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src A"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -166,9 +178,11 @@ cases:
           equal: ready
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Queue"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Queue" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -177,9 +191,11 @@ cases:
           contains: mode=queue
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Play Pause
-            Empty" once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Play Pause Empty" once. Do not click similarly named buttons or
+            perform another action.
           options:
             deepLocate: true
             cacheable: false
@@ -237,15 +253,19 @@ cases:
           notContains: pause_ok
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Stop"
-            once. Do not click similarly named buttons or perform another
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
             deepLocate: true
@@ -259,9 +279,11 @@ cases:
           contains: stop_ok
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src A"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -270,16 +292,20 @@ cases:
           equal: ready
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek
-            Empty" once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Empty" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -317,9 +343,11 @@ cases:
           notContains: seek_ok
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Src A"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -331,16 +359,20 @@ cases:
           duration: 1000
           unit: ms
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek Bad"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Bad" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -365,15 +397,19 @@ cases:
           contains: msg=position out of range
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek
-            Missing" once. Do not click similarly named buttons or perform
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Missing" once. Do not click similarly named buttons or perform
             another action.
           options:
             deepLocate: true
@@ -399,16 +435,20 @@ cases:
           contains: msg=missing position param
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek Null"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Null" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -433,16 +473,20 @@ cases:
           contains: msg=missing position param
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek Text"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Text" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -467,50 +511,20 @@ cases:
           contains: msg=position param must be a number
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek NaN"
-            once. Do not click similarly named buttons or perform another
-            action.
-          options:
-            deepLocate: true
-            cacheable: false
-      - native.video:
-          tag: callback-log
-          contains: seek_fail
-          timeoutMs: 20000
-      - native.video:
-          tag: callback-log
-          contains: seek_fail
-          immediate: true
-      - native.video:
-          tag: callback-log
-          contains: success=false
-          immediate: true
-      - native.video:
-          tag: callback-log
-          contains: errorCode=
-          immediate: true
-      - native.video:
-          tag: callback-log
-          contains: msg=position out of range
-          immediate: true
-      - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
-          options:
-            deepLocate: true
-            cacheable: false
-      - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek Inf"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek NaN" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -535,16 +549,20 @@ cases:
           contains: msg=position out of range
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Seek Huge"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Inf" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
@@ -569,16 +587,61 @@ cases:
           contains: msg=position out of range
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Play Null"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Seek Huge" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            deepLocate: true
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position out of range
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            deepLocate: true
+            cacheable: false
+      - native.videoPhase:
+          phase: stop-play-null
+      - aiAct:
+          prompt: In one interaction phase, click the single button labeled exactly "Play
+            Null" ONCE, then IMMEDIATELY click the single button labeled exactly
+            "Stop" ONCE while playback is still active. Plan both clicks
+            together. Do not wait for playback to end, repeat either click, or
+            perform another action. When scrolling, stay inside the actual video
+            demo panel, not the blank area outside it.
           options:
             deepLocate: true
             cacheable: false
@@ -594,28 +657,25 @@ cases:
           tag: callback-log
           contains: success=true
           timeoutMs: 20000
-      - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Stop"
-            once. Do not click similarly named buttons or perform another
-            action.
-          options:
-            deepLocate: true
-            cacheable: false
       - native.video:
           tag: status-text
           equal: stopped
           timeoutMs: 20000
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Clear"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly "Unknown"
-            once. Do not click similarly named buttons or perform another
-            action.
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Unknown" once. Do not click similarly named buttons or perform
+            another action.
           options:
             deepLocate: true
             cacheable: false

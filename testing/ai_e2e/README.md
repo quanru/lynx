@@ -1,5 +1,17 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+Latest local correction: Android 11 / iOS 18, 148 passing model-free checks
+and typechecking. VideoBoundary now groups its two playback-sensitive click
+pairs into standard aiAct phases with read-only progress-time assertions and
+fresh playback checks before the second tap. Original 36 taps, all payload
+assertions and thresholds remain; action-time JPEG evidence is reported.
+This is not device acceptance. Pushed head `69d8919` run 38028650562 passed
+Android 10/11; the first Play completed while the 10-second clip was playing,
+but AI replanning returned after it ended. iOS attempt 1 never reached cases
+because WDA startup timed out. Its same-head attempt 2 has started WDA and is
+now executing cases. Do not replace original timing contracts with visual
+judgments or cached-state success; see MIGRATION.md for the exact boundary.
+
 This current-source integration uses Midscene vision models to run
 the same YAML cases on Android and iOS. It connects directly through adb or
 WebDriverAgent without Appium. CI builds Explorer at the workflow revision with

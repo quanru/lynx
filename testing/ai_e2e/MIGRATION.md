@@ -33,6 +33,30 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+The newest local correction retains Android 11 / iOS 18 and passes 148
+model-free checks plus typechecking. Run 38028650562 Android passed 10/11;
+VideoBoundary failed both attempts because its first physical Play tap finished
+at 06:20:26, the recorded frame shows playing at 0.4/10 seconds, but subsequent
+AI planning returned only at 06:20:38. The original playing check therefore
+started after playback ended. iOS attempt 1 failed WDA startup before any case
+executed; its same-head job is being rerun, not counted as a case rejection.
+
+Two source-bound playing phases now group Play → Src B and Play Null → Stop
+into ordinary two-click aiAct instructions. The read-only native.videoPhase
+observer uses the public SDK progress API to execute unchanged playing/callback
+assertions between physical taps. A fresh playing read immediately before tap
+two rejects late source replacement/stop; cached success cannot hide ended
+playback. Every original assertion and all 36 taps remain, with exactly two
+completed taps required for each phase. No coordinates, scripted UI actions,
+new tolerance or longer timing window is introduced. Source-time JPEG evidence
+is attached to the assertion report in the same case/attempt. Wait failures keep
+their original diagnostic-before-final-read behavior. Observers are removed
+after consumption or case release, and SDK-swallowed listener errors are
+persisted and rethrown by the assertion node. This deterministic observer cannot
+be replaced by an AI visual judgment without losing the original timing/state
+contract. The correction is local and not yet device-accepted; VideoBasic and
+VideoAttributes still require source-equivalent click-relative sampling.
+
 The latest local extension collects Android 11 / iOS 18 with 136 model-free
 Node 22 checks and typechecking passing. VideoBoundary retains all original
 36 button actions, three fixed sleeps, ordered assertions, exact failure/error
