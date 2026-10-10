@@ -19,19 +19,41 @@ the original pixel baseline.
 | core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Both platforms passed first attempts in run 38024427888; unchanged PNGs/thresholds |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
-| sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Implemented locally; iOS device validation pending |
-| sparkling/HotExternalURL | Hot external route and container/session ownership | Implemented locally; iOS device validation pending |
-| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Implemented locally; iOS device validation pending |
-| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Implemented locally; iOS device validation pending |
-| sparkling/RawOpenLegacy | Raw legacy routing and mode | Implemented locally; iOS device validation pending |
-| sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Implemented locally; iOS device validation pending |
-| sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Implemented locally; iOS device validation pending |
+| sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Passed iOS, run 38039839927 |
+| sparkling/HotExternalURL | Hot external route and container/session ownership | Passed iOS, run 38039839927 |
+| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Implemented; visibility check failed iOS, run 38039839927 |
+| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Implemented; visibility check failed iOS, run 38039839927 |
+| sparkling/RawOpenLegacy | Raw legacy routing and mode | Passed iOS, run 38039839927 |
+| sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Passed iOS, run 38039839927 |
+| sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Passed iOS, run 38039839927 |
 | xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
 | xelement/VideoBoundary | Original boundary/error callback contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoModes | Original mode-specific callback/state contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoAttributes | Original attribute, timing and event contracts | Pending |
 
 ## Prerequisites and acceptance
+
+Latest completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
+14/18; builds and report publication passed. Android's first VideoBoundary
+attempt passed its prelocated playing/source-switch fragment, then failed the
+Seek Empty `seek_fail` expectation with `seek_ok:success=true`. The actual
+SDK screenshot/point is on Seek Empty; this is not evidence of a wrong-button
+tap or a proven product defect. Its second attempt failed a CDP document read.
+iOS failed both video cases during visibility/scroll preparation, before the
+timed physical taps. The initial frame contains only video/status; its repeated
+scrolls do not reveal the buttons. Two Sparkling visibility cases also failed.
+Previous passes do not override these current-head failures.
+
+VideoBasic now has complete unchanged Python callback replay: 20 ordered
+button actions, twelve sleeps, three screenshots, nine sections and all wait,
+counter and predicate contracts. Core wait_for_equal defaults to 10 seconds;
+video helpers have independent 20/10-second defaults and failure semantics.
+The original time parser and every predicate are replayed, including inclusive
+seek and exclusive restart/loop bounds. This adds two model-free checks only,
+not a YAML/device case. Click-relative execution and iOS button visibility must
+be validated before counting VideoBasic or VideoAttributes as migrated.
+
+The older checkpoints below retain their then-current status.
 
 The next timing implementation retains the two strict VideoBoundary fragments
 as source-bound native.videoPhase nodes, as approved. Visibility preparation
