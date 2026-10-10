@@ -108,9 +108,18 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 94 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 98 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
+
+`native-wda.ts` prepares the read-only visibility binding required by Sparkling.
+It attaches only to an explicitly owned WDA session, scopes anchor searches to
+displayed LynxViews and preserves the original anchor priority and text sources.
+Duplicate displayed input types remain observable; malformed responses fail.
+Requests share a bounded deadline, including response-body decoding. It exposes
+no action or session-management methods. Four HTTP/source-parity tests cover
+these boundaries. This foundation is not yet wired into device cases and adds
+no migrated or accepted cases.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline
