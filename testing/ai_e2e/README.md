@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 93 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 94 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 

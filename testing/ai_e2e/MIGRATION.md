@@ -121,6 +121,12 @@ python testing/ai_e2e/scripts/native_capture_reference_test.py \
 
 The wheel remains an optional read-only diagnostic reference, never a CI
 runtime dependency. The failed pixel contract remains a failing gate.
+The next local Summary renderer change accepts an immediate first afterEach
+capture when the final failed assertion has no prior screenshot. It keeps the
+HTML link on the failed step, prefers preceding captures and rejects images
+after intervening actions or from older attempts. Both repository copies and
+regression tests are identical; 94 Node 22 checks pass locally. This is report
+evidence handling, not a pixel-baseline or assertion change.
 
 ### Preserved algorithm
 

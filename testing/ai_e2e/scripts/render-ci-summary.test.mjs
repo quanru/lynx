@@ -289,6 +289,97 @@ test('standard report captures survive a later exact assertion failure without m
   );
 });
 
+test('immediate failures use only a direct final-attempt cleanup capture, not later actions or older attempts', async t => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-aftereach-preview-'),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, 'source'));
+  const file = path.join(root, 'source', 'report.html');
+  const html = `<script type="midscene_web_dump" data-report-id="report-1">${
+    JSON.stringify({
+      executions: [
+        {
+          id: 'execution-1',
+          tasks: [{
+            recorder: [{ type: 'screenshot', screenshot: { id: 'old' } }],
+          }],
+        },
+        {
+          id: 'cleanup-execution',
+          tasks: [{
+            recorder: [{ type: 'screenshot', screenshot: { id: 'current' } }],
+          }],
+        },
+      ],
+    })
+  }</script><script type="midscene-image" data-id="old">data:image/png;base64,AQID</script><script type="midscene-image" data-id="current">data:image/png;base64,BAUG</script>`;
+  await writeFile(file, html);
+  for (
+    const mode of [
+      'direct',
+      'prior-cleanup-action',
+      'continued-case-action',
+      'older-attempt-only',
+    ]
+  ) {
+    const dump = structuredClone(run);
+    const item = dump.projects[0].documents[0].cases[0];
+    item.status = 'failed';
+    const cleanup = {
+      id: 'final:afterEach:0',
+      node: 'recordToReport',
+      status: 'success',
+      agentDetails: [{
+        reportId: 'report-1',
+        executionId: 'cleanup-execution',
+      }],
+    };
+    const final = {
+      attemptId: 'final',
+      beforeEach: [],
+      steps: [{ id: 'final:steps:0', node: 'web.expect', status: 'failed' }],
+      afterEach: [cleanup],
+    };
+    if (mode === 'prior-cleanup-action') {
+      final.afterEach.unshift({
+        id: 'cleanup-action',
+        node: 'gotoUrl',
+        status: 'success',
+      });
+    }
+    if (mode === 'continued-case-action') {
+      final.steps.push({ id: 'continued', node: 'aiAct', status: 'success' });
+    }
+    if (mode === 'older-attempt-only') final.afterEach = [];
+    item.attempts.push(final);
+    const site = path.join(root, mode);
+    const [entry] = await preparePagesSite({
+      entries: [{
+        label: 'Web',
+        result: 'failure',
+        report: { dump, file, html },
+      }],
+      siteDirectory: site,
+    });
+    assert.equal(entry.cases[0].stepId, 'final:steps:0');
+    if (mode === 'direct') {
+      assert.deepEqual(
+        await readFile(path.join(site, entry.cases[0].previewPath)),
+        Buffer.from([4, 5, 6]),
+      );
+      assert.match(
+        renderSummary({
+          title: 'Failure',
+          pagesUrl: 'https://example.invalid',
+          entries: [entry],
+        }),
+        /runner-step=final%3Asteps%3A0"><img/,
+      );
+    } else assert.equal(entry.cases[0].previewPath, undefined, mode);
+  }
+});
+
 test('escapes report-provided Markdown in failure rows', () => {
   const failedRun = structuredClone(run);
   failedRun.status = 'failed';

@@ -282,11 +282,22 @@ export async function preparePagesSite(
     const cases = [];
     for (const [index, testCase] of rawCases(entry.report.dump).entries()) {
       const step = selectedStep(testCase);
-      // Exact assertion nodes may fail without an agent trace. Keep the link
-      // on the failed step, but use the nearest preceding screenshot as preview.
-      const steps = allAttemptSteps(testCase.attempts?.at(-1));
+      // Keep the link on the failure. Prefer its nearest preceding capture.
+      // An immediate assertion may have no prior capture; only accept a direct
+      // first afterEach record, with no intervening case/cleanup action. Never
+      // borrow another attempt's image or a screenshot taken after navigation.
+      const attempt = testCase.attempts?.at(-1);
+      const steps = allAttemptSteps(attempt);
       const preceding = steps.slice(0, steps.indexOf(step) + 1).reverse();
-      const screenshot = preceding.map(item =>
+      const cleanup = attempt?.afterEach?.[0];
+      const candidates = [...preceding];
+      if (
+        step?.status === 'failed' && attempt?.steps?.at(-1) === step
+        && cleanup?.node === 'recordToReport' && cleanup.status === 'success'
+      ) {
+        candidates.push(cleanup);
+      }
+      const screenshot = candidates.map(item =>
         screenshotForStep(item, evidence)
       ).find(Boolean);
       const screenshotContent = await screenshotBytes(
