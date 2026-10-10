@@ -1,0 +1,72 @@
+# Preserve the real restarted homepage flow; do not deep-link directly to the destination.
+# Original restart/pre-case readiness windows: 3 + 5 + 2 seconds.
+afterEach:
+  - recordToReport: Original Sparkling routing and capability result
+cases:
+  - name: sparkling/RawOpenLegacy
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: Tap the "Lynx" runtime choice in the segmented selector above the Bundle URL card once. Do not tap the Open button or navigate away.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: runtime, runtime: lynx }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: legacy }
+  - name: sparkling/RawOpenSparkling
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: Tap the "Sparkling Go" runtime choice in the segmented selector above the Bundle URL card once. Do not tap the Open button or navigate away.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: runtime, runtime: sparkling }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: role }
+      - native.sparkling: { contract: sparkling }
+  - name: sparkling/CanonicalSparkling
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${canonicalParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: role }
+      - native.sparkling: { contract: sparkling }
+  - name: sparkling/MappedLegacyToSparkling
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: Tap the "Sparkling Go" runtime choice in the segmented selector above the Bundle URL card once. Do not tap the Open button or navigate away.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: runtime, runtime: sparkling }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${mappedLegacyUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the Open button directly to the right of the Bundle URL input once. It belongs to that card, not a showcase item or another route. Stop after that single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: sparkling }
+      - native.sparkling: { contract: mapped }

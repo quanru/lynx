@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 105 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 116 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 
@@ -117,9 +117,10 @@ It attaches only to an explicitly owned WDA session, scopes anchor searches to
 displayed LynxViews and preserves the original anchor priority and text sources.
 Duplicate displayed input types remain observable; malformed responses fail.
 Requests share a bounded deadline, including response-body decoding. It exposes
-no action or session-management methods. Four HTTP/source-parity tests cover
-these boundaries. This foundation is not yet wired into device cases and adds
-no migrated or accepted cases.
+no action or session-management methods. Five HTTP/source-parity tests cover
+these boundaries, including the public case-owned device adapter without SDK
+private fields. It is now wired into four local Sparkling cases; none has
+device acceptance yet.
 
 `native-visible-geometry.ts` also preserves the original WDA-point coordinate
 normalization and Python two-decimal rounding, separately from physical pixel
@@ -144,10 +145,24 @@ native view with exactly one DevTool session using unique requested/anchor tags,
 untrimmed original text and original native-point frame matching. A regression
 keeps an older, larger-ID parent alive at the same frame and still binds the
 displayed child; duplicate/ambiguous bindings, malformed DOM, transport errors
-and late responses fail. Three checks pass; this remains unwired and adds no
-device cases. Full-view replay of both captured iOS failures through unchanged
+and late responses fail. Three checks pass. Full-view replay of both captured iOS failures through unchanged
 driver/helper AST produces identical images and the same size rejection when
 given the same capture rectangle; WDA-frame equivalence is not yet established.
+
+`cases/ios-sparkling/homepage-routes.yaml` adds four original iOS-only flows:
+RawOpenLegacy, RawOpenSparkling, CanonicalSparkling and MappedLegacyToSparkling.
+Local SDK collection is Android 9 / iOS 13. Explorer restarts once per attempt;
+the real homepage is not opened a second time or bypassed with a deep link.
+Standard `aiAct` selects the visible runtime, replaces the exact original URL
+and taps Open. Original restart/pre-case readiness totals ten seconds (3+5+2).
+`native.sparkling` retains exact route/capability checks, nonempty/forbidden
+values, one displayed native XElement text field and all seven mapped options.
+Homepage and legacy parent handles remain on their original session across
+rerenders; subsequent routing phases explicitly re-observe the visible page.
+Sockets close before devices; released attempts/project teardown cannot reopen
+sessions. Original Python run functions and helper predicates are replayed for
+source parity, with no device, AI or model credentials. This local batch is not
+pushed while run 38021364503 remains active and is not accepted coverage.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

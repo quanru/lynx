@@ -10,7 +10,7 @@ const source = readFileSync(new URL('../midscene.config.ts', import.meta.url), '
 const yaml = readFileSync(new URL('../cases/native/explorer.yaml', import.meta.url), 'utf8');
 const require = createRequire(new URL('../midscene.config.ts', import.meta.url));
 
-function loadProject(failLaunch = false) {
+function loadProject(failLaunch = false, visibleBinding = false) {
   const events = [];
   let id = 0;
   class Device {
@@ -42,6 +42,22 @@ function loadProject(failLaunch = false) {
     }) },
   };
   const module = { exports: {} };
+  if (visibleBinding) modules['./native-visible-sessions.ts'] = { createVisibleNativeSessions() {
+    const active = new Set();
+    return {
+      async observe(runId, tag) {
+        active.add(runId);
+        events.push(['visible', 'observe', runId, tag]);
+        return { sessionId: 7, viewId: 'homepage', readDocument: async () => ({ nodeId: 0, nodeName: '#document', children: [
+          { nodeId: 1, nodeName: 'text', attributes: ['lynx-test-tag', 'bundle-runtime-label'], children: [
+            { nodeId: 2, nodeName: 'raw-text', attributes: ['text', 'Open with Lynx'] },
+          ] },
+        ] }) };
+      },
+      release(runId) { if (active.delete(runId)) events.push(['visible', 'close', runId]); },
+      releaseAll() { for (const runId of [...active]) this.release(runId); },
+    };
+  } };
   vm.runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { module, exports: module.exports, require: name => modules[name] ?? require(name), process });
@@ -101,4 +117,28 @@ test('Native YAML retains assertions but uses standard readiness nodes', () => {
   assert.doesNotMatch(yaml, /- wait:/);
   assert.equal((yaml.match(/- aiAssert:/g) ?? []).length, 4);
   assert.match(yaml, /scaleToFill.*aspectFit/);
+});
+
+test('Sparkling handles belong to one iOS attempt and close before its device, never reopening after release or teardown', async () => {
+  const { project, events } = loadProject(false, true);
+  const teardowns = [];
+  const context = await project.projects.find(p => p.name === 'ios-explorer').setup.setup({ onTeardown(fn) { teardowns.push(fn); } });
+  await context.runSparklingContract('case-1', { contract: 'home' });
+  await context.runSparklingContract('case-1', { contract: 'runtime', runtime: 'lynx' });
+  const agent = await context.agentRegistry.getAgent('case-1');
+  await context.agentRegistry.releaseAgent('case-1');
+  const close = events.findIndex(e => e[0] === 'visible' && e[1] === 'close');
+  const destroy = events.findIndex(e => e[0] === agent.device.id && e[1] === 'destroy');
+  assert.ok(close >= 0 && close < destroy);
+  const launches = events.filter(e => e[1] === 'launch').length;
+  await assert.rejects(context.runSparklingContract('case-1', { contract: 'home' }), /released/);
+  await assert.rejects(context.agentRegistry.getAgent('case-1'), /released/);
+  assert.equal(events.filter(e => e[1] === 'launch').length, launches);
+  await assert.rejects(context.runSparklingContract('case-2', { contract: 'runtime', runtime: 'lynx' }), /homepage binding/);
+  await context.agentRegistry.releaseAgent('case-2');
+  await context.runSparklingContract('case-3', { contract: 'home' });
+  for (const teardown of teardowns) await teardown();
+  await assert.rejects(context.agentRegistry.getAgent('new-case'), /released/);
+  await context.agentRegistry.releaseAgent('case-3');
+  assert.equal(events.filter(e => e[0] === 'visible' && e[1] === 'close').length, 2);
 });

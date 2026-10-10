@@ -16,6 +16,10 @@ import { runNativeCommand } from './native-command.ts';
 import type { NativeCommandInput } from './native-command.ts';
 import { expectNativePixels } from './native-pixels.ts';
 import { readVisibleViewEvidence } from './native-view-evidence.ts';
+import { createOwnedDeviceVisibilityReader } from './native-wda.ts';
+import { createVisibleNativeSessions } from './native-visible-sessions.ts';
+import { createSparklingContracts, sparklingRoutes } from './sparkling-contracts.ts';
+import type { SparklingContract } from './sparkling-contracts.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -39,6 +43,7 @@ interface ProjectContext {
   agentRegistry: AgentRegistry;
   getNativeSession(runId: string, fixture: NativeFixtureName): ReturnType<ReturnType<typeof createNativeSessions>['get']>;
   getNativeViewEvidence?(runId: string): ReturnType<typeof readVisibleViewEvidence>;
+  runSparklingContract?(runId: string, input: SparklingContract): Promise<void>;
 }
 
 const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixtureName }, void, ProjectContext>({
@@ -48,6 +53,17 @@ const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixture
     if (execution.scope !== 'case') throw new Error('native.expect requires case scope.');
     const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
     await expectNativeValue(session.readDocument, execution.input);
+  },
+});
+
+const sparklingNode = defineNode<SparklingContract, void, ProjectContext>({
+  name: 'native.sparkling',
+  description: 'Preserve original iOS Sparkling visible-session, route, capability and native XElement input contracts.',
+  async execute(execution) {
+    if (execution.scope !== 'case' || execution.context.platform !== 'ios' || !execution.context.runSparklingContract) {
+      throw new Error('Sparkling contracts require an iOS case-owned session.');
+    }
+    await execution.context.runSparklingContract(execution.case.runId, execution.input);
   },
 });
 
@@ -97,7 +113,7 @@ const nodesFor = (
         return slot.current.releaseAgent(runId);
       },
     } satisfies AgentProvider<ProjectContext>,
-  }), nativeExpectNode, nativeCommandNode, nativePixelsNode];
+  }), nativeExpectNode, nativeCommandNode, nativePixelsNode, sparklingNode];
 
 // Android connects directly through adb without Appium or Espresso. Use
 // ANDROID_SERIAL to select a device when several are connected; otherwise use
@@ -175,11 +191,23 @@ const iosSetup = defineProjectSetup<ProjectContext>({
     await probe.destroy();
 
     const runs = new Map<string, { device: IOSDevice; agent: IOSAgent }>();
+    const releasedRuns = new Set<string>();
+    let disposed = false;
     const nativeSessions = createNativeSessions(() => connectDevtool({
       port: Number(process.env.DEVTOOL_PORT ?? 8901),
     }));
     onTeardown(() => nativeSessions.releaseAll());
+    const sparklingContracts = new Map<string, ReturnType<typeof createSparklingContracts>>();
+    const visibilityReader = async (runId: string) => {
+      const { device } = await ensure(runId);
+      return createOwnedDeviceVisibilityReader((method, endpoint, data) => device.runWdaRequest(method, endpoint, data));
+    };
+    const visibleSessions = createVisibleNativeSessions(() => connectDevtool({
+      port: Number(process.env.DEVTOOL_PORT ?? 8901),
+    }), visibilityReader);
+    onTeardown(() => { disposed = true; visibleSessions.releaseAll(); sparklingContracts.clear(); });
     const ensure = async (runId: string) => {
+      if (disposed || releasedRuns.has(runId)) throw new Error('iOS case was already released.');
       let entry = runs.get(runId);
       if (!entry) {
         const device = new IOSDevice({ wdaPort, wdaHost });
@@ -190,13 +218,24 @@ const iosSetup = defineProjectSetup<ProjectContext>({
         // WDA launch preserves deep navigation state. Terminate and launch once
         // per case run before its first AI node, preserving home-screen isolation.
         await device.terminate('com.lynx.LynxExplorer');
+        if (releasedRuns.has(runId)) throw new Error('iOS case was released during startup.');
         await device.launch('com.lynx.LynxExplorer');
+        if (releasedRuns.has(runId)) throw new Error('iOS case was released during startup.');
       }
       return entry;
     };
 
     return {
       platform: 'ios',
+      async runSparklingContract(runId, input) {
+        await ensure(runId);
+        let contract = sparklingContracts.get(runId);
+        if (!contract) {
+          contract = createSparklingContracts((tag, expectedText, timeoutMs) => visibleSessions.observe(runId, tag, expectedText, timeoutMs), await visibilityReader(runId));
+          sparklingContracts.set(runId, contract);
+        }
+        await contract(input);
+      },
       async getNativeViewEvidence(runId) {
         const { device } = await ensure(runId);
         // Public SDK API scopes these reads to this case's existing WDA session.
@@ -210,6 +249,9 @@ const iosSetup = defineProjectSetup<ProjectContext>({
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
         async releaseAgent(runId) {
+          releasedRuns.add(runId);
+          visibleSessions.release(runId);
+          sparklingContracts.delete(runId);
           nativeSessions.release(runId);
           const entry = runs.get(runId);
           if (!entry) return;
@@ -253,10 +295,10 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear') },
+      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
-      files: { include: ['cases/native/**/*.{yaml,yml}'] },
+      files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },
       retry: 1,
     },
   ],

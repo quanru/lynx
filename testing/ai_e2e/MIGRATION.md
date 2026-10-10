@@ -13,18 +13,18 @@ the original pixel baseline.
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
 | core/Event | Exact event counts and final inline style | Passed both platforms, first attempts, run 37948887444 |
-| core/Image | Cropped LynxView pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
+| core/Image | Cropped LynxView pixel baseline | Android passed first attempt, run 38018791030; iOS size mismatch, not accepted cross-platform |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
-| core/LayoutLinear | Pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
+| core/LayoutLinear | Pixel baseline | Android passed first attempt, run 38018791030; iOS size mismatch, not accepted cross-platform |
 | core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Android passed first attempt in run 38016020854; iOS pixel comparison fails at the unchanged threshold; not accepted cross-platform |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
-| sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Pending, iOS |
+| sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Implemented locally; iOS device validation pending |
 | sparkling/HotExternalURL | Hot external route and container/session ownership | Pending, iOS |
 | sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Pending, iOS |
-| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Pending, iOS |
-| sparkling/RawOpenLegacy | Raw legacy routing and mode | Pending, iOS |
-| sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Pending, iOS |
+| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Implemented locally; iOS device validation pending |
+| sparkling/RawOpenLegacy | Raw legacy routing and mode | Implemented locally; iOS device validation pending |
+| sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Implemented locally; iOS device validation pending |
 | sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Pending, iOS |
 | xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
 | xelement/VideoBoundary | Original boundary/error callback contracts | Pending |
@@ -125,15 +125,15 @@ The next local Summary renderer change accepts an immediate first afterEach
 capture when the final failed assertion has no prior screenshot. It keeps the
 HTML link on the failed step, prefers preceding captures and rejects images
 after intervening actions or from older attempts. Both repository copies and
-regression tests are identical; 105 Node 22 checks pass locally. This is report
+regression tests are identical; 116 Node 22 checks pass locally. This is report
 evidence handling, not a pixel-baseline or assertion change.
 
 The next Sparkling foundation is a read-only WDA visibility reader, attached to
 an explicit case-owned session. It preserves displayed-view scoping, ordered
 anchors, native text sources and duplicate input types from the original helper.
-Four HTTP/source-parity checks include malformed visibility and a stalled JSON
-body deadline. It is not wired into device cases yet and adds no case count;
-route phase ownership and integration remain required. The geometry foundation
+Five HTTP/source-parity checks include malformed visibility, a stalled JSON
+body deadline and the public case-owned device reader. Local routing phases
+now share only their case socket, not a globally selected newest session. The geometry foundation
 preserves native-point normalization, original operation order and Python
 two-decimal rounding. It matches 2,000 unchanged-public-driver geometries and
 2,005 original Sparkling rectangle-correspondence results. No physical-pixel
@@ -150,11 +150,24 @@ checks cover malformed data, timeout and no follow-up reads after late replies.
 The next local visible-session resolver implements unique native-view/session
 pairing with exact requested/anchor tags and text, native-point geometry and
 bounded observations. Three regressions cover a surviving larger-ID parent,
-ambiguous/duplicate/malformed evidence and late responses. It is not connected
-to device cases yet. Optional full-view replay of Image/LayoutLinear captures
+ambiguous/duplicate/malformed evidence and late responses. Optional full-view replay of Image/LayoutLinear captures
 through unchanged driver/helper AST gives identical pixels and size rejection
 for the same supplied rectangle; whether that rectangle matches the original
 native WDA wrapper still awaits current-run diagnostics.
+
+Four local Sparkling implementations bring collection to Android 9 / iOS 13,
+with all 116 Node 22 checks, typechecking and workflow lint passing. They retain
+the real restarted homepage, original 3+5+2 second readiness, exact URLs and
+Open route action, with ordinary runtime/typing/tap actions through `aiAct`.
+Python original run functions are replayed to check every acceptance statement.
+Capability checks retain the original forbidden values, exact native input type
+and cardinality, and all seven mapped properties. Bound homepage and legacy
+parent reads do not rediscover SessionList after rerender. Explicit later phases
+re-observe native visibility and text/frame identity; teardown closes sockets
+before devices and prevents late operations reopening a released attempt.
+This batch is not pushed while useful native CI is active and has no device
+acceptance. Hot external URL, malformed canonical alert and router push/pop
+contracts remain pending, as do all four XElement video modules.
 
 ### Preserved algorithm
 

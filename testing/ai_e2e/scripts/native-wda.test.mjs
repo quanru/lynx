@@ -4,9 +4,30 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { attachNativeVisibilityReader, displayAnchors, nativeXPathLiteral } from '../native-wda.ts';
+import { attachNativeVisibilityReader, createOwnedDeviceVisibilityReader, displayAnchors, nativeXPathLiteral } from '../native-wda.ts';
 
 const element = id => ({ 'element-6066-11e4-a52e-4f735466cecf': id });
+
+test('public case-owned device reader exposes only native reads and stops after late SDK replies', async () => {
+  const calls = [];
+  const reader = createOwnedDeviceVisibilityReader(async (method, endpoint, data) => {
+    calls.push([method, endpoint, data]);
+    if (endpoint === '/elements') return { value: [element('input')] };
+    if (endpoint.endsWith('/displayed')) return { value: true };
+    if (endpoint.endsWith('/attribute/type')) return { value: 'XCUIElementTypeTextField' };
+    assert.fail(endpoint);
+  });
+  assert.deepEqual(await reader.displayedTypes('nav-xelement-input'), ['XCUIElementTypeTextField']);
+  assert.ok(calls.every(c => c[0] === 'GET' || c[0] === 'POST' && c[1] === '/elements'));
+  assert.deepEqual(Object.keys(reader), ['contexts', 'displayedTypes']);
+  let release, reads = 0;
+  const late = createOwnedDeviceVisibilityReader(() => { reads++; return new Promise(resolve => { release = resolve; }); });
+  const observation = late.contexts('nav-role', 10);
+  await assert.rejects(observation, /timed out/);
+  release({ value: [element('late')] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads, 1);
+});
 async function server(t, respond) {
   const requests = [];
   const http = createServer(async (request, response) => {

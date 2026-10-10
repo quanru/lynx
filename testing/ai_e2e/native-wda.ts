@@ -33,6 +33,33 @@ function nativeRect(value: unknown): NativeRect {
   return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
+function responseValue(result: unknown): unknown {
+  if (!result || typeof result !== 'object' || !Object.hasOwn(result, 'value')) {
+    throw new Error('Invalid native WDA response.');
+  }
+  const value = (result as { value: unknown }).value;
+  if (value && typeof value === 'object' && Object.hasOwn(value, 'error')) throw new Error('Invalid native WDA response.');
+  return value;
+}
+
+// The public IOSDevice.runWdaRequest API already binds to that case's session.
+// Do not create another WDA session or inspect the device's private backend.
+export function createOwnedDeviceVisibilityReader(readRequest: (method: 'GET' | 'POST', endpoint: string, data?: Record<string, string>) => Promise<unknown>) {
+  return nativeVisibilityReader(async (endpoint, deadline, data) => {
+    const timeout = deadline - Date.now();
+    if (timeout <= 0) throw new Error('Native visibility observation timed out.');
+    let timer: ReturnType<typeof setTimeout>;
+    try {
+      const result = await Promise.race([
+        readRequest(data ? 'POST' : 'GET', endpoint, data),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Native visibility observation timed out.')), timeout); }),
+      ]);
+      if (Date.now() >= deadline) throw new Error('Native visibility observation timed out.');
+      return responseValue(result);
+    } finally { clearTimeout(timer!); }
+  });
+}
+
 // Attach to an explicitly owned case session. Never discover or choose the
 // newest WDA session, access SDK private fields, or add a selector-based action.
 // The returned surface contains only native reads; it cannot close that session.
@@ -52,13 +79,12 @@ export function attachNativeVisibilityReader(options: { sessionId: string; host:
       body: data ? JSON.stringify(data) : undefined,
     });
     if (!response.ok) throw new Error(`Native WDA read failed (HTTP ${response.status}).`);
-    const result = await response.json();
-    if (!result || typeof result !== 'object' || !Object.hasOwn(result, 'value')
-      || result.value && typeof result.value === 'object' && Object.hasOwn(result.value, 'error')) {
-      throw new Error('Invalid native WDA response.');
-    }
-    return result.value;
+    return responseValue(await response.json());
   }
+  return nativeVisibilityReader(read);
+}
+
+function nativeVisibilityReader(read: (endpoint: string, deadline: number, data?: Record<string, string>) => Promise<unknown>) {
   const endpoint = (id: string, suffix: string) => '/element/' + encodeURIComponent(id) + '/' + suffix;
   async function displayed(id: string, deadline: number) {
     const value = await read(endpoint(id, 'displayed'), deadline);

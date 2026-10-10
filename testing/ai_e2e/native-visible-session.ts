@@ -4,6 +4,14 @@ import type { NativeClient } from './native-session.ts';
 import type { VisibleNativeContext } from './native-wda.ts';
 import { originalVisibleElementRect, visibleRectsCorrespond } from './native-visible-geometry.ts';
 
+export class VisibleNativeBindingError extends Error {
+  readonly matches: number;
+  constructor(matches: number) {
+    super(`Visible native binding requires one native-view/session pair; found ${matches}.`);
+    this.matches = matches;
+  }
+}
+
 function uniqueTag(root: NativeNode, tag: string): NativeNode | undefined {
   const stack = [root], matches: NativeNode[] = [];
   while (stack.length) {
@@ -68,6 +76,6 @@ export async function resolveVisibleNativeSession(client: NativeClient, contexts
       if (visibleRectsCorrespond(context.anchor.rect, rect)) matches.push({ sessionId, viewId: context.viewId, targetText });
     }
   }
-  if (matches.length !== 1) throw new Error(`Visible native binding requires one native-view/session pair; found ${matches.length}.`);
+  if (matches.length !== 1) throw new VisibleNativeBindingError(matches.length);
   return Object.freeze(matches[0]);
 }
