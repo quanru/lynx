@@ -20,6 +20,7 @@ import { createOwnedDeviceVisibilityReader } from './native-wda.ts';
 import { createVisibleNativeSessions } from './native-visible-sessions.ts';
 import { createSparklingContracts, sparklingRoutes } from './sparkling-contracts.ts';
 import type { SparklingContract } from './sparkling-contracts.ts';
+import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -228,10 +229,14 @@ const iosSetup = defineProjectSetup<ProjectContext>({
     return {
       platform: 'ios',
       async runSparklingContract(runId, input) {
-        await ensure(runId);
+        const { device } = await ensure(runId);
         let contract = sparklingContracts.get(runId);
         if (!contract) {
-          contract = createSparklingContracts((tag, expectedText, timeoutMs) => visibleSessions.observe(runId, tag, expectedText, timeoutMs), await visibilityReader(runId));
+          const request = (method: 'GET' | 'POST', endpoint: string, data?: unknown) => device.runWdaRequest(method, endpoint, data);
+          contract = createSparklingContracts((tag, expectedText, timeoutMs) => visibleSessions.observe(runId, tag, expectedText, timeoutMs), await visibilityReader(runId), {
+            readAlert: (timeoutMs) => readOwnedRouteAlert(request, timeoutMs),
+            openExternal: (route) => deliverOwnedExternalRoute(request, route),
+          });
           sparklingContracts.set(runId, contract);
         }
         await contract(input);

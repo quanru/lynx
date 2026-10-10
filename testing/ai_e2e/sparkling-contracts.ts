@@ -2,12 +2,15 @@ import { findTaggedNode, readNativeText } from './native-dom.ts';
 import { expectNativeValue } from './native-expectation.ts';
 import type { createVisibleNativeSessions } from './native-visible-sessions.ts';
 import type { createOwnedDeviceVisibilityReader } from './native-wda.ts';
+import { expectOwnedRouteAlert } from './sparkling-native-io.ts';
 
 type VisibleSessions = ReturnType<typeof createVisibleNativeSessions>;
 type BoundView = Awaited<ReturnType<VisibleSessions['observe']>>;
 type Reader = ReturnType<typeof createOwnedDeviceVisibilityReader>;
 type Observe = (tag: string, expectedText?: string, timeoutMs?: number) => Promise<BoundView>;
-export type SparklingContract = { contract: 'home' | 'parent' | 'role' | 'legacy' | 'sparkling' | 'mapped' }
+export type SparklingContract = { contract: 'home' | 'parent' | 'role' | 'legacy' | 'sparkling' | 'mapped'
+  | 'rememberParent' | 'child' | 'childIdentity' | 'restoredParent'
+  | 'alert' | 'alertDismissed' | 'malformedParent' | 'sameParent' | 'externalMalformed' | 'externalCanonical' }
   | { contract: 'runtime'; runtime: 'lynx' | 'sparkling' };
 
 export const sparklingCapabilities = {
@@ -19,6 +22,7 @@ export const nonemptyCapabilities = {
 export const sparklingRoutes = {
   rawParentUrl: 'file://lynx?local://automation/nav-basic/main.lynx.bundle?nav_role=parent',
   canonicalParentUrl: 'hybrid://lynxview_page?bundle=automation%2Fnav-basic%2Fmain.lynx.bundle&nav_role=parent',
+  malformedCanonicalUrl: 'hybrid://lynxview_page?nav_role=parent',
   mappedLegacyUrl: 'file://lynx?local://automation/nav-basic/main.lynx.bundle?nav_role=parent&title=Mapped%20Title&hidden_nav=yes&fullscreen=no&back_button_style=dark&initial_page=details&custom_flag=preserved&theme=page-theme',
 } as const;
 export const mappedProperties = {
@@ -30,8 +34,12 @@ const legacyTags = ['nav-container-type', 'nav-container-id', 'nav-sparkling-nav
 
 // One instance per case attempt. All user actions remain standard aiAct nodes;
 // this module preserves only the original routing/capability acceptance checks.
-export function createSparklingContracts(observe: Observe, reader: Reader) {
+export function createSparklingContracts(observe: Observe, reader: Reader, nativeIO?: {
+  readAlert(timeoutMs: number): Promise<string | null>;
+  openExternal(route: string): Promise<void>;
+}) {
   let home: BoundView | undefined, parent: BoundView | undefined;
+  let parentContainerId: string | undefined;
   async function text(view: BoundView, tag: string) {
     return readNativeText(findTaggedNode(await view.readDocument(), tag));
   }
@@ -45,7 +53,7 @@ export function createSparklingContracts(observe: Observe, reader: Reader) {
     for (;;) {
       const view = await observe(tag, undefined, Math.min(2000, deadline - Date.now()));
       const actual = await text(view, tag);
-      if (Date.now() <= deadline && actual && !forbidden.includes(actual)) return;
+      if (Date.now() <= deadline && actual && !forbidden.includes(actual)) return actual;
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error(`Sparkling ${tag} must be nonempty and not forbidden.`);
       await new Promise(resolve => setTimeout(resolve, Math.min(200, remaining)));
@@ -86,6 +94,42 @@ export function createSparklingContracts(observe: Observe, reader: Reader) {
       case 'mapped':
         for (const [tag, expected] of Object.entries(mappedProperties)) await exact(tag, expected);
         await nonempty('nav-is-notch-screen', ['absent']);
+        return;
+      case 'rememberParent':
+        parentContainerId = await nonempty('nav-container-id', ['absent']);
+        return;
+      case 'child':
+        await observe('nav-role', 'child');
+        return;
+      case 'childIdentity': {
+        if (parentContainerId === undefined) throw new Error('Child identity requires the original parent container ID.');
+        const childContainerId = await nonempty('nav-container-id', ['absent', parentContainerId]);
+        if (childContainerId === parentContainerId) throw new Error('router.open reused the parent container ID.');
+        return;
+      }
+      case 'restoredParent':
+        if (parentContainerId === undefined) throw new Error('Restored parent requires the original container ID.');
+        await observe('nav-role', 'parent');
+        await exact('nav-return-success', 'returned:ok');
+        await exact('nav-container-id', parentContainerId);
+        return;
+      case 'alert':
+      case 'alertDismissed':
+        if (!nativeIO) throw new Error('Sparkling route alerts require case-owned native reads.');
+        await expectOwnedRouteAlert(nativeIO.readAlert, input.contract === 'alertDismissed');
+        return;
+      case 'malformedParent':
+        await exact('nav-route-result', 'malformed:missing_target');
+        await observe('nav-role', 'parent');
+        return;
+      case 'sameParent':
+        if (parentContainerId === undefined) throw new Error('Original parent identity was not recorded.');
+        await exact('nav-container-id', parentContainerId);
+        return;
+      case 'externalMalformed':
+      case 'externalCanonical':
+        if (!nativeIO) throw new Error('Sparkling external routing requires case-owned native delivery.');
+        await nativeIO.openExternal(input.contract === 'externalMalformed' ? sparklingRoutes.malformedCanonicalUrl : sparklingRoutes.canonicalParentUrl);
         return;
       default: throw new Error('Invalid Sparkling contract.');
     }

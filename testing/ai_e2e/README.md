@@ -108,7 +108,7 @@ Source runner inspection also found two pixel prerequisites: the two-second
 post-open readiness window and Android system density 320. They are retained
 in this batch, separately from page URL scaling. Active density is checked
 after setting it; physical density 320 cannot mask a different override.
-Local validation now passes 116 Node checks, ten comparator/crop/geometry checks,
+Local validation now passes 124 Node checks, ten comparator/crop/geometry checks,
 three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
 geometry differential. Disabled ListBase remains disabled.
 
@@ -119,7 +119,7 @@ Duplicate displayed input types remain observable; malformed responses fail.
 Requests share a bounded deadline, including response-body decoding. It exposes
 no action or session-management methods. Five HTTP/source-parity tests cover
 these boundaries, including the public case-owned device adapter without SDK
-private fields. It is now wired into four local Sparkling cases; none has
+private fields. It is now wired into seven local Sparkling cases; none has
 device acceptance yet.
 
 `native-visible-geometry.ts` also preserves the original WDA-point coordinate
@@ -151,7 +151,8 @@ given the same capture rectangle; WDA-frame equivalence is not yet established.
 
 `cases/ios-sparkling/homepage-routes.yaml` adds four original iOS-only flows:
 RawOpenLegacy, RawOpenSparkling, CanonicalSparkling and MappedLegacyToSparkling.
-Local SDK collection is Android 9 / iOS 13. Explorer restarts once per attempt;
+Together with RouterOpenClose, MalformedCanonicalNoFallback and HotExternalURL,
+local SDK collection is Android 9 / iOS 16. Explorer restarts once per attempt;
 the real homepage is not opened a second time or bypassed with a deep link.
 Standard `aiAct` selects the visible runtime, replaces the exact original URL
 and taps Open. Original restart/pre-case readiness totals ten seconds (3+5+2).
@@ -163,6 +164,17 @@ Sockets close before devices; released attempts/project teardown cannot reopen
 sessions. Original Python run functions and helper predicates are replayed for
 source parity, with no device, AI or model credentials. This local batch is not
 pushed while run 38021364503 remains active and is not accepted coverage.
+
+The router flow retains distinct child IDs, `returned:ok` and restoration of
+the exact remembered parent ID. Malformed routes retain `missing_target`, the
+original route-result text and the original parent ID (no legacy fallback).
+Alert acknowledgment is an ordinary `aiAct` tap, followed by strict native
+absence evidence: only WDA's structured HTTP 404 `no such alert` is absence;
+network/malformed/500/late responses cannot pass. Hot external routing uses
+the original registered URL and explicit Explorer bundle through WDA `/url`.
+Unlike the generic SDK URL helper, it cannot fall back to Safari or restart the
+app. Original Python case functions and external-route helper are replayed for
+ordered assertion/payload parity; actual device acceptance remains pending.
 
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline

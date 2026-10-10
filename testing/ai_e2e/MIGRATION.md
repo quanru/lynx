@@ -20,12 +20,12 @@ the original pixel baseline.
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Implemented locally; iOS device validation pending |
-| sparkling/HotExternalURL | Hot external route and container/session ownership | Pending, iOS |
-| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Pending, iOS |
+| sparkling/HotExternalURL | Hot external route and container/session ownership | Implemented locally; iOS device validation pending |
+| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Implemented locally; iOS device validation pending |
 | sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Implemented locally; iOS device validation pending |
 | sparkling/RawOpenLegacy | Raw legacy routing and mode | Implemented locally; iOS device validation pending |
 | sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Implemented locally; iOS device validation pending |
-| sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Pending, iOS |
+| sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Implemented locally; iOS device validation pending |
 | xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
 | xelement/VideoBoundary | Original boundary/error callback contracts | Pending |
 | xelement/VideoModes | Original mode-specific callback/state contracts | Pending |
@@ -125,7 +125,7 @@ The next local Summary renderer change accepts an immediate first afterEach
 capture when the final failed assertion has no prior screenshot. It keeps the
 HTML link on the failed step, prefers preceding captures and rejects images
 after intervening actions or from older attempts. Both repository copies and
-regression tests are identical; 116 Node 22 checks pass locally. This is report
+regression tests are identical; 124 Node 22 checks pass locally. This is report
 evidence handling, not a pixel-baseline or assertion change.
 
 The next Sparkling foundation is a read-only WDA visibility reader, attached to
@@ -166,8 +166,17 @@ parent reads do not rediscover SessionList after rerender. Explicit later phases
 re-observe native visibility and text/frame identity; teardown closes sockets
 before devices and prevents late operations reopening a released attempt.
 This batch is not pushed while useful native CI is active and has no device
-acceptance. Hot external URL, malformed canonical alert and router push/pop
-contracts remain pending, as do all four XElement video modules.
+acceptance. Three further local implementations complete all seven Sparkling
+source modules, collecting Android 9 / iOS 16 with 124 Node 22 checks passing.
+Router push/pop retains different parent/child IDs, the return callback and
+the exact original parent ID. Malformed rejection retains the error code,
+route-result text and unchanged parent container, without legacy fallback.
+Hot external delivery retains the registered URL and explicit Explorer bundle
+using WDA's actual URL API, with no SDK Safari fallback/restart. Alert taps use
+`aiAct`; dismissal additionally requires genuine structured WDA no-alert
+evidence, never an arbitrary exception or late response. Original case/helper
+AST replay covers ordered assertions and route payloads. No device acceptance
+is inferred. All four XElement video modules remain pending.
 
 ### Preserved algorithm
 

@@ -1,0 +1,47 @@
+afterEach:
+  - recordToReport: Original route rejection and external delivery contract result
+cases:
+  - name: sparkling/MalformedCanonicalNoFallback
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - aiAct:
+          prompt: Tap the "Sparkling Go" runtime choice in the segmented selector above the Bundle URL card once. Do not tap Open or navigate away.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: runtime, runtime: sparkling }
+      - aiAct:
+          prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Tap the Open button directly to the right of the Bundle URL input once. Stop after the single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: parent }
+      - native.sparkling: { contract: sparkling }
+      - native.sparkling: { contract: rememberParent }
+      - aiAct:
+          prompt: Tap the button labelled "Open malformed canonical" once. Do not tap "Open child with router.open". Stop after the single tap.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: alert }
+      - aiAct:
+          prompt: Tap the OK button in the displayed "Unable to Open (missing_target)" alert once to acknowledge it. Do not tap an underlying page control.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: alertDismissed }
+      - native.sparkling: { contract: malformedParent }
+      - native.sparkling: { contract: sparkling }
+      - native.sparkling: { contract: sameParent }
+  - name: sparkling/HotExternalURL
+    steps:
+      - recordToReport: Restarted original Explorer homepage
+      - wait: { duration: 10000, unit: ms }
+      - native.sparkling: { contract: home }
+      - native.sparkling: { contract: externalMalformed }
+      - native.sparkling: { contract: alert }
+      - aiAct:
+          prompt: Tap the OK button in the displayed "Unable to Open (missing_target)" alert once to acknowledge it. Do not tap an underlying page control.
+          options: { deepLocate: true, cacheable: false }
+      - native.sparkling: { contract: alertDismissed }
+      - native.sparkling: { contract: home }
+      - native.sparkling: { contract: externalCanonical }
+      - native.sparkling: { contract: role }
+      - native.sparkling: { contract: sparkling }

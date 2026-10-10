@@ -88,3 +88,63 @@ test('post-binding wrong text, forbidden SDK version and duplicate native inputs
   await assert.rejects(duplicate({ contract: 'sparkling' }), /Observed duplicate input retry/);
   await assert.rejects(duplicate({ contract: 'unknown' }), /Invalid/);
 });
+
+test('router identity checks retain distinct child ID, return callback and the exact remembered parent ID', async () => {
+  let current = { ...values, 'nav-container-id': 'parent-id', 'nav-return-success': 'returned:ok' };
+  const observations = [];
+  const run = createSparklingContracts(async (tag, expected) => {
+    observations.push([tag, expected ?? null]);
+    return { readDocument: async () => root(current) };
+  }, {});
+  await assert.rejects(run({ contract: 'childIdentity' }), /original parent/);
+  await run({ contract: 'rememberParent' });
+  await run({ contract: 'child' });
+  current = { ...current, 'nav-container-id': 'child-id' };
+  await run({ contract: 'childIdentity' });
+  current = { ...current, 'nav-container-id': 'parent-id' };
+  await run({ contract: 'restoredParent' });
+  assert.deepEqual(observations, [
+    ['nav-container-id', null], ['nav-role', 'child'], ['nav-container-id', null],
+    ['nav-role', 'parent'], ['nav-return-success', 'returned:ok'], ['nav-container-id', 'parent-id'],
+  ]);
+  current = { ...current, 'nav-container-id': 'new-parent-id' };
+  await assert.rejects(run({ contract: 'restoredParent' }), /expected.*parent-id/);
+  current = { ...current, 'nav-return-success': 'returned:wrong' };
+  await assert.rejects(run({ contract: 'restoredParent' }), /expected.*returned:ok/);
+});
+
+test('a child reusing the remembered parent container ID cannot pass on its first read', async () => {
+  let reads = 0;
+  const run = createSparklingContracts(async () => {
+    if (++reads === 3) throw new Error('Observed reused parent ID retry');
+    return { readDocument: async () => root({ ...values, 'nav-container-id': 'same-id' }) };
+  }, {});
+  await run({ contract: 'rememberParent' });
+  await assert.rejects(run({ contract: 'childIdentity' }), /Observed reused parent ID retry/);
+});
+
+test('malformed route keeps original result text and parent ID; external modes use only the original target URLs', async () => {
+  let current = { ...values, 'nav-container-id': 'original-id', 'nav-route-result': 'malformed:missing_target' };
+  const observations = [], external = [], alerts = ['missing_target', null];
+  const run = createSparklingContracts(async (tag, expected) => {
+    observations.push([tag, expected ?? null]);
+    return { readDocument: async () => root(current) };
+  }, {}, { readAlert: async () => alerts.shift(), openExternal: async route => { external.push(route); } });
+  await assert.rejects(run({ contract: 'sameParent' }), /not recorded/);
+  await run({ contract: 'rememberParent' });
+  await run({ contract: 'alert' });
+  await run({ contract: 'alertDismissed' });
+  await run({ contract: 'malformedParent' });
+  await run({ contract: 'sameParent' });
+  assert.deepEqual(observations, [
+    ['nav-container-id', null], ['nav-route-result', 'malformed:missing_target'],
+    ['nav-role', 'parent'], ['nav-container-id', 'original-id'],
+  ]);
+  current = { ...current, 'nav-container-id': 'fallback-id' };
+  await assert.rejects(run({ contract: 'sameParent' }), /expected.*original-id/);
+  current = { ...current, 'nav-route-result': 'malformed:other' };
+  await assert.rejects(run({ contract: 'malformedParent' }), /expected.*malformed:missing_target/);
+  await run({ contract: 'externalMalformed' });
+  await run({ contract: 'externalCanonical' });
+  assert.deepEqual(external, ['hybrid://lynxview_page?nav_role=parent', 'hybrid://lynxview_page?bundle=automation%2Fnav-basic%2Fmain.lynx.bundle&nav_role=parent']);
+});
