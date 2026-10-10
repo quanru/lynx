@@ -60,10 +60,19 @@ test('TextEvent keeps original sleep, crop, baseline and exact text existence in
     assert.equal(doc.cases.length, 1);
     assert.equal(doc.cases[0].definition.name, 'core/TextEvent');
     const steps = doc.cases[0].definition.steps;
-    assert.deepEqual(steps.map(s => s.node), ['launch', 'wait', 'recordToReport', 'native.pixels', 'native.expect', 'recordToReport']);
-    assert.deepEqual(steps[1].input, { duration: 3000, unit: 'ms' });
-    assert.deepEqual(steps[3].input, { fixture: 'textEvent', baseline: 'text_flattern_element', tag: 'flatten-text' });
-    assert.deepEqual(steps[4].input, { fixture: 'textEvent', matchingText: 'Test text bindlayout event....', exists: true, timeoutMs: 3000 });
+    assert.deepEqual(steps.map(s => s.node), ['launch', 'wait', 'wait', 'recordToReport', 'native.pixels', 'native.expect', 'recordToReport']);
+    assert.deepEqual(steps[1].input, { duration: 2000, unit: 'ms' });
+    assert.deepEqual(steps[2].input, { duration: 3000, unit: 'ms' });
+    assert.deepEqual(steps[4].input, { fixture: 'textEvent', baseline: 'text_flattern_element', tag: 'flatten-text' });
+    assert.deepEqual(steps[5].input, { fixture: 'textEvent', matchingText: 'Test text bindlayout event....', exists: true, timeoutMs: 3000 });
     assert.match(decodeURIComponent(steps[0].input.uri), /showcase\/text\/text_event\.lynx\.bundle/);
   }
+});
+
+test('pixel setup retains original runner density and post-open readiness, not only URL scaling', () => {
+  const runner = readFileSync(new URL('../../integration_test/test_script/lib/test_runner/test_runner.py', import.meta.url), 'utf8');
+  assert.match(runner, /self\._test\.device\.shell_command\('wm density 320'\)/);
+  assert.match(runner, /self\._test\.app\.open_card\(case\.url\)[\s\S]*?time\.sleep\(2\)[\s\S]*?case\.run/);
+  const workflow = readFileSync(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /shell wm density 320[\s\S]*?shell wm density \|[\s\S]*?install -r -g LynxExplorer\.apk/);
 });

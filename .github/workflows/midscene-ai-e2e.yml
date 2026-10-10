@@ -191,6 +191,10 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          # Original TestRunner.pre_test sets system density to 320, separately
+          # from the page URL density parameter. Keep both for pixel baselines.
+          "$ANDROID_HOME/platform-tools/adb" shell wm density 320
+          "$ANDROID_HOME/platform-tools/adb" shell wm density | tr -d '\r' | awk '/^Physical density:/ { physical=$3 } /^Override density:/ { override=$3 } END { active=override ? override : physical; exit (active != "320") }'
           "$ANDROID_HOME/platform-tools/adb" install -r -g LynxExplorer.apk
 
       - name: Install Midscene test dependencies

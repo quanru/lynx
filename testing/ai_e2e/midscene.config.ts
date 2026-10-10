@@ -59,11 +59,14 @@ const nativeCommandNode = defineNode<NativeCommandInput & { fixture: NativeFixtu
   },
 });
 
-const nativePixelsNode = defineNode<{ fixture: 'textEvent'; baseline: 'text_flattern_element'; tag: 'flatten-text' }, void, ProjectContext>({
+const nativePixelsNode = defineNode<{ fixture: 'textEvent' | 'image' | 'layoutLinear'; baseline: 'text_flattern_element' | 'image' | 'layout_linear'; tag?: 'flatten-text' }, void, ProjectContext>({
   name: 'native.pixels',
   description: 'Preserve the original cropped native JPEG-stream pixel baseline and grayscale threshold.',
   async execute(execution) {
-    if (execution.scope !== 'case' || execution.input.fixture !== 'textEvent') throw new Error('Invalid native pixel fixture.');
+    if (execution.scope !== 'case') throw new Error('Invalid native pixel scope.');
+    const contracts = { textEvent: 'text_flattern_element', image: 'image', layoutLinear: 'layout_linear' };
+    if (!Object.hasOwn(contracts, execution.input.fixture)
+      || contracts[execution.input.fixture] !== execution.input.baseline) throw new Error('Invalid native pixel fixture.');
     const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
     await expectNativePixels(session, execution.context.platform, execution.case.runId,
       execution.input.baseline, execution.input.tag);
@@ -136,7 +139,7 @@ const androidSetup = defineProjectSetup<ProjectContext>({
       async getNativeSession(runId, fixture) {
         const definition = nativeFixture(fixture);
         await ensure(runId);
-        return nativeSessions.get(runId, [...definition.tags]);
+        return nativeSessions.get(runId, [...definition.tags], 'texts' in definition ? [...definition.texts] : []);
       },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
@@ -194,7 +197,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
       async getNativeSession(runId, fixture) {
         const definition = nativeFixture(fixture);
         await ensure(runId);
-        return nativeSessions.get(runId, [...definition.tags]);
+        return nativeSessions.get(runId, [...definition.tags], 'texts' in definition ? [...definition.texts] : []);
       },
       agentRegistry: {
         getAgent: async (runId) => (await ensure(runId)).agent,
@@ -234,7 +237,7 @@ export default defineTestProject<ProjectContext>({
   projects: [
     {
       name: 'android-explorer',
-      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent') },
+      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -242,7 +245,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent') },
+      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear') },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },

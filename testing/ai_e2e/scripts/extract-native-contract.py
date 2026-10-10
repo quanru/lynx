@@ -8,7 +8,8 @@ fixture = sys.argv[1]
 constants = {}
 tags = {}
 text_selectors = {}
-steps = []
+steps = ([{'node': 'wait', 'input': {'duration': 2000, 'unit': 'ms'}}]
+         if fixture in ('textEvent', 'image', 'layoutLinear') else [])
 
 
 def value(node):
@@ -60,11 +61,15 @@ for statement in run.body:
             steps.append({'node': 'wait', 'input': {'duration': value(call.args[0]) * 1000, 'unit': 'ms'}})
         continue
     if name == 'utils.take_screenshot_check':
-        assert fixture == 'textEvent' and len(call.args) == 4 and not call.keywords
+        assert fixture in ('textEvent', 'image', 'layoutLinear') and len(call.args) == 4 and not call.keywords
         assert isinstance(call.args[0], ast.Name) and call.args[0].id == 'test'
         assert value(call.args[2]) == ''
         assert isinstance(call.args[3], ast.Attribute) and call.args[3].attr == 'rect'
-        entry.update(baseline=value(call.args[1]), tag=tag(call.args[3].value))
+        entry.update(baseline=value(call.args[1]))
+        if fixture == 'textEvent':
+            entry['tag'] = tag(call.args[3].value)
+        else:
+            assert isinstance(call.args[3].value, ast.Name) and call.args[3].value.id == 'lynxview'
         steps.append({'node': 'native.pixels', 'input': entry})
         continue
     if name == 'send_cdp':

@@ -96,6 +96,20 @@ JPEG/evidence bridge check, typechecking and actionlint pass. An offline check
 against the unmodified public driver classes also matches 2,000 randomized
 geometries. This batch still requires Android/iOS execution before acceptance.
 
+The following local batch also implements original Image and LayoutLinear
+pixel contracts (nine cases per platform). These tag-free source fixtures bind
+their complete original text markers to one session; the examples themselves
+are unchanged. Full-view checks retain the original second crop and cubic
+resize, including integer truncation after the initial rounded view capture.
+Both use unchanged platform baselines and are not device-verified yet.
+Source runner inspection also found two pixel prerequisites: the two-second
+post-open readiness window and Android system density 320. They are retained
+in this batch, separately from page URL scaling. Active density is checked
+after setting it; physical density 320 cannot mask a different override.
+Local validation now passes 93 Node checks, ten comparator/crop/geometry checks,
+three JPEG bridge checks, typechecking, actionlint and the offline 2,000-case
+geometry differential. Disabled ListBase remains disabled.
+
 `native-dom.ts` and `native-expectation.ts` implement the next exact-contract batch:
 test-tag pre-order selection, untrimmed native text/input values and exact inline
 attributes follow the original Python driver. Immediate checks (`timeoutMs: 0`)
@@ -219,8 +233,8 @@ untrusted fork code.
   acceptance requires exact native values.
 - Retained: Explorer artifacts, the simulator matrix, and WebDriverAgent,
   which Midscene iOS uses directly.
-- Pending device validation: the TextEvent pixel contract. Image/LayoutLinear
-  pixel migration and Espresso white-box access remain uncovered. Keep the
+- Pending device validation: TextEvent, Image and LayoutLinear pixel contracts.
+  Espresso white-box access remains uncovered. Keep the
   existing jobs available as an opt-in complement.
 
 ### Pages setup fallback

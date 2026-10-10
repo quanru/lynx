@@ -4,6 +4,7 @@ cases:
   - name: core/TextEvent
     steps:
       - launch: "${textEventUri}"
+      - wait: { duration: 2000, unit: ms }
       - wait: { duration: 3000, unit: ms }
       - recordToReport: Before original flattened-text pixel comparison
       - native.pixels: { fixture: textEvent, baseline: text_flattern_element, tag: flatten-text }

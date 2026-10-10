@@ -13,9 +13,9 @@ the original pixel baseline.
 | Original module | Verification that must survive migration | Status |
 | --- | --- | --- |
 | core/Event | Exact event counts and final inline style | Passed both platforms, first attempts, run 37948887444 |
-| core/Image | Cropped LynxView pixel baseline | Pending; additive Image navigation smoke exists |
+| core/Image | Cropped LynxView pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
-| core/LayoutLinear | Pixel baseline | Pending |
+| core/LayoutLinear | Pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
 | core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Implemented; 91 local Node checks and pixel differential checks pass; Android/iOS validation pending |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
@@ -213,5 +213,21 @@ python3 testing/ai_e2e/scripts/native_geometry_reference_test.py /path/to/lynx_e
 
 The wheel is a read-only reference, not a runner dependency. These checks do
 not establish a passing TextEvent baseline on either device; hosted validation
-is still required. Disabled ListBase remains disabled, and Image/LayoutLinear
-are not counted as pixel migrations.
+is still required. Disabled ListBase remains disabled.
+
+The next local batch adds original Image and LayoutLinear, collecting nine
+cases per platform. Their source examples have no test tags, so the binder
+requires every original page text marker in exactly one session and revalidates
+that identity around capture. No fixture modifications, newest-session fallback
+or whole-device screenshot substitution is used. Source AST checks retain each
+original full-LynxView baseline call. The backend also preserves the original
+second crop/resize, including fractional full-view bounds.
+
+The original TestRunner sets Android system density to 320 and waits two seconds
+after opening a case before calling its module. This batch restores both pixel
+prerequisites; URL density alone is not the system setting. All three pixel
+cases retain that post-open wait, with TextEvent's additional three seconds.
+Validation passes 93 Node checks, ten comparator/crop/geometry checks, three
+JPEG bridge checks, typechecking and actionlint. The offline public-driver AST
+differential still matches all 2,000 geometries. None of the three pixel modules
+is device-verified yet; report actual hosted outcomes before acceptance.

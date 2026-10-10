@@ -26,8 +26,8 @@ export function createNativeSessions(connect: () => Promise<NativeConnection>, {
     close(lease);
   }
   return {
-    get(runId: string, tags: string[]): Promise<BoundSession> {
-      const key = JSON.stringify(tags);
+    get(runId: string, tags: string[], texts: string[] = []): Promise<BoundSession> {
+      const key = JSON.stringify({ tags, texts });
       const existing = runs.get(runId);
       if (existing) {
         if (existing.key !== key) return Promise.reject(new Error('A native case cannot switch fixture identity.'));
@@ -47,7 +47,7 @@ export function createNativeSessions(connect: () => Promise<NativeConnection>, {
         const deadline = Date.now() + bindingTimeoutMs;
         for (;;) {
           try {
-            const session = await bindFixtureSession(client, tags);
+            const session = await bindFixtureSession(client, tags, texts);
             if (lease.closed) throw new Error('Native case was released during fixture binding.');
             return session;
           } catch (error) {

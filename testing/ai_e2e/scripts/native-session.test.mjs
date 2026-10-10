@@ -47,6 +47,26 @@ test('missing and ambiguous fixture sessions fail without selecting a convenient
   }
 });
 
+test('tag-free original fixtures bind all source text markers, not a newest or partially matching page', async () => {
+  const textDocument = texts => ({ root: { nodeId: 0, nodeName: '#document', children: [
+    { nodeId: 1, nodeName: 'PAGE', children: texts.map((text, index) => ({
+      nodeId: index + 2, nodeName: 'RAW-TEXT', attributes: ['text', text],
+    })) },
+  ] } });
+  const texts = ['column item 1', 'column item 2', 'row item 3'];
+  const documents = new Map([[7, textDocument(texts)], [99, textDocument(texts.slice(0, 1))]]);
+  const bound = await bindFixtureSession(clientFor(documents), [], texts);
+  assert.equal(bound.sessionId, 7);
+  documents.set(7, textDocument(texts.slice(0, 2)));
+  await assert.rejects(bound.readDocument(), /refusing to rebind/);
+  documents.set(7, textDocument(texts));
+  documents.set(99, textDocument(texts));
+  await assert.rejects(bindFixtureSession(clientFor(documents), [], texts), /found 2/);
+  for (const invalid of [[], [''], ['same', 'same'], [1], null]) {
+    await assert.rejects(bindFixtureSession(clientFor(documents), [], invalid), /requires distinct/);
+  }
+});
+
 test('fixture binding never swallows CDP, malformed document or invalid identity failures', async () => {
   for (const result of [new Error('DOM.getDocument disconnected'), { root: {} },
     { root: { nodeId: 0, nodeName: 'view', children: null } }]) {

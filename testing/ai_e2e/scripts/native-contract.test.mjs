@@ -12,7 +12,8 @@ test('native collection preserves original ordered assertions, CDP calls and use
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const [fixture, original, file] of [['event', 'Event', 'event'],
     ['domFocus', 'DomFocus', 'dom-focus'], ['insertText', 'InputInsertText', 'insert-text'],
-    ['textEvent', 'TextEvent', 'text-event']]) {
+    ['textEvent', 'TextEvent', 'text-event'], ['image', 'Image', 'pixel-views'],
+    ['layoutLinear', 'LayoutLinear', 'pixel-views']]) {
   const source = readFileSync(new URL(`../../integration_test/test_script/case_sets/core/${original}.py`, import.meta.url), 'utf8');
   const expected = extract(source, fixture);
   for (const project of loaded.projects) {
@@ -21,9 +22,10 @@ test('native collection preserves original ordered assertions, CDP calls and use
       resolveNode: project.nodes.get.bind(project.nodes), variables: project.variables, env: process.env,
     });
     const cases = document.cases.map(item => item.definition);
-    assert.equal(cases.length, 1);
-    assert.equal(cases[0].name, `core/${original}`);
-    const steps = cases[0].steps;
+    assert.equal(cases.length, file === 'pixel-views' ? 2 : 1);
+    const migrated = cases.find(item => item.name === `core/${original}`);
+    assert.ok(migrated);
+    const steps = migrated.steps;
     if (fixture === 'event') {
       for (const action of steps.filter(step => step.node === 'aiAct')) {
         assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });

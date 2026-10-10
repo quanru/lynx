@@ -1,4 +1,8 @@
 const fixtures = {
+  image: { path: 'showcase/image/main', tags: [], texts: ['Image Examples', 'Image AutoSize Examples',
+    'Image Basic Examples', 'Image Styled Examples', 'Image Filter Examples', 'Image Event Examples'] },
+  layoutLinear: { path: 'showcase/layout/linear', tags: [], texts: ['column item 1', 'column item 2',
+    'column item 3', 'row item 1', 'row item 2', 'row item 3'] },
   textEvent: { path: 'showcase/text/text_event', tags: ['container', 'inline-view-text-count',
     'inline-image-count', 'flatten-text', 'non-flatten-text'] },
   event: { path: 'automation/event/main', tags: ['count', 'button0', 'button-text1', 'button2'] },

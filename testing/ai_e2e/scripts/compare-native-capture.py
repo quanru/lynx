@@ -26,6 +26,16 @@ def compare_capture(payload, baseline_path, output_dir):
         bounds = native_element_bounds(payload["rect"], payload["bodyPadding"],
                                        payload["elementPadding"], payload["platform"])
         actual = crop_native_element(actual, bounds, payload["platform"])
+    else:
+        # Image/LayoutLinear pass lynxview.rect to the same original crop/resize
+        # helper. Preserve its second crop, integer truncation and cubic resize,
+        # including right/bottom subtraction after floating-point addition.
+        scale = 1 if payload["platform"] == "android" else 3
+        logical = {key: value / scale for key, value in payload["rect"].items()}
+        bounds = dict(left=0, top=0, right=logical["left"] + logical["width"] - logical["left"],
+                      bottom=logical["top"] + logical["height"] - logical["top"],
+                      width=logical["width"], height=logical["height"])
+        actual = crop_native_element(actual, bounds, payload["platform"])
     if not cv2.imwrite(str(directory / "actual.png"), actual):
         raise RuntimeError("Could not preserve native comparison image")
     if baseline is not None and not cv2.imwrite(str(directory / "baseline.png"), baseline):

@@ -31,8 +31,10 @@ export async function captureNativePixels(session: BoundSession, tag?: string) {
 }
 
 export async function expectNativePixels(session: BoundSession, platform: 'android' | 'ios',
-  runId: string, baseline: 'text_flattern_element', tag: string): Promise<void> {
-  if (!['android', 'ios'].includes(platform) || baseline !== 'text_flattern_element' || tag !== 'flatten-text'
+  runId: string, baseline: 'text_flattern_element' | 'image' | 'layout_linear', tag?: string): Promise<void> {
+  if (!['android', 'ios'].includes(platform)
+    || !['text_flattern_element', 'image', 'layout_linear'].includes(baseline)
+    || (baseline === 'text_flattern_element' ? tag !== 'flatten-text' : tag !== undefined)
     || !/^[a-zA-Z0-9_-]+$/.test(runId)) throw new Error('Invalid native pixel contract.');
   const payload = { ...await captureNativePixels(session, tag), platform };
   const root = fileURLToPath(new URL('./', import.meta.url));

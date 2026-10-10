@@ -16,6 +16,36 @@ spec.loader.exec_module(capture)
 
 
 class NativeCaptureTest(unittest.TestCase):
+    def test_full_view_baselines_use_original_second_crop_on_both_platforms(self):
+        image = np.full((30, 40, 3), 100, dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpeg", image)
+        self.assertTrue(ok)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline = root / "baseline.png"
+            cv2.imwrite(str(baseline), image[3:23])
+            original = baseline.read_bytes()
+            for platform in ("android", "ios"):
+                payload = dict(frame=base64.b64encode(encoded).decode(), platform=platform,
+                               rect=dict(left=0, top=3, width=40, height=20))
+                self.assertEqual(capture.compare_capture(payload, baseline, root / platform), 0)
+                self.assertEqual(baseline.read_bytes(), original)
+                self.assertEqual(cv2.imread(str(root / platform / "actual.png")).shape, (20, 40, 3))
+
+    def test_fractional_full_view_keeps_truncation_after_initial_rounded_capture(self):
+        image = np.full((30, 40, 3), 100, dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpeg", image)
+        self.assertTrue(ok)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline = root / "baseline.png"
+            cv2.imwrite(str(baseline), image[:15, :20])
+            for platform in ("android", "ios"):
+                payload = dict(frame=base64.b64encode(encoded).decode(), platform=platform,
+                               rect=dict(left=1.25, top=2.75, width=20.75, height=15.5))
+                self.assertEqual(capture.compare_capture(payload, baseline, root / platform), 0)
+                self.assertEqual(cv2.imread(str(root / platform / "actual.png")).shape, (15, 20, 3))
+
     def test_real_jpeg_crop_and_failure_evidence_without_baseline_mutation(self):
         image = np.full((30, 40, 3), 100, dtype=np.uint8)
         ok, encoded = cv2.imencode(".jpeg", image, [cv2.IMWRITE_JPEG_QUALITY, 100])
