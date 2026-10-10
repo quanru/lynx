@@ -1,0 +1,73 @@
+afterEach:
+  - recordToReport: VideoBasic final evidence, including failures
+cases:
+  - name: xelement/VideoBasic
+    steps:
+      - recordToReport: Start isolated Explorer for VideoBasic
+      - wait:
+          duration: 5000
+          unit: ms
+      - launch: ${videoUri}
+      - wait:
+          duration: 2000
+          unit: ms
+      - native.videoPhase:
+          phase: basic-ready
+      - native.video:
+          tag: event-counts
+          countAtLeast:
+            key: firstframe
+            value: 1
+          timeoutMs: 10000
+      - native.video:
+          tag: firstframe-duration
+          timeoutMs: 20000
+          floatGreaterThan: 0
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Clear" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - wait:
+          duration: 1200
+          unit: ms
+      - native.video:
+          tag: event-counts
+          countEquals:
+            key: timeupdate
+            value: 0
+          immediate: true
+      - wait:
+          duration: 2000
+          unit: ms
+      - recordToReport: "Original VideoBasic diagnostic screenshot: ready"
+      - native.videoPhase:
+          phase: basic-playback
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Stop" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: stopped
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Clear" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Loop On" once. Do not click another button or perform another action.
+          options:
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: loop=true
+          timeoutMs: 20000
+      - wait:
+          duration: 1000
+          unit: ms
+      - native.videoPhase:
+          phase: basic-loop

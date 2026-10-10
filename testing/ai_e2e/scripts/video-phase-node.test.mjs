@@ -49,3 +49,19 @@ test('phase nodes reject arbitrary input, duplicate execution and changed assert
   assert.equal(f.taps.length, 2);
   await assert.rejects(f.run('native.video', { tag: 'status-text', equal: 'ended', timeoutMs: 20000 }), /identity or order/);
 });
+
+test('complete playback readiness uses the real registered node without planning, taps or extra reads', async () => {
+  const f = await fixture();
+  await f.run('native.videoPhase', { phase: 'basic-ready' });
+  assert.deepEqual(f.reads, ['ready']);
+  assert.deepEqual(f.taps, []);
+  assert.deepEqual(f.reports, []);
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-ready', timeoutMs: 99999 }), /Invalid/);
+});
+
+test('complete playback nodes cannot bypass an unconsumed boundary assertion', async () => {
+  const f = await fixture();
+  await f.run('native.videoPhase', { phase: 'replace-playing-source' });
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-playback' }), /not been consumed/);
+  assert.equal(f.taps.length, 2);
+});

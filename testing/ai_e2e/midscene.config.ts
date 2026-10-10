@@ -26,6 +26,8 @@ import { expectVideoValue } from './video-expectation.ts';
 import type { VideoExpectation } from './video-expectation.ts';
 import { executeVideoActionPhase, videoActionPhaseChecks } from './video-action-phase.ts';
 import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts';
+import { executeVideoPlaybackPhase, isVideoPlaybackPhase } from './video-playback-phase.ts';
+import type { VideoPlaybackPhase } from './video-playback-phase.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -76,20 +78,31 @@ const phasesFor = (registry: AgentRegistry) => {
   return phases;
 };
 
-const videoPhaseNode = defineNode<{ phase: VideoActionPhase }, void, ProjectContext>({
+const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase }, void, ProjectContext>({
   name: 'native.videoPhase',
-  description: 'Prelocate two original video buttons and execute their exact physical timing fragment without intervening model calls.',
+  description: 'Execute a closed original video timing fragment with visual prelocation and real SDK taps, preserving every original assertion and sample.',
   async execute(execution) {
     if (execution.scope !== 'case' || Object.keys(execution.input).length !== 1) throw new Error('Invalid video phase scope or input.');
-    videoActionPhaseChecks(execution.input.phase);
+    const playback = isVideoPlaybackPhase(execution.input.phase);
+    if (!playback) videoActionPhaseChecks(execution.input.phase as VideoActionPhase);
     const runId = execution.case.runId;
     const phases = phasesFor(execution.context.agentRegistry);
     if (phases.has(runId)) throw new Error('Previous video phase evidence has not been consumed.');
     const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoTimedAgent;
     if (typeof agent.aiLocate !== 'function' || typeof agent.callActionInActionSpace !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and physical action APIs.');
     const session = await execution.context.getNativeSession(runId, 'video');
+    if (isVideoPlaybackPhase(execution.input.phase)) {
+      await executeVideoPlaybackPhase(agent, execution.input.phase, session.readDocument, async title => {
+        const frame = await session.captureFrame();
+        if (typeof frame.data !== 'string' || !frame.data) throw new Error('Missing original video playback frame.');
+        await agent.recordToReport('Original video source screenshot: ' + title, {
+          screenshots: [{ base64: `data:image/jpeg;base64,${frame.data}`, description: 'Captured at the original source checkpoint, without intervening model calls.' }],
+        });
+      });
+      return;
+    }
     const capture: VideoPhaseEvidence['capture'] = {};
-    const evidence = await executeVideoActionPhase(agent, execution.input.phase,
+    const evidence = await executeVideoActionPhase(agent, execution.input.phase as VideoActionPhase,
       input => expectVideoValue(session.readDocument,
         () => captureVideoWaitDiagnostic(session, execution.context.platform, runId), input),
       async () => {

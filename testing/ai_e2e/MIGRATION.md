@@ -26,10 +26,10 @@ the original pixel baseline.
 | sparkling/RawOpenLegacy | Raw legacy routing and mode | Passed iOS, run 38039839927 |
 | sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Passed iOS, run 38039839927 |
 | sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Passed iOS, run 38039839927 |
-| xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
+| xelement/VideoBasic | Original playback callbacks, payloads and ordering | Complete YAML/source contracts implemented; Android/iOS device validation pending |
 | xelement/VideoBoundary | Original boundary/error callback contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoModes | Original mode-specific callback/state contracts | Implemented locally; Android/iOS device validation pending |
-| xelement/VideoAttributes | Original attribute, timing and event contracts | Pending |
+| xelement/VideoAttributes | Original attribute, timing and event contracts | Complete YAML/source contracts implemented; Android/iOS device validation pending |
 
 ## Prerequisites and acceptance
 
@@ -44,14 +44,27 @@ timed physical taps. The initial frame contains only video/status; its repeated
 scrolls do not reveal the buttons. Two Sparkling visibility cases also failed.
 Previous passes do not override these current-head failures.
 
-VideoBasic now has complete unchanged Python callback replay: 20 ordered
-button actions, twelve sleeps, three screenshots, nine sections and all wait,
-counter and predicate contracts. Core wait_for_equal defaults to 10 seconds;
-video helpers have independent 20/10-second defaults and failure semantics.
-The original time parser and every predicate are replayed, including inclusive
-seek and exclusive restart/loop bounds. This adds two model-free checks only,
-not a YAML/device case. Click-relative execution and iOS button visibility must
-be validated before counting VideoBasic or VideoAttributes as migrated.
+The next implementation adds complete VideoBasic and VideoAttributes YAML
+cases on both platforms: Android 13 and iOS 20 collected cases, including the
+three smoke cases. All 17 originally enabled modules now have implementations;
+this does not mean that all device cases have passed. ListBase remains disabled.
+Complete unchanged Python callback replay gates every action, wait, original
+screenshot checkpoint, attribute predicate and one-read speed/count sample.
+VideoBasic retains its 20 ordered button actions and inclusive seek versus
+exclusive restart/loop bounds. VideoAttributes retains its original negative
+speed guard, 2.5-second samples, interval thresholds and tiny-interval count.
+
+As previously approved for strict playback timing, model work and visual
+prelocation occur before each closed playback fragment. Standard SDK physical
+taps then execute the original actions without intervening model calls.
+Ordinary volume, mute and loop setup still uses aiAct. Neither selectors nor
+fixture action hooks are used for these interactions. No timing window, media
+duration, retry policy or original acceptance is widened. Core wait_for_equal
+retains its 10-second, no-sleep/no-final-read contract; video waits retain their
+separate polling and diagnostic/final-read semantics. Source screenshots use
+case-owned native captures at the original checkpoints. The implementation
+passes 165 model-free checks; actual playback and iOS visibility acceptance
+remain dependent on the next hosted Android/iOS run.
 
 The older checkpoints below retain their then-current status.
 

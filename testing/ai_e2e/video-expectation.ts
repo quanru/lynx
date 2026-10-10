@@ -1,5 +1,6 @@
 import { findTaggedNode, readNativeText } from './native-dom.ts';
 import type { NativeNode } from './native-dom.ts';
+import { parseVideoFloat } from './video-float.ts';
 
 export type VideoExpectation = {
   tag: string;
@@ -11,7 +12,7 @@ export type VideoExpectation = {
   | { countAtMost: { key: string; value: number } }
   | { currentTimeRange: { min: number; max: number; minInclusive: boolean } }
   | { occurrences: { text: string; count: number } }
-  | { errorDetails: true });
+  | { floatGreaterThan: number } | { floatAtLeast: number } | { errorDetails: true });
 
 export function parseVideoCount(text: string, key: string): bigint {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -46,7 +47,7 @@ export async function expectVideoValue(
   input: VideoExpectation,
   clock = { now: Date.now, sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)) },
 ) {
-  const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'countEquals', 'countAtMost', 'currentTimeRange', 'occurrences', 'errorDetails'].filter(key => Object.hasOwn(input, key));
+  const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'countEquals', 'countAtMost', 'currentTimeRange', 'occurrences', 'errorDetails', 'floatGreaterThan', 'floatAtLeast'].filter(key => Object.hasOwn(input, key));
   const counter = 'countAtLeast' in input ? input.countAtLeast
     : 'countEquals' in input ? input.countEquals : 'countAtMost' in input ? input.countAtMost : undefined;
   const timeoutMs = input.timeoutMs ?? 20_000;
@@ -61,6 +62,8 @@ export async function expectVideoValue(
         || typeof input.currentTimeRange.minInclusive !== 'boolean'
       : 'occurrences' in input ? !input.occurrences || typeof input.occurrences.text !== 'string'
       || !Number.isSafeInteger(input.occurrences.count) || input.occurrences.count < 0
+      : 'floatGreaterThan' in input ? !Number.isFinite(input.floatGreaterThan)
+      : 'floatAtLeast' in input ? !Number.isFinite(input.floatAtLeast)
       : 'errorDetails' in input ? input.errorDetails !== true
       : 'order' in input ? !Array.isArray(input.order) || input.order.some(value => typeof value !== 'string')
       : typeof (input as unknown as Record<string, unknown>)[keys[0]] !== 'string')
@@ -69,6 +72,8 @@ export async function expectVideoValue(
   }
   const matches = (text: string) => {
     if ('equal' in input) return text === input.equal;
+    if ('floatGreaterThan' in input) return parseVideoFloat(text) > input.floatGreaterThan;
+    if ('floatAtLeast' in input) return parseVideoFloat(text) >= input.floatAtLeast;
     if ('contains' in input) return text.includes(input.contains);
     if ('notContains' in input) return !text.includes(input.notContains);
     if ('countAtLeast' in input) return parseVideoCount(text, input.countAtLeast.key) >= BigInt(input.countAtLeast.value);
