@@ -60,6 +60,21 @@ RawOpenLegacy passed its second attempt. CanonicalSparkling, VideoBoundary
 and VideoModes still failed on iOS. These outcomes supersede the historical
 pending descriptions below, but do not validate the new action-phase head.
 
+Run 38034582646 has now finished Android with 10/11 passing. VideoModes
+passed its first attempt; VideoBoundary failed both attempts. In its second
+attempt, the actual SDK dump records the first Tap ending at 1791619349550
+and the second Tap starting at 1791619381290: a 31,740 ms gap. The intervening
+Plan and Locate tasks take 22,508 ms and 8,473 ms respectively. The original
+playing assertion succeeds at the first action, but the fresh read before the
+second action sees `ended`. A combined aiAct instruction still plans one Tap
+per cycle; it is not equivalent to the original playback-time source switch.
+The first attempt also missed the visible Play button and remained `ready`.
+These are distinct grounding and execution-latency failures, not proof of a
+product playback defect. Do not remove the fresh-state assertion, lengthen
+the media, loop playback or use a cached playing value to pass this case.
+The exact timed fragments need a separately validated execution strategy;
+VideoBasic and VideoAttributes remain incomplete for the same timing reason.
+
 The next local foundation adds source-equivalent immediate counter equality
 and upper-bound checks plus the original current-time parser and range
 predicates. Parsing is compared against the unchanged Python helper; all four
