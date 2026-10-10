@@ -6,6 +6,9 @@ WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
 integration fixtures and Sparkling enabled. Consumers verify the commit and
 artifact checksum before installation. Each platform now collects three additive
 smoke cases and six original-contract cases, including three pixel contracts.
+The local extension additionally collects all seven original Sparkling cases on
+iOS and VideoModes on both platforms: Android 10 / iOS 17. These additions have
+not yet run in hosted device CI. All 128 model-free Node 22 checks pass.
 Event, DomFocus and InputInsertText have passed on both platforms. TextEvent
 passed Android in run 38016020854, but its iOS pixel baseline failed at the
 unchanged 1% threshold. Image and LayoutLinear await device validation.

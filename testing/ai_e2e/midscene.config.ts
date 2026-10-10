@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { AndroidAgent, AndroidDevice, getConnectedDevices } from '@midscene/android';
 import { IOSAgent, IOSDevice } from '@midscene/ios';
@@ -21,6 +22,8 @@ import { createVisibleNativeSessions } from './native-visible-sessions.ts';
 import { createSparklingContracts, sparklingRoutes } from './sparkling-contracts.ts';
 import type { SparklingContract } from './sparkling-contracts.ts';
 import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
+import { expectVideoValue } from './video-expectation.ts';
+import type { VideoExpectation } from './video-expectation.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -54,6 +57,23 @@ const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixture
     if (execution.scope !== 'case') throw new Error('native.expect requires case scope.');
     const session = await execution.context.getNativeSession(execution.case.runId, execution.input.fixture);
     await expectNativeValue(session.readDocument, execution.input);
+  },
+});
+
+const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
+  name: 'native.video',
+  description: 'Preserve original XElement video text, callback order and negative assertions without visual approximations.',
+  async execute(execution) {
+    if (execution.scope !== 'case') throw new Error('native.video requires case scope.');
+    const session = await execution.context.getNativeSession(execution.case.runId, 'video');
+    await expectVideoValue(session.readDocument, async () => {
+      const frame = await session.captureFrame();
+      const directory = resolve('midscene_run/video-diagnostics', execution.context.platform, encodeURIComponent(execution.case.runId));
+      await mkdir(directory, { recursive: true });
+      // Diagnostic only, never a pixel assertion or an alternative success path.
+      // Archive the full source JPEG; report nodes provide visible screenshots.
+      await writeFile(resolve(directory, `wait-failure-${Date.now()}.jpg`), Buffer.from(frame.data as string, 'base64'));
+    }, execution.input);
   },
 });
 
@@ -114,7 +134,7 @@ const nodesFor = (
         return slot.current.releaseAgent(runId);
       },
     } satisfies AgentProvider<ProjectContext>,
-  }), nativeExpectNode, nativeCommandNode, nativePixelsNode, sparklingNode];
+  }), nativeExpectNode, nativeCommandNode, nativePixelsNode, sparklingNode, videoExpectNode];
 
 // Android connects directly through adb without Appium or Espresso. Use
 // ANDROID_SERIAL to select a device when several are connected; otherwise use
@@ -292,7 +312,7 @@ export default defineTestProject<ProjectContext>({
   projects: [
     {
       name: 'android-explorer',
-      variables: { eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
+      variables: { videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -300,7 +320,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
+      variables: { videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },

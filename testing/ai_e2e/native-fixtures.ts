@@ -1,4 +1,5 @@
 const fixtures = {
+  video: { path: 'automation/video/main', tags: ['test-video', 'status-text', 'attr-state', 'callback-log', 'signal-log', 'event-counts'] },
   image: { path: 'showcase/image/main', tags: [], texts: ['Image Examples', 'Image AutoSize Examples',
     'Image Basic Examples', 'Image Styled Examples', 'Image Filter Examples', 'Image Event Examples'] },
   layoutLinear: { path: 'showcase/layout/linear', tags: [], texts: ['column item 1', 'column item 2',

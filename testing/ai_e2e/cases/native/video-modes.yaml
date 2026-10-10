@@ -1,0 +1,65 @@
+# Original xelement/VideoModes.py. No callback/order assertion is visual or relaxed.
+# Each burst is ONE original button click, not multiple AI-paced video operations.
+afterEach:
+  - recordToReport: VideoModes final assertion evidence, including failures
+cases:
+  - name: xelement/VideoModes
+    steps:
+      - recordToReport: { title: Start isolated Explorer for VideoModes }
+      - wait: { duration: 5000, unit: ms }
+      - launch: "${videoUri}"
+      - wait: { duration: 2000, unit: ms }
+      - native.video: { tag: status-text, equal: ready }
+      - aiAct:
+          prompt: Scroll if needed and click the video mode button labeled "Queue" once. Do not click any playback button.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: attr-state, contains: "mode=queue" }
+      - aiAct:
+          prompt: Click the single button labeled "Play Pause Stop" once. Do not click the separate Play, Pause, or Stop buttons. Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: status-text, equal: stopped, timeoutMs: 15000 }
+      - native.video: { tag: callback-log, contains: stop_ok }
+      - native.video: { tag: callback-log, order: [play_ok, pause_ok, stop_ok], immediate: true }
+      - native.video:
+          tag: signal-log
+          order: ["event:playing", "callback:play_ok", "event:paused", "callback:pause_ok", "event:stopped", "callback:stop_ok"]
+          immediate: true
+      - aiAct:
+          prompt: Scroll if needed and click the button labeled "Clear" once. Do not click any other button.
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Scroll if needed and click the video mode button labeled "Latest" once. Do not click any playback button.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: attr-state, contains: "mode=latest" }
+      - aiAct:
+          prompt: Scroll if needed and click the single button labeled "Play Pause Stop" once. Do not click the separate Play, Pause, or Stop buttons. Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: status-text, equal: stopped, timeoutMs: 15000 }
+      - native.video: { tag: callback-log, contains: stop_ok }
+      - native.video: { tag: callback-log, notContains: pause_ok, immediate: true }
+      - aiAct:
+          prompt: Scroll if needed and click the button labeled "Clear" once. Do not click any other button.
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Scroll if needed and click the video mode button labeled "Direct" once. Do not click any playback button.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: attr-state, contains: "mode=direct" }
+      - aiAct:
+          prompt: Click the single button labeled "Play Stop" once. Do not click "Play Pause Stop" or the separate playback buttons. Stop after that single click.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: callback-log, contains: play_ok }
+      - native.video: { tag: callback-log, contains: stop_ok }
+      - native.video: { tag: callback-log, order: [play_ok, stop_ok], immediate: true }
+      - aiAct:
+          prompt: Scroll if needed and click the button labeled "Clear" once. Do not click any other button.
+          options: { deepLocate: true, cacheable: false }
+      - aiAct:
+          prompt: Scroll if needed and click the button labeled "Seek 2s" once. Do not click "Seek 0s", "Near End", or any other seek button.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: callback-log, contains: seek_ok }
+      - aiAct:
+          prompt: Click the individual playback button labeled exactly "Stop" once. Do not click either combined burst button.
+          options: { deepLocate: true, cacheable: false }
+      - native.video: { tag: status-text, equal: stopped }
+      - native.video: { tag: callback-log, contains: stop_ok }
+      - recordToReport: { title: Original VideoModes direct-mode diagnostic screenshot }

@@ -28,7 +28,7 @@ the original pixel baseline.
 | sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Implemented locally; iOS device validation pending |
 | xelement/VideoBasic | Original playback callbacks, payloads and ordering | Pending |
 | xelement/VideoBoundary | Original boundary/error callback contracts | Pending |
-| xelement/VideoModes | Original mode-specific callback/state contracts | Pending |
+| xelement/VideoModes | Original mode-specific callback/state contracts | Implemented locally; Android/iOS device validation pending |
 | xelement/VideoAttributes | Original attribute, timing and event contracts | Pending |
 
 ## Prerequisites and acceptance
@@ -176,7 +176,22 @@ using WDA's actual URL API, with no SDK Safari fallback/restart. Alert taps use
 `aiAct`; dismissal additionally requires genuine structured WDA no-alert
 evidence, never an arbitrary exception or late response. Original case/helper
 AST replay covers ordered assertions and route payloads. No device acceptance
-is inferred. All four XElement video modules remain pending.
+is inferred. VideoBasic, VideoBoundary and VideoAttributes remain pending.
+
+VideoModes now uses `aiAct` for its eleven ordinary button clicks, including
+one click per original burst button. Its exact callback/signal ordering,
+Latest-mode absence of `pause_ok`, exact stopped states, and original 15/20-second
+waits remain deterministic. Original Python run replay checks the complete
+ordered sequence of actions and assertions against both SDK-collected YAMLs.
+The original XElement runner uses CaseSet's default `enable_scale=True`; the
+platform URLs retain that scaling. Video polling preserves `video_utils`'s
+diagnostic capture followed by one final read after timeout, unlike core's
+different polling contract. Diagnostic source JPEGs are archived uncropped;
+they are not pixel comparisons, and standard report nodes provide linked
+screenshots on success and failure. All 128 Node 22 checks, typechecking and
+workflow lint pass; Android 10 / iOS 17 collect. No device/AI acceptance is inferred.
+Playback speed and tick-frequency sampling windows in the other video cases
+must not absorb AI action latency or gain relaxed assertions.
 
 ### Preserved algorithm
 
