@@ -33,6 +33,27 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+Run 38021364503 at `32efbfc` passed Android 9/9 on first attempts, iOS 6/9,
+both builds and report/Pages publication. All six iOS pixel-attempt artifacts
+contain independent WDA view `(0,98,240,302)`, exactly matching CDP physical
+`(0,294,720,906)` at scale 3. Unchanged original driver/helper AST replay using
+the WDA rectangle produces identical pixels and the same dimension/color
+rejections. This excludes a migrated root-view crop offset as their cause.
+
+Actual run logs show Xcode 16.4 / iOS simulator 18.5. Upstream baseline update
+[`dfa91d8f`](https://github.com/lynx-family/lynx/commit/dfa91d8f815e626a8977ab0a595cb53d4f784b78)
+updated all three iOS PNGs while explicitly moving to Xcode 26.3 / iPhone 17.
+The hosted macOS 15 image provides Xcode 26.3 / simulator SDK 26.2, but leaves
+16.4 as its default. The migration previously selected that default and the
+newest ordinary iPhone under its SDK, silently changing the baseline environment.
+Both source build and device execution now explicitly select the baseline
+toolchain and original iPhone 17. Simulator JSON selection rejects missing,
+ambiguous, unavailable, wrong-runtime and newer-device alternatives. Actual
+toolchain metadata is recorded and checked with the source SHA/checksum.
+All 133 model-free checks, typechecking and actionlint pass locally. Environment
+alignment is not yet a proven pixel fix; the next real device run must confirm
+old-fails/new-passes without changing any PNG, crop, comparator or threshold.
+
 The next prerequisite is a read-only DevTool TCP probe after the navigation
 smoke, using the existing PeerTalk wire protocol without Appium. It verifies
 runtime registration and at least one valid Lynx session, with bounded socket

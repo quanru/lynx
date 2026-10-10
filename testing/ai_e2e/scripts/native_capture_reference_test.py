@@ -44,8 +44,22 @@ def replay_reference(wheel, evidence):
     exec(compile(ast.Module(body=classes + [screenshot], type_ignores=[]),
                  "unchanged-public-driver", "exec"), namespace)
     rectangle, lynx_rect = namespace["Rectangle"], namespace["LynxRect"]
-    rect = rectangle(*(geometry["rect"][key] / scale
-                       for key in ("left", "top", "width", "height")))
+    geometry_source = "supplied-capture-rectangle"
+    if "nativeViews" in geometry:
+        # Use the independently read WDA rectangle of the original native
+        # wrapper, never geometry inferred from a screenshot or baseline.
+        views = geometry["nativeViews"]
+        if not isinstance(views, list) or len(views) != 1:
+            raise AssertionError("Reference replay requires one visible native view")
+        values = [views[0][key] for key in ("x", "y", "width", "height")]
+        numpy.testing.assert_array_equal(
+            numpy.array(values) * scale,
+            [geometry["rect"][key] for key in ("left", "top", "width", "height")])
+        rect = rectangle(*values)
+        geometry_source = "independent-visible-WDA-view"
+    else:
+        rect = rectangle(*(geometry["rect"][key] / scale
+                           for key in ("left", "top", "width", "height")))
     def box(padding):
         return lynx_rect(rectangle(padding[0], padding[1], padding[2] - padding[0],
                                   padding[5] - padding[1]), is_absolute=True)
@@ -98,7 +112,7 @@ def replay_reference(wheel, evidence):
         except (NativePixelMismatch, ValueError) as error:
             migrated_error = str(error)
         assert bool(original_error) == bool(migrated_error), (original_error, migrated_error)
-        return {"platform": platform, "identicalPixels": True,
+        return {"platform": platform, "identicalPixels": True, "geometrySource": geometry_source,
                 "originalError": original_error, "migratedError": migrated_error}
 
 

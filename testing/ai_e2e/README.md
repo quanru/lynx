@@ -8,7 +8,18 @@ artifact checksum before installation. Each platform now collects three additive
 smoke cases and six original-contract cases, including three pixel contracts.
 The local extension additionally collects all seven original Sparkling cases on
 iOS and VideoModes on both platforms: Android 10 / iOS 17. These additions have
-not yet run in hosted device CI. All 128 model-free Node 22 checks pass.
+not yet run in hosted device CI. All 133 model-free Node 22 checks pass.
+Native run 38021364503 passed Android 9/9 on first attempts and iOS 6/9;
+reports and Pages published. Independent WDA view rectangles agree exactly with
+CDP capture rectangles. Replaying unchanged original driver/helper AST using
+those actual WDA rectangles produces identical pixels and original rejections.
+The run log exposes an environment mismatch: hosted defaults selected Xcode
+16.4 / iOS 18.5, whereas upstream baseline update `dfa91d8f` explicitly moved
+to Xcode 26.3 / iPhone 17. Both build and execution now select Xcode 26.3,
+require simulator SDK 26.2 and exactly one available iPhone 17; build provenance
+records and verifies these actual toolchain versions. Missing tools/devices fail
+instead of falling back. No baseline or threshold is changed. Whether this
+alignment resolves all three pixel failures awaits the next device run.
 Event, DomFocus and InputInsertText have passed on both platforms. TextEvent
 passed Android in run 38016020854, but its iOS pixel baseline failed at the
 unchanged 1% threshold. Image and LayoutLinear await device validation.

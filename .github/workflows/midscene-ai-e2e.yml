@@ -75,6 +75,9 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.11'
+      - name: Select original iOS baseline toolchain
+        if: matrix.platform == 'ios'
+        run: node lynx/testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
       - name: Install public build prerequisites
         working-directory: lynx
         run: |
@@ -314,6 +317,9 @@ jobs:
 
       - name: Preflight model endpoint
         run: bash testing/ai_e2e/scripts/preflight-model.sh
+
+      - name: Select original iOS baseline toolchain
+        run: node testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
 
       - name: Show toolchain
         run: |

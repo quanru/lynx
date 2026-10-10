@@ -10,6 +10,7 @@
 # In non-interactive local runs WDA remains in the background after this script
 # exits. CI cleans it up with the step's process group.
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 WDA_VERSION="${WDA_VERSION:-v16.9.3}"
 WDA_COMMIT="${WDA_COMMIT:-54fc1a254632911fdc48e2b6fbcca2481d27d223}"
@@ -19,16 +20,14 @@ WORKDIR="${WDA_WORKDIR:-$PWD/.wda-build}"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
-# 1) Read the current Xcode simulator SDK version from the runner image.
-SDK_VERSION="$(xcodebuild -showsdks \
-  | grep -Eo -m 1 'iphonesimulator([0-9]{1,}\.)+[0-9]{1,}' \
-  | sed 's/^iphonesimulator//')"
+# 1) Require the same explicit toolchain as the baseline-producing upstream CI.
+node "$SCRIPT_DIR/ios-baseline.mjs" describe
+SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 echo "iphonesimulator SDK: $SDK_VERSION"
 
-# 2) Select the newest-named available iPhone simulator for that SDK.
-SIMULATOR_UDID="$(xcrun simctl list devices "iOS ${SDK_VERSION}" \
-  | grep -Eo 'iPhone [0-9]+ \(([0-9A-F-]{36})\)' \
-  | sort -uV | tail -1 | grep -Eo '[0-9A-F-]{36}')"
+# 2) Match upstream's iPhone 17, never a newer or older device's geometry.
+SIMULATOR_UDID="$(xcrun simctl list devices available --json \
+  | node "$SCRIPT_DIR/ios-baseline.mjs" select-simulator "$SDK_VERSION")"
 if [ -z "${SIMULATOR_UDID:-}" ]; then
   echo "::error:: no available iPhone simulator for iOS ${SDK_VERSION}" >&2
   exit 1

@@ -52,3 +52,18 @@ test('device-only reruns reuse the newest valid build from the same workflow rev
   assert.deepEqual(await stageLatestBuild(flat, destination, 'android', 'current'), manifest);
   await assert.rejects(stageLatestBuild(flat, destination, 'ios', 'current'), /platform/);
 });
+
+test('iOS source artifacts reject absent or incompatible baseline toolchain provenance', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'explorer-ios-provenance-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const bytes = Buffer.from('built iOS app');
+  const manifest = { sha: 'current', platform: 'ios', file: 'LynxExplorer.app.tar.gz', mode: 'source', sparkling: true, integrationPages: true,
+    sha256: createHash('sha256').update(bytes).digest('hex'), iosToolchain: { xcodeVersion: '26.3', simulatorSDK: '26.2' } };
+  await writeFile(join(directory, manifest.file), bytes);
+  await writeFile(join(directory, 'build.json'), JSON.stringify(manifest));
+  assert.deepEqual(await verifyBuild(directory, 'ios', 'current'), manifest);
+  for (const iosToolchain of [undefined, { xcodeVersion: '16.4', simulatorSDK: '18.5' }, { xcodeVersion: '26.3', simulatorSDK: '18.5' }]) {
+    await writeFile(join(directory, 'build.json'), JSON.stringify({ ...manifest, iosToolchain }));
+    await assert.rejects(verifyBuild(directory, 'ios', 'current'), /Original iOS baselines require/);
+  }
+});

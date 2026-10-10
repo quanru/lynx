@@ -20,6 +20,7 @@ if [ "$platform" = android ]; then
   test -f "$apk"
   cp "$apk" "$output/LynxExplorer.apk"
 else
+  node "$root/testing/ai_e2e/scripts/ios-baseline.mjs" describe
   python3 explorer/scripts/sync_sparkling_source.py \
     --manifest "$root/explorer/sparkling-source.json" \
     --source-root "$root/explorer/generated/sparkling-source"
@@ -47,8 +48,12 @@ const [platform, directory] = process.argv.slice(2);
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 if (process.env.GITHUB_SHA && sha !== process.env.GITHUB_SHA) throw new Error('Build checkout does not match this workflow revision.');
 const file = platform === 'android' ? 'LynxExplorer.apk' : 'LynxExplorer.app.tar.gz';
+const iosToolchain = platform === 'ios'
+  ? JSON.parse(execFileSync('node', ['testing/ai_e2e/scripts/ios-baseline.mjs', 'describe'], { encoding: 'utf8' }))
+  : undefined;
 writeFileSync(join(directory, 'build.json'), JSON.stringify({
   sha, platform, file, mode: 'source', sparkling: true, integrationPages: true,
+  ...(iosToolchain ? { iosToolchain } : {}),
   sha256: createHash('sha256').update(readFileSync(join(directory, file))).digest('hex'),
 }, null, 2));
 JS

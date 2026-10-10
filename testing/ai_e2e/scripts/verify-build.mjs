@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir, mkdir, copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateIOSToolchain } from './ios-baseline.mjs';
 
 export async function verifyBuild(directory, platform, sha) {
   const manifest = JSON.parse(await readFile(resolve(directory, 'build.json'), 'utf8'));
@@ -11,6 +12,7 @@ export async function verifyBuild(directory, platform, sha) {
     || manifest.sparkling !== true || manifest.integrationPages !== true) {
     throw new Error('Explorer build does not match the requested revision, platform, or capabilities.');
   }
+  if (platform === 'ios') validateIOSToolchain(manifest.iosToolchain);
   const hash = createHash('sha256').update(await readFile(resolve(directory, file))).digest('hex');
   if (hash !== manifest.sha256) throw new Error('Explorer artifact checksum mismatch.');
   return manifest;
