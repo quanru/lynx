@@ -7,6 +7,9 @@ export type VideoExpectation = {
   timeoutMs?: number;
 } & ({ equal: string } | { contains: string } | { notContains: string } | { order: string[] }
   | { countAtLeast: { key: string; value: number } }
+  | { countEquals: { key: string; value: number } }
+  | { countAtMost: { key: string; value: number } }
+  | { currentTimeRange: { min: number; max: number; minInclusive: boolean } }
   | { occurrences: { text: string; count: number } }
   | { errorDetails: true });
 
@@ -26,6 +29,14 @@ export function parseVideoCount(text: string, key: string): bigint {
   return BigInt(digits);
 }
 
+// Match video_utils.parse_current_time's anchored ASCII regex exactly: no
+// trimming, exponent syntax or broadened whitespace before the slash.
+export function parseVideoCurrentTime(text: string): number {
+  const match = /^([0-9]+(?:\.[0-9]+)?) \//.exec(text);
+  if (!match) throw new Error(`Unexpected time text: ${text}`);
+  return Number(match[1]);
+}
+
 // Preserve video_utils.py independently of core's different polling contract.
 // In particular, video wait_until captures evidence and performs ONE final read
 // after its deadline. Immediate assertions never poll an incorrect value green.
@@ -35,19 +46,25 @@ export async function expectVideoValue(
   input: VideoExpectation,
   clock = { now: Date.now, sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)) },
 ) {
-  const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'occurrences', 'errorDetails'].filter(key => Object.hasOwn(input, key));
+  const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'countEquals', 'countAtMost', 'currentTimeRange', 'occurrences', 'errorDetails'].filter(key => Object.hasOwn(input, key));
+  const counter = 'countAtLeast' in input ? input.countAtLeast
+    : 'countEquals' in input ? input.countEquals : 'countAtMost' in input ? input.countAtMost : undefined;
   const timeoutMs = input.timeoutMs ?? 20_000;
   if (typeof input.tag !== 'string' || !input.tag || keys.length !== 1
     || !Number.isFinite(timeoutMs) || timeoutMs < 0
     || (input.immediate !== undefined && input.immediate !== true)
-    || ('countAtLeast' in input ? !input.countAtLeast || typeof input.countAtLeast.key !== 'string'
-      || !Number.isSafeInteger(input.countAtLeast.value) || input.countAtLeast.value < 0
+    || (['countAtLeast', 'countEquals', 'countAtMost'].includes(keys[0]) ? !counter || typeof counter.key !== 'string'
+      || !Number.isSafeInteger(counter.value) || counter.value < 0
+      : 'currentTimeRange' in input ? !input.currentTimeRange
+        || !Number.isFinite(input.currentTimeRange.min) || !Number.isFinite(input.currentTimeRange.max)
+        || input.currentTimeRange.min < 0 || input.currentTimeRange.max <= input.currentTimeRange.min
+        || typeof input.currentTimeRange.minInclusive !== 'boolean'
       : 'occurrences' in input ? !input.occurrences || typeof input.occurrences.text !== 'string'
       || !Number.isSafeInteger(input.occurrences.count) || input.occurrences.count < 0
       : 'errorDetails' in input ? input.errorDetails !== true
       : 'order' in input ? !Array.isArray(input.order) || input.order.some(value => typeof value !== 'string')
       : typeof (input as unknown as Record<string, unknown>)[keys[0]] !== 'string')
-    || (('notContains' in input || 'order' in input || 'occurrences' in input) && input.immediate !== true)) {
+    || (('notContains' in input || 'order' in input || 'occurrences' in input || 'countEquals' in input || 'countAtMost' in input) && input.immediate !== true)) {
     throw new Error('Invalid original video assertion.');
   }
   const matches = (text: string) => {
@@ -55,6 +72,13 @@ export async function expectVideoValue(
     if ('contains' in input) return text.includes(input.contains);
     if ('notContains' in input) return !text.includes(input.notContains);
     if ('countAtLeast' in input) return parseVideoCount(text, input.countAtLeast.key) >= BigInt(input.countAtLeast.value);
+    if ('countEquals' in input) return parseVideoCount(text, input.countEquals.key) === BigInt(input.countEquals.value);
+    if ('countAtMost' in input) return parseVideoCount(text, input.countAtMost.key) <= BigInt(input.countAtMost.value);
+    if ('currentTimeRange' in input) {
+      const actual = parseVideoCurrentTime(text);
+      return (input.currentTimeRange.minInclusive ? actual >= input.currentTimeRange.min : actual > input.currentTimeRange.min)
+        && actual < input.currentTimeRange.max;
+    }
     if ('occurrences' in input) {
       const count = input.occurrences.text === '' ? [...text].length + 1 : text.split(input.occurrences.text).length - 1;
       return count === input.occurrences.count;

@@ -33,6 +33,25 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+Current pushed head `3c3a435` is being validated in run 38034582646: Android
+11 / iOS 18, with 148 passing model-free checks. Previous run 38028650562
+passed Android 10/11 and iOS 15/18 after WDA started successfully on rerun.
+RawOpenSparkling, RouterOpenClose, MappedLegacyToSparkling,
+MalformedCanonicalNoFallback and HotExternalURL passed first attempts;
+RawOpenLegacy passed its second attempt. CanonicalSparkling, VideoBoundary
+and VideoModes still failed on iOS. These outcomes supersede the historical
+pending descriptions below, but do not validate the new action-phase head.
+
+The next local foundation adds source-equivalent immediate counter equality
+and upper-bound checks plus the original current-time parser and range
+predicates. Parsing is compared against the unchanged Python helper; all four
+VideoBasic time predicates are replayed directly from the original source.
+Equality/upper-bound failures cannot poll later values green; seek's lower
+bound stays inclusive, restart's bounds exclusive. No extra node is added.
+These helpers are not complete VideoBasic/VideoAttributes migrations and add
+no device cases. Click-relative sleeps, core versus video-helper wait behavior
+and sampling still need integration before either case is counted or accepted.
+
 The newest local correction retains Android 11 / iOS 18 and passes 148
 model-free checks plus typechecking. Run 38028650562 Android passed 10/11;
 VideoBoundary failed both attempts because its first physical Play tap finished

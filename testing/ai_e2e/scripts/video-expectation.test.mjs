@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { collectWorkflowDocument } from '@midscene/test';
 import { loadTestProject } from '@midscene/test/config';
-import { expectVideoValue } from '../video-expectation.ts';
+import { expectVideoValue, parseVideoCurrentTime } from '../video-expectation.ts';
 import { fixtureUri } from '../native-fixtures.ts';
 
 const document = text => ({ nodeId: 0, nodeName: '#document', children: [
@@ -13,6 +13,72 @@ const document = text => ({ nodeId: 0, nodeName: '#document', children: [
     { nodeId: 2, nodeName: 'RAW-TEXT', attributes: ['text', text] },
   ] },
 ] });
+
+test('video current-time parsing agrees with the unchanged Python helper, including malformed text', () => {
+  const samples = ['0 / 10', '0.1 / 10', '2 / 10', '5.999 / 10', '6 / 10', '1 /anything',
+    ' 1 / 10', '1/ 10', '1  / 10', '1. / 10', '.1 / 10', '-1 / 10', '1e2 / 10',
+    '١ / 10', '1\t/ 10', '1\n/ 10', '9'.repeat(400) + ' / 10'];
+  const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/video_utils.py', import.meta.url), 'utf8');
+  const reference = JSON.parse(execFileSync('python3', ['-c', `import ast,json,re,sys,math
+data=json.load(sys.stdin)
+tree=ast.parse(data['source'])
+fn=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='parse_current_time')
+scope={'re':re}
+exec(compile(ast.Module(body=[fn],type_ignores=[]),'unchanged-video-time-parser','exec'),scope)
+out=[]
+for text in data['samples']:
+    try:
+        value=scope['parse_current_time'](text)
+        out.append('infinity' if math.isinf(value) else value)
+    except AssertionError: out.append('invalid')
+print(json.dumps(out))`], { input: JSON.stringify({ source, samples }), encoding: 'utf8' }));
+  assert.deepEqual(samples.map(text => {
+    try { const value = parseVideoCurrentTime(text); return Number.isFinite(value) ? value : 'infinity'; }
+    catch { return 'invalid'; }
+  }), reference);
+});
+
+test('original immediate video counter equality and upper bounds cannot poll a failed sample green', async () => {
+  for (const input of [{ countEquals: { key: 'timeupdate', value: 0 } }, { countAtMost: { key: 'timeupdate', value: 5 } }]) {
+    let reads = 0;
+    await assert.rejects(expectVideoValue(async () => document(reads++ ? 'timeupdate=0' : 'timeupdate=6'),
+      async () => assert.fail('Immediate source counters never capture or poll'), { tag: 'log', ...input, immediate: true }), /Original video assertion failed/);
+    assert.equal(reads, 1);
+    await assert.rejects(expectVideoValue(async () => assert.fail(), async () => assert.fail(), { tag: 'log', ...input }), /Invalid original video assertion/);
+  }
+  await expectVideoValue(async () => document('timeupdate=٠'), async () => assert.fail(),
+    { tag: 'log', countEquals: { key: 'timeupdate', value: 0 }, immediate: true });
+  await expectVideoValue(async () => document('timeupdate=5'), async () => assert.fail(),
+    { tag: 'log', countAtMost: { key: 'timeupdate', value: 5 }, immediate: true });
+});
+
+test('original VideoBasic time predicates keep inclusive seek bounds and exclusive restart bounds', async () => {
+  const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBasic.py', import.meta.url), 'utf8');
+  const samples = ['0 / 10', '0.001 / 10', '1.999 / 10', '2 / 10', '4.999 / 10', '5 / 10', '5.999 / 10', '6 / 10'];
+  const reference = JSON.parse(execFileSync('python3', ['-c', `import ast,json,re,sys
+from types import SimpleNamespace
+data=json.load(sys.stdin)
+tree=ast.parse(data['source'])
+predicates=[node for node in ast.walk(tree) if isinstance(node,ast.Lambda) and 'parse_current_time' in ast.unparse(node)]
+def parse(text): return float(re.match(r'([0-9]+(?:\\.[0-9]+)?) /',text).group(1))
+out=[]
+for node in sorted(predicates,key=lambda n:n.lineno):
+    fn=eval(compile(ast.Expression(body=node),'unchanged-video-basic-predicate','eval'),{'video_utils':SimpleNamespace(parse_current_time=parse)})
+    out.append([fn(text) for text in data['samples']])
+print(json.dumps(out))`], { input: JSON.stringify({ source, samples }), encoding: 'utf8' }));
+  const ranges = [{ min: 2, max: 6, minInclusive: true }, ...Array.from({ length: 3 }, () => ({ min: 0, max: 5, minInclusive: false }))];
+  assert.equal(reference.length, ranges.length);
+  for (const [index, currentTimeRange] of ranges.entries()) {
+    for (const [sampleIndex, text] of samples.entries()) {
+      const promise = expectVideoValue(async () => document(text), async () => assert.fail(), { tag: 'log', currentTimeRange, immediate: true });
+      if (reference[index][sampleIndex]) await promise;
+      else await assert.rejects(promise, /Original video assertion failed/);
+    }
+  }
+  for (const currentTimeRange of [{ min: 0, max: 5 }, { min: -1, max: 5, minInclusive: false }, { min: 5, max: 5, minInclusive: true }]) {
+    await assert.rejects(expectVideoValue(async () => assert.fail(), async () => assert.fail(), { tag: 'log', currentTimeRange }), /Invalid original video assertion/);
+  }
+});
 
 test('video immediate order and negative checks reject bad values without retrying', async () => {
   for (const [input, value] of [
