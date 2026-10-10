@@ -16,7 +16,7 @@ the original pixel baseline.
 | core/Image | Cropped LynxView pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
 | core/ListBase | Pixel baseline; original case is disabled | Disabled, not passed |
 | core/LayoutLinear | Pixel baseline | Implemented locally; unchanged baseline and original second crop; Android/iOS validation pending |
-| core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Implemented; 91 local Node checks and pixel differential checks pass; Android/iOS validation pending |
+| core/TextEvent | Cropped pixel baseline and exact text-attribute existence | Android passed first attempt in run 38016020854; iOS pixel comparison fails at the unchanged threshold; not accepted cross-platform |
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Pending, iOS |
@@ -92,6 +92,37 @@ assertions are executed successfully. Harmony device execution remains a
 separate signing/device-runner prerequisite, not a passing native target.
 
 ## Pixel migration contract
+
+### Hosted TextEvent evidence
+
+Run 38016020854 at `2afb2f2` passed both source builds and Android 7/7.
+iOS passed 6/7; TextEvent failed twice with exactly the same 720 × 159 crop
+and mismatch fraction `0.01277078965758211`, exceeding the original `0.01`.
+All 1,462 above-threshold pixels are in the colored sub-text region; there are
+none in the remaining text region. A solid border sample is BGR `[0, 0, 254]`
+in the capture versus `[31, 52, 234]` in the baseline. The JPEG declares sRGB;
+the checked-in baseline has no ICC profile. A device/color-gamut difference
+is a hypothesis, not yet a controlled-device result. No baseline, color
+transform, mask or tolerance is changed to force acceptance.
+
+`scripts/native_capture_reference_test.py` replays this downloaded JPEG and
+geometry through the unchanged public driver's screenshot and geometry AST,
+then the repository's unchanged crop and comparator AST. Its crop is
+byte-for-byte equal to the migrated array, and the original comparator fails
+with exactly the same mismatch fraction. This establishes that the observed
+failure is not introduced by the new crop/comparator or an AI action; it does
+not prove when or why the baseline's rendering environment differed.
+
+```bash
+python testing/ai_e2e/scripts/native_capture_reference_test.py \
+  /path/to/lynx_e2e_appium-0.0.15-py3-none-any.whl \
+  /path/to/downloaded/native-pixels/ios/CASE_RUN_ID
+```
+
+The wheel remains an optional read-only diagnostic reference, never a CI
+runtime dependency. The failed pixel contract remains a failing gate.
+
+### Preserved algorithm
 
 Image, LayoutLinear and TextEvent have checked-in baselines under
 `testing/integration_test/test_script/resources/{android,ios}/`. Their comparator

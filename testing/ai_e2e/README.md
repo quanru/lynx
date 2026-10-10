@@ -5,9 +5,11 @@ the same YAML cases on Android and iOS. It connects directly through adb or
 WebDriverAgent without Appium. CI builds Explorer at the workflow revision with
 integration fixtures and Sparkling enabled. Consumers verify the commit and
 artifact checksum before installation. Each platform now collects three additive
-smoke cases and three original-contract cases (Event, DomFocus, InputInsertText).
-DomFocus and InputInsertText have passed on both devices; Event has now passed
-on Android but still misses targets on iOS. This is not a replacement for the
+smoke cases and six original-contract cases, including three pixel contracts.
+Event, DomFocus and InputInsertText have passed on both platforms. TextEvent
+passed Android in run 38016020854, but its iOS pixel baseline failed at the
+unchanged 1% threshold. Image and LayoutLinear await device validation.
+This is not a replacement for the
 remaining original integration suites.
 The current-source baseline at PR head `3cf1da2` passed both source builds and
 Android 3/3 plus iOS 3/3, including report/Pages publication:
