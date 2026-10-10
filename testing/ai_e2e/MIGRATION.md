@@ -33,6 +33,27 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+The next timing implementation retains the two strict VideoBoundary fragments
+as source-bound native.videoPhase nodes, as approved. Visibility preparation
+uses standard aiAct before playback; its public progress stream rejects any
+non-scroll action. Both buttons are visually located before the first tap.
+The standard SDK Tap path then receives those points with deepLocate disabled,
+without DOM selectors, fixture action hooks or model calls between taps.
+All original assertions run after the first tap, with source-time screenshots
+and a fresh playing read immediately before the second. Failed assertions or
+device actions stop the fragment; there are no hidden retries or media changes.
+Complete Python replay still verifies all 36 original clicks and every assertion
+in order. Pinned SDK task/schema tests verify direct points reach the physical
+primitive without model access. Device recovery awaits the next hosted head.
+
+Run 38034582646 completed with Android 10/11 and iOS 16/18. All seven
+Sparkling routes passed on iOS (RawOpenLegacy and MalformedCanonicalNoFallback
+needed their original retry). CanonicalSparkling passed first attempt.
+VideoBoundary and VideoModes timed out in iOS AI actions, while Android
+VideoBoundary failed the exact playing assertion and VideoModes passed.
+Source builds, report assembly and publication succeeded; this is not a fully
+accepted native head. VideoBasic/VideoAttributes remain incomplete.
+
 The next local correction passes 152 model-free checks and typechecking.
 Run 38028650562's iOS VideoBoundary grounding cropped a 400-by-400 area at
 (163,1374), entirely below the visible gray panel. Its repeated scroll gestures

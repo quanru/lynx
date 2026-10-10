@@ -24,8 +24,8 @@ import type { SparklingContract } from './sparkling-contracts.ts';
 import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
 import { expectVideoValue } from './video-expectation.ts';
 import type { VideoExpectation } from './video-expectation.ts';
-import { observeVideoActionPhase, videoActionPhaseChecks } from './video-action-phase.ts';
-import type { VideoActionPhase, VideoProgressSource } from './video-action-phase.ts';
+import { executeVideoActionPhase, videoActionPhaseChecks } from './video-action-phase.ts';
+import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -65,7 +65,7 @@ async function captureVideoWaitDiagnostic(
 }
 
 type VideoPhaseEvidence = {
-  observer: ReturnType<typeof observeVideoActionPhase>;
+  evidence: Awaited<ReturnType<typeof executeVideoActionPhase>>;
   capture: { screenshot?: string };
   reported?: boolean;
 };
@@ -78,27 +78,26 @@ const phasesFor = (registry: AgentRegistry) => {
 
 const videoPhaseNode = defineNode<{ phase: VideoActionPhase }, void, ProjectContext>({
   name: 'native.videoPhase',
-  description: 'Observe original video assertions between two physical aiAct taps without driving the UI.',
+  description: 'Prelocate two original video buttons and execute their exact physical timing fragment without intervening model calls.',
   async execute(execution) {
     if (execution.scope !== 'case' || Object.keys(execution.input).length !== 1) throw new Error('Invalid video phase scope or input.');
-    const checks = videoActionPhaseChecks(execution.input.phase);
+    videoActionPhaseChecks(execution.input.phase);
     const runId = execution.case.runId;
     const phases = phasesFor(execution.context.agentRegistry);
     if (phases.has(runId)) throw new Error('Previous video phase evidence has not been consumed.');
-    const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoProgressSource;
-    if (typeof agent.addProgressListener !== 'function') throw new Error('Video phase requires the public SDK progress API.');
+    const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoTimedAgent;
+    if (typeof agent.aiLocate !== 'function' || typeof agent.callActionInActionSpace !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and physical action APIs.');
     const session = await execution.context.getNativeSession(runId, 'video');
     const capture: VideoPhaseEvidence['capture'] = {};
-    const observer = observeVideoActionPhase(agent, checks,
+    const evidence = await executeVideoActionPhase(agent, execution.input.phase,
       input => expectVideoValue(session.readDocument,
         () => captureVideoWaitDiagnostic(session, execution.context.platform, runId), input),
-      () => expectVideoValue(session.readDocument, async () => {}, { tag: 'status-text', equal: 'playing', immediate: true }),
       async () => {
         const frame = await session.captureFrame();
         if (typeof frame.data !== 'string' || !frame.data) throw new Error('Missing original action-time video frame.');
         capture.screenshot = `data:image/jpeg;base64,${frame.data}`;
       });
-    phases.set(runId, { observer, capture });
+    phases.set(runId, { evidence, capture });
   },
 });
 
@@ -120,7 +119,7 @@ const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
     const phases = phasesFor(execution.context.agentRegistry);
     const phase = phases.get(execution.case.runId);
     if (phase) {
-      const last = await phase.observer.consume(execution.input);
+      const last = await phase.evidence.consume(execution.input);
       if (!phase.reported && phase.capture.screenshot) {
         const agent = await execution.context.agentRegistry.getAgent(execution.case.runId);
         await agent.recordToReport('Original video assertions at physical action completion', {
@@ -128,7 +127,7 @@ const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
         });
         phase.reported = true;
       }
-      if (last) { phase.observer.dispose(); phases.delete(execution.case.runId); }
+      if (last) { phase.evidence.dispose(); phases.delete(execution.case.runId); }
       return;
     }
     const session = await execution.context.getNativeSession(execution.case.runId, 'video');
@@ -192,7 +191,7 @@ const nodesFor = (
       releaseAgent: (runId) => {
         if (!slot.current) throw new Error('agentRegistry is unavailable before project setup.');
         const phases = phasesFor(slot.current);
-        phases.get(runId)?.observer.dispose();
+        phases.get(runId)?.evidence.dispose();
         phases.delete(runId);
         return slot.current.releaseAgent(runId);
       },

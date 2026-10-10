@@ -1,146 +1,156 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { observeVideoActionPhase } from '../video-action-phase.ts';
-import { videoActionPhaseChecks } from '../video-action-phase.ts';
-import { expectVideoValue } from '../video-expectation.ts';
+import { executeVideoActionPhase, videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action-phase.ts';
 
-// Exercise the actual pinned SDK bus, including awaited listener delivery and
-// swallowed callback errors. Production uses only public addProgressListener.
-const { AgentProgressBus } = await import(new URL('../node_modules/@midscene/core/dist/es/agent/progress/progress-bus.mjs', import.meta.url));
 const playing = { tag: 'status-text', equal: 'playing', timeoutMs: 20000 };
 
-function fixture(checks = [playing]) {
-  const bus = new AgentProgressBus();
-  let state = 'ready';
+test('actual SDK Tap schema and task execution deliver prelocated points to the device primitive without model access', async () => {
+  const { TaskBuilder } = await import(new URL('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs', import.meta.url));
+  const { defineActionTap } = await import('@midscene/core/device');
+  const taps = [];
+  const action = defineActionTap(async (...args) => taps.push(args));
+  const builder = new TaskBuilder({ interfaceInstance: {}, actionSpace: [action], service: {
+    locate: async () => assert.fail('Prelocated physical action must not request a model'),
+  } });
+  const { tasks } = await builder.build([{ type: 'Tap', param: { locate: {
+    prompt: 'Src B', locatedPixelResult: { center: [200, 100] }, deepLocate: false, cacheable: false,
+  } }, thought: '' }]);
+  assert.deepEqual(tasks.map(task => task.subType), ['Locate', 'Tap']);
+  for (const task of tasks) {
+    await task.executor({ task: { timing: {} }, uiContext: { shrunkShotToLogicalRatio: 1, deprecatedDpr: 3 } });
+  }
+  assert.equal(taps.length, 1);
+  assert.deepEqual(taps[0], [{ x: 200, y: 100 }]);
+});
+
+test('pinned SDK honors prelocated screenshot points without a second model call; deepLocate would call it again', async () => {
+  const { TaskBuilder } = await import(new URL('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs', import.meta.url));
+  for (const deepLocate of [false, true]) {
+    let modelCalls = 0;
+    const builder = new TaskBuilder({ interfaceInstance: {}, actionSpace: [], service: {
+      locate: async () => { modelCalls++; return { element: { center: [200, 100] } }; },
+    } });
+    const locate = builder.createLocateTask({ thought: '' }, {
+      prompt: 'Src B', locatedPixelResult: { center: [200, 100] }, deepLocate, cacheable: false,
+    }, { tasks: [], cacheable: false });
+    const result = await locate.executor({ task: { timing: {} }, uiContext: { shrunkShotToLogicalRatio: 1, deprecatedDpr: 3 } });
+    assert.deepEqual(result.output.element.center, [200, 100]);
+    assert.equal(modelCalls, deepLocate ? 1 : 0);
+    if (!deepLocate) assert.equal(result.hitBy.from, 'Plan');
+  }
+});
+function fixture() {
   const trace = [];
-  const observer = observeVideoActionPhase({ addProgressListener: listener => bus.subscribe(listener) }, checks,
-    async input => { trace.push(['assert', input]); assert.equal(state, 'playing', 'The original playing assertion must genuinely pass'); },
-    async () => { trace.push(['fresh', state]); assert.equal(state, 'playing', 'Replacement/stop must still happen during playback'); },
-    async () => { trace.push(['evidence', state]); });
-  return { bus, observer, trace, getState: () => state, setState: value => { state = value; },
-    emit: (phase, name = 'Tap') => bus.publish('aiAct', phase, { action: { name } }) };
+  let state = 'ready';
+  let taps = 0;
+  let listener;
+  const agent = {
+    addProgressListener: value => { listener = value; return () => { listener = undefined; }; },
+    aiAct: async prompt => { trace.push(['prepare', prompt]); listener?.({ scope: 'aiAct', phase: 'action_running', data: { action: { name: 'Scroll' } } }); },
+    aiLocate: async (prompt, options) => {
+      trace.push(['locate', prompt, options]);
+      assert.equal(taps, 0, 'No model call may follow playback start');
+      return { center: prompt.includes('"Src B"') || prompt.includes('"Stop"') ? [200, 100] : [100, 100] };
+    },
+    callActionInActionSpace: async (type, input) => {
+      assert.equal(type, 'Tap');
+      assert.equal(input.locate.deepLocate, false);
+      trace.push(['tap', input]);
+      state = ++taps === 1 ? 'playing' : 'ready';
+    },
+  };
+  const source = async input => { trace.push(['assert', input]); assert.equal(state, 'playing', 'Original playing state must genuinely pass'); };
+  const capture = async () => { trace.push(['capture', state]); };
+  return { agent, trace, source, capture, emit: name => listener?.({ scope: 'aiAct', phase: 'action_running', data: { action: { name } } }), setState: value => { state = value; },
+    run: () => executeVideoActionPhase(agent, 'replace-playing-source', source, capture) };
 }
 
-async function firstTap(f) {
-  await f.emit('start');
-  await f.emit('action_running');
-  f.setState('playing');
-  await f.emit('action_done');
-}
-
-test('video checks execute between real taps, before later model planning or completion', async () => {
+test('all visual planning precedes both real SDK taps and original inter-action checks', async () => {
   const f = fixture();
-  await firstTap(f);
-  assert.deepEqual(f.trace.map(x => x[0]), ['assert', 'evidence']);
-  await f.emit('action_running');
-  f.setState('ready'); // Source replacement has happened after playing was verified.
-  await f.emit('action_done');
-  await f.emit('complete');
-  assert.equal(await f.observer.consume({ timeoutMs: 20000, equal: 'playing', tag: 'status-text' }), true);
-  f.observer.dispose();
-  assert.equal(f.bus.listenerCount, 0);
+  const evidence = await f.run();
+  assert.deepEqual(f.trace.map(item => item[0]), ['prepare', 'locate', 'locate', 'tap', 'assert', 'capture', 'assert', 'tap']);
+  assert.equal(await evidence.consume(playing), true);
+  assert.deepEqual(f.trace.filter(item => item[0] === 'locate').map(item => item[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: false, cacheable: false }]);
+  assert.deepEqual(f.trace.filter(item => item[0] === 'tap').map(item => item[1].locate.locatedPixelResult.center), [[100, 100], [200, 100]]);
+});
+test('capture or device delay cannot replay stale playing into a late second tap', async () => {
+  const f = fixture();
+  await assert.rejects(executeVideoActionPhase(f.agent, 'replace-playing-source', f.source, async () => f.setState('ended')), /genuinely pass/);
+  assert.equal(f.trace.filter(item => item[0] === 'tap').length, 1);
+});
+test('a failed original assertion stops before second tap rather than being swallowed', async () => {
+  const f = fixture();
+  await assert.rejects(executeVideoActionPhase(f.agent, 'replace-playing-source', async () => { throw new Error('source assertion failed'); }, f.capture), /source assertion failed/);
+  assert.equal(f.trace.filter(item => item[0] === 'tap').length, 1);
+});
+test('failure to locate either button stops before playback starts', async () => {
+  const f = fixture();
+  let locations = 0;
+  f.agent.aiLocate = async () => { if (++locations === 2) throw new Error('missing button'); return { center: [100, 100] }; };
+  await assert.rejects(f.run(), /missing button/);
+  assert.equal(f.trace.filter(item => item[0] === 'tap').length, 0);
 });
 
-test('cached playing cannot make a late source replacement pass', async () => {
-  const f = fixture();
-  await firstTap(f);
-  f.setState('ended');
-  await f.emit('action_running');
-  await f.emit('action_done');
-  await f.emit('complete');
-  await assert.rejects(f.observer.consume(playing), /still happen during playback/);
-  f.observer.dispose();
-});
-
-test('source assertion failure is retained despite the SDK swallowing progress listener errors', async () => {
-  const f = fixture();
-  await f.emit('start');
-  await f.emit('action_running');
-  f.setState('ended');
-  await f.emit('action_done');
-  await f.emit('complete');
-  await assert.rejects(f.observer.consume(playing), /genuinely pass/);
-  f.observer.dispose();
-});
-
-test('missing second tap cannot pass through an otherwise successful aiAct', async () => {
-  const f = fixture();
-  await firstTap(f);
-  await f.emit('complete');
-  await assert.rejects(f.observer.consume(playing), /exactly two/);
-  f.observer.dispose();
-});
-
-test('extra taps and repeated planning instructions cannot become hidden retries', async () => {
-  for (const extra of ['action_running', 'start']) {
+test('visibility preparation cannot hide extra clicks and its listener is removed after success or failure', async () => {
+  for (const action of ['Tap', 'Input', 'Launch', undefined]) {
     const f = fixture();
-    await firstTap(f);
-    await f.emit('action_running');
-    await f.emit('action_done');
-    await f.emit(extra);
-    await f.emit('complete');
-    await assert.rejects(f.observer.consume(playing), /extra|another aiAct/);
-    f.observer.dispose();
+    f.agent.aiAct = async () => f.emit(action);
+    await assert.rejects(f.run(), /non-scroll/);
+    assert.equal(f.trace.length, 0);
+    assert.equal(f.emit('Tap'), undefined);
+  }
+  const f = fixture();
+  f.agent.aiAct = async () => { throw new Error('preparation failed'); };
+  await assert.rejects(f.run(), /preparation failed/);
+  assert.equal(f.emit('Tap'), undefined);
+});
+test('malformed and identical points cannot issue physical actions', async () => {
+  for (const center of [[-1, 2], [NaN, 2], [1], [1, 2, 3], [100, 100]]) {
+    const f = fixture();
+    f.agent.aiLocate = async () => ({ center });
+    await assert.rejects(f.run(), /Invalid visual point|same point/);
+    assert.equal(f.trace.filter(item => item[0] === 'tap').length, 0);
   }
 });
-
-test('assertion identity and source order cannot be changed during consumption', async () => {
-  const second = { tag: 'callback-log', contains: 'play_ok', timeoutMs: 20000 };
-  const f = fixture([playing, second]);
-  await firstTap(f);
-  await f.emit('action_running');
-  await f.emit('action_done');
-  await f.emit('complete');
-  assert.deepEqual(f.trace.filter(x => x[0] === 'assert').map(x => x[1]), [playing, second]);
-  await assert.rejects(f.observer.consume(second), /identity or order/);
-  f.observer.dispose();
+test('original assertion identity and order survive consumption without extra reads', async () => {
+  const f = fixture();
+  const evidence = await executeVideoActionPhase(f.agent, 'stop-play-null', f.source, f.capture);
+  const checks = videoActionPhaseChecks('stop-play-null');
+  await assert.rejects(evidence.consume(checks[1]), /identity or order/);
+  for (let index = 0; index < checks.length; index++) assert.equal(await evidence.consume(checks[index]), index === checks.length - 1);
+  await assert.rejects(evidence.consume(checks[0]), /identity or order/);
 });
-
-test('scroll actions cannot count as source clicks and failed actions cannot pass', async () => {
-  for (const failure of ['action_failed', 'failed']) {
+test('case cleanup permanently disposes source-time evidence', async () => {
+  const f = fixture();
+  const evidence = await f.run();
+  evidence.dispose();
+  evidence.dispose();
+  await assert.rejects(evidence.consume(playing), /disposed/);
+});
+test('failed physical taps never produce consumable source evidence or hidden retries', async () => {
+  for (const failureAt of [1, 2]) {
     const f = fixture();
-    await f.emit('start');
-    await f.emit('action_running', 'Scroll');
-    await f.emit('action_done', 'Scroll');
-    await f.emit(failure);
-    await assert.rejects(f.observer.consume(playing), /phase failed/);
-    f.observer.dispose();
+    const tap = f.agent.callActionInActionSpace;
+    let count = 0;
+    f.agent.callActionInActionSpace = async (...args) => { if (++count === failureAt) throw new Error('physical failure'); return tap(...args); };
+    await assert.rejects(f.run(), /physical failure/);
+    assert.equal(count, failureAt);
   }
 });
-
-test('case cleanup unsubscribes once and cannot expose disposed evidence', async () => {
+test('source check copies cannot mutate later phases or cached original assertion identity', async () => {
   const f = fixture();
-  f.observer.dispose();
-  f.observer.dispose();
-  assert.equal(f.bus.listenerCount, 0);
-  await f.emit('start');
-  assert.deepEqual(f.trace, []);
-  await assert.rejects(f.observer.consume(playing), /disposed/);
-});
-
-test('old post-planning playing read fails, while original inter-action assertions pass before source replacement', async () => {
-  const f = fixture();
-  await firstTap(f);
-  await f.emit('action_running');
-  f.setState('ready');
-  await f.emit('action_done');
-  await f.emit('complete');
-  const read = async () => ({ nodeId: 0, nodeName: '#document', children: [
-    { nodeId: 1, nodeName: 'TEXT', attributes: ['lynx-test-tag', 'status-text'], children: [
-      { nodeId: 2, nodeName: 'RAW-TEXT', attributes: ['text', f.getState()] },
-    ] },
-  ] });
-  await assert.rejects(expectVideoValue(read, async () => {}, { ...playing, immediate: true }), /Original video assertion failed/);
-  assert.equal(await f.observer.consume(playing), true);
-  f.observer.dispose();
-});
-
-test('only source-bound phases can arm video assertions and their input copies are isolated', () => {
-  assert.deepEqual(videoActionPhaseChecks('replace-playing-source'), [playing]);
-  const first = videoActionPhaseChecks('stop-play-null');
-  assert.equal(first.length, 3);
-  first[0].equal = 'ended';
+  const evidence = await executeVideoActionPhase(f.agent, 'replace-playing-source', async input => { input.equal = 'ended'; }, f.capture);
+  assert.equal(await evidence.consume(playing), true);
+  const checks = videoActionPhaseChecks('stop-play-null');
+  checks[0].equal = 'ended';
   assert.equal(videoActionPhaseChecks('stop-play-null')[0].equal, 'playing');
-  assert.throws(() => videoActionPhaseChecks('unknown'), /Unknown/);
-  assert.throws(() => observeVideoActionPhase({}, [], async () => {}, async () => {}, async () => {}), /original playing assertion/);
+});
+test('only the two unchanged source phases and exact fixture labels are supported', async () => {
+  assert.deepEqual(videoActionPhaseTargets('replace-playing-source'), ['Play', 'Src B']);
+  assert.deepEqual(videoActionPhaseTargets('stop-play-null'), ['Play Null', 'Stop']);
+  assert.deepEqual(videoActionPhaseChecks('replace-playing-source'), [playing]);
+  assert.throws(() => videoActionPhaseTargets('unknown'), /Unknown/);
+  const f = fixture();
+  await assert.rejects(executeVideoActionPhase(f.agent, 'unknown', f.source, f.capture), /Unknown/);
+  assert.deepEqual(f.trace, []);
 });

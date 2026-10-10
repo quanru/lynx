@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { videoActionPhaseChecks } from '../video-action-phase.ts';
+import { videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action-phase.ts';
 
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
@@ -53,7 +53,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
     { phase: 'replace-playing-source', first: 'btn-play', second: 'btn-src-secondary' },
     { phase: 'stop-play-null', first: 'btn-play-null-params', second: 'btn-stop' },
   ];
-  for (const phase of phases) {
+  for (const phase of [...phases].reverse()) {
     const checks = videoActionPhaseChecks(phase.phase);
     const matches = events.flatMap(([kind, value], index) => kind === 'click' && value === phase.first
       && events[index + 1]?.[0] === 'assert' && events[index + 1][1].equal === 'playing' ? [index] : []);
@@ -64,12 +64,9 @@ export function originalVideoBoundary(platform, variableBridge = false) {
     const first = labels.get(phase.first);
     const second = labels.get(phase.second);
     assert.ok(first && second);
+    assert.deepEqual(videoActionPhaseTargets(phase.phase), [first, second]);
     steps.splice(index + 4, checks.length + 2,
       { 'native.videoPhase': { phase: phase.phase } },
-      { aiAct: {
-        prompt: `In one interaction phase, click the single button labeled exactly ${JSON.stringify(first)} ONCE, then IMMEDIATELY click the single button labeled exactly ${JSON.stringify(second)} ONCE while playback is still active. Plan both clicks together. Do not wait for playback to end, repeat either click, or perform another action. When scrolling, stay inside the actual video demo panel, not the blank area outside it.`,
-        options: { deepLocate, cacheable: false },
-      } },
       ...checks.map(input => ({ 'native.video': input })));
   }
   return { events, labels, steps, phases };

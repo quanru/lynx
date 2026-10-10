@@ -36,7 +36,7 @@ test('VideoBoundary collects every unchanged original action, helper assertion a
     assert.equal(source.events.filter(([kind]) => kind === 'click').length, 36);
     const phases = actual.filter(step => step.node === 'native.videoPhase');
     assert.deepEqual(phases.map(step => step.input.phase), ['replace-playing-source', 'stop-play-null']);
-    assert.equal(actual.filter(step => step.node === 'aiAct').length + phases.length, 36,
+    assert.equal(actual.filter(step => step.node === 'aiAct').length + phases.length * 2, 36,
       'Each armed phase contains exactly two source taps; no click may be omitted or added');
     assert.deepEqual(actual.filter(step => step.node === 'native.video').map(step => step.input),
       source.events.filter(([kind]) => kind === 'assert').map(([, input]) => input),

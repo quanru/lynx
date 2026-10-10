@@ -1,92 +1,14 @@
-import type { AgentProgressEvent, AgentProgressListener } from '@midscene/core';
 import { isDeepStrictEqual } from 'node:util';
+import type { AgentProgressListener } from '@midscene/core';
 import type { VideoExpectation } from './video-expectation.ts';
 
-export interface VideoProgressSource {
-  addProgressListener(listener: AgentProgressListener): () => void;
-}
-
-// Read-only observer for a two-click aiAct phase. It never selects, locates,
-// clicks, scrolls or fabricates a document. Source assertions run at the first
-// actual action completion, before any later model planning can outlive media.
-export function observeVideoActionPhase(
-  agent: VideoProgressSource,
-  checks: readonly VideoExpectation[],
-  assertSource: (input: VideoExpectation) => Promise<void>,
-  assertStillPlaying: () => Promise<void>,
-  captureEvidence: () => Promise<void>,
-) {
-  if (!checks.length || checks[0].tag !== 'status-text' || !('equal' in checks[0]) || checks[0].equal !== 'playing') {
-    throw new Error('Video action phase requires the original playing assertion first.');
-  }
-  const expected = checks.map(input => structuredClone(input));
-  let started = false;
-  let running = false;
-  let taps = 0;
-  let checked = false;
-  let complete = false;
-  let consumed = 0;
-  let disposed = false;
-  let failure: Error | undefined;
-  const fail = (message: string) => { failure ??= new Error(message); };
-  const listen = async (event: AgentProgressEvent) => {
-    if (disposed || event.scope !== 'aiAct') return;
-    const data = event.data as { action?: { name?: string }; error?: string } | undefined;
-    try {
-      if (event.phase === 'start') {
-        if (started) throw new Error('Video phase cannot accept another aiAct instruction.');
-        started = true;
-      } else if (event.phase === 'action_running' && data?.action?.name === 'Tap') {
-        if (!started || complete || running || taps >= 2) throw new Error('Unexpected extra or out-of-order video tap.');
-        if (taps === 1) {
-          if (!checked || failure) throw new Error('Second video tap cannot precede successful original assertions.');
-          // Do not replay a cached playing value after the video has ended.
-          // This fresh read is immediately before the second physical action.
-          await assertStillPlaying();
-        }
-        running = true;
-      } else if (event.phase === 'action_done' && data?.action?.name === 'Tap') {
-        if (!running || complete) throw new Error('Video tap completion has no matching action start.');
-        running = false;
-        taps++;
-        if (taps === 1) {
-          for (const input of expected) await assertSource(input);
-          await captureEvidence();
-          checked = true;
-        }
-      } else if (event.phase === 'action_failed' || event.phase === 'failed') {
-        throw new Error(`Video aiAct phase failed: ${data?.error ?? event.phase}`);
-      } else if (event.phase === 'complete') {
-        if (!started || running || taps !== 2 || !checked) throw new Error('Video phase requires exactly two completed taps and all original assertions.');
-        complete = true;
-      }
-    } catch (error) {
-      // SDK progress listeners deliberately swallow exceptions. Persist every
-      // observer failure and surface it through the following assertion node.
-      failure ??= error instanceof Error ? error : new Error(String(error));
-    }
-  };
-  const remove = agent.addProgressListener(listen);
-  return {
-    async consume(input: VideoExpectation) {
-      if (disposed) throw new Error('Video phase evidence was disposed.');
-      if (failure) throw failure;
-      if (!complete) throw new Error('Video phase did not complete before assertion consumption.');
-      if (!isDeepStrictEqual(input, expected[consumed])) {
-        fail('Video phase assertion identity or order differs from the original.');
-        throw failure;
-      }
-      consumed++;
-      return consumed === expected.length;
-    },
-    dispose() {
-      if (!disposed) remove();
-      disposed = true;
-    },
-  };
-}
-
 export type VideoActionPhase = 'replace-playing-source' | 'stop-play-null';
+export interface VideoTimedAgent {
+  aiAct(prompt: string, options: { deepLocate: false; cacheable: false }): Promise<unknown>;
+  addProgressListener(listener: AgentProgressListener): () => void;
+  aiLocate(prompt: string, options: { deepLocate: false; cacheable: false }): Promise<{ center: number[] }>;
+  callActionInActionSpace(type: string, input: unknown): Promise<unknown>;
+}
 
 export function videoActionPhaseChecks(phase: VideoActionPhase): VideoExpectation[] {
   const playing: VideoExpectation = { tag: 'status-text', equal: 'playing', timeoutMs: 20000 };
@@ -95,4 +17,63 @@ export function videoActionPhaseChecks(phase: VideoActionPhase): VideoExpectatio
     { tag: 'callback-log', contains: 'play_ok', timeoutMs: 20000 },
     { tag: 'callback-log', contains: 'success=true', timeoutMs: 20000 }];
   throw new Error('Unknown original video action phase.');
+}
+export function videoActionPhaseTargets(phase: VideoActionPhase): readonly [string, string] {
+  if (phase === 'replace-playing-source') return ['Play', 'Src B'];
+  if (phase === 'stop-play-null') return ['Play Null', 'Stop'];
+  throw new Error('Unknown original video action phase.');
+}
+
+// Only two source-bound playback-time fragments use this path. All model
+// calls finish before playback starts; standard SDK Tap actions then drive
+// the real device. No selector, DOM click, fixture action hook or media change.
+export async function executeVideoActionPhase(
+  agent: VideoTimedAgent,
+  phase: VideoActionPhase,
+  assertSource: (input: VideoExpectation) => Promise<void>,
+  captureEvidence: () => Promise<void>,
+) {
+  const expected = videoActionPhaseChecks(phase);
+  const labels = videoActionPhaseTargets(phase);
+  // Normal visibility preparation still uses aiAct, before the timed fragment.
+  // Reject any non-scroll action, even if the model later claims completion.
+  let unexpectedAction = false;
+  const remove = agent.addProgressListener(event => {
+    const data = event.data as { action?: { name?: string } } | undefined;
+    if (event.scope === 'aiAct' && event.phase === 'action_running' && data?.action?.name !== 'Scroll') unexpectedAction = true;
+  });
+  try {
+    await agent.aiAct('Before the timed video fragment, make the buttons labeled exactly ' + JSON.stringify(labels[0]) + ' and ' + JSON.stringify(labels[1]) + ' visible together. Scroll inside the actual gray video demo panel only if needed. Do not tap any button, change playback or scroll the blank area outside the panel.', { deepLocate: false, cacheable: false });
+  } finally { remove(); }
+  if (unexpectedAction) throw new Error('Video visibility preparation performed a non-scroll action.');
+  const points: number[][] = [];
+  for (const label of labels) {
+    const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Locate the actual button, not the status text or blank space.', { deepLocate: false, cacheable: false });
+    if (!Array.isArray(result?.center) || result.center.length !== 2
+      || result.center.some(value => !Number.isFinite(value) || value < 0)) {
+      throw new Error('Invalid visual point for original timed video action.');
+    }
+    points.push([...result.center]);
+  }
+  if (isDeepStrictEqual(points[0], points[1])) throw new Error('Distinct original video buttons resolved to the same point.');
+  const tap = (index: number) => agent.callActionInActionSpace('Tap', {
+    locate: { prompt: labels[index], locatedPixelResult: { center: [...points[index]] }, deepLocate: false, cacheable: false },
+  });
+  await tap(0);
+  for (const input of expected) await assertSource(structuredClone(input));
+  await captureEvidence();
+  // Even capture/device overhead must not allow an ended video to pass.
+  await assertSource({ tag: 'status-text', equal: 'playing', immediate: true });
+  await tap(1);
+  let consumed = 0;
+  let disposed = false;
+  return {
+    async consume(input: VideoExpectation) {
+      if (disposed) throw new Error('Video phase evidence was disposed.');
+      if (!isDeepStrictEqual(input, expected[consumed])) throw new Error('Video phase assertion identity or order differs from the original.');
+      consumed++;
+      return consumed === expected.length;
+    },
+    dispose() { disposed = true; },
+  };
 }

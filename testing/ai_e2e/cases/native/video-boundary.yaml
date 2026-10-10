@@ -18,16 +18,6 @@ cases:
           timeoutMs: 20000
       - native.videoPhase:
           phase: replace-playing-source
-      - aiAct:
-          prompt: In one interaction phase, click the single button labeled exactly "Play"
-            ONCE, then IMMEDIATELY click the single button labeled exactly "Src
-            B" ONCE while playback is still active. Plan both clicks together.
-            Do not wait for playback to end, repeat either click, or perform
-            another action. When scrolling, stay inside the actual video demo
-            panel, not the blank area outside it.
-          options:
-            deepLocate: ${videoDeepLocate}
-            cacheable: false
       - native.video:
           tag: status-text
           equal: playing
@@ -635,16 +625,6 @@ cases:
             cacheable: false
       - native.videoPhase:
           phase: stop-play-null
-      - aiAct:
-          prompt: In one interaction phase, click the single button labeled exactly "Play
-            Null" ONCE, then IMMEDIATELY click the single button labeled exactly
-            "Stop" ONCE while playback is still active. Plan both clicks
-            together. Do not wait for playback to end, repeat either click, or
-            perform another action. When scrolling, stay inside the actual video
-            demo panel, not the blank area outside it.
-          options:
-            deepLocate: ${videoDeepLocate}
-            cacheable: false
       - native.video:
           tag: status-text
           equal: playing
