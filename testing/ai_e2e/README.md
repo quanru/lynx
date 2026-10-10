@@ -1,5 +1,23 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+Current implementation collects Android 13 / iOS 20 cases and passes 165
+model-free checks on Node 22 and the local Node runtime, plus typechecking and
+workflow validation. Complete VideoBasic and VideoAttributes cases preserve
+every original operation, wait, screenshot, predicate and speed/count sample.
+Approved playback-sensitive fragments visually prelocate buttons before
+playback, then use standard SDK physical taps without intervening model calls;
+ordinary volume/mute/loop setup remains aiAct. Original timing and acceptance
+are unchanged. All 17 originally enabled native modules have implementations;
+the original disabled ListBase stays disabled. This is not device acceptance.
+
+The preceding hosted run 38039839927 (`658bc76`) passed Android 10/11 and
+iOS 14/18, with successful source builds and reporting. Android VideoBoundary
+failed a later callback/CDP check; iOS video preparation and two Sparkling
+visibility cases failed. These failures remain unresolved until new device
+evidence proves recovery. See [MIGRATION.md](./MIGRATION.md).
+
+The checkpoints below are historical and retain their then-current status.
+
 Latest local correction: Android 11 / iOS 18, 148 passing model-free checks
 and typechecking. VideoBoundary now groups its two playback-sensitive click
 pairs into standard aiAct phases with read-only progress-time assertions and
@@ -348,8 +366,10 @@ untrusted fork code.
   acceptance requires exact native values.
 - Retained: Explorer artifacts, the simulator matrix, and WebDriverAgent,
   which Midscene iOS uses directly.
-- Pending device validation: TextEvent, Image and LayoutLinear pixel contracts.
-  Espresso white-box access remains uncovered. Keep the
+- TextEvent, Image and LayoutLinear pixel contracts passed both platforms with
+  unchanged baselines in run 38024427888. Current video and route failures are
+  tracked separately in MIGRATION.md. Espresso white-box access remains
+  uncovered. Keep the
   existing jobs available as an opt-in complement.
 
 ### Pages setup fallback
