@@ -17,7 +17,7 @@ cases:
           options: { deepLocate: true, cacheable: false }
       - aiAct:
           prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
-          options: { deepLocate: true, cacheable: false }
+          options: { deepLocate: false, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: legacy }
   - name: sparkling/RawOpenSparkling
@@ -34,7 +34,7 @@ cases:
           options: { deepLocate: true, cacheable: false }
       - aiAct:
           prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
-          options: { deepLocate: true, cacheable: false }
+          options: { deepLocate: false, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: role }
       - native.sparkling: { contract: sparkling }
@@ -48,7 +48,7 @@ cases:
           options: { deepLocate: true, cacheable: false }
       - aiAct:
           prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
-          options: { deepLocate: true, cacheable: false }
+          options: { deepLocate: false, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: role }
       - native.sparkling: { contract: sparkling }
@@ -66,7 +66,7 @@ cases:
           options: { deepLocate: true, cacheable: false }
       - aiAct:
           prompt: Tap the red Open button directly to the right of the Bundle URL input once, inside the white Bundle URL card BELOW its heading and ABOVE the Fullscreen, Default, Dark, Light choices. Do not tap the separate Sparkling Go runtime selector above that card. Stop after the single tap; do not tap a second time.
-          options: { deepLocate: true, cacheable: false }
+          options: { deepLocate: false, cacheable: false }
       - native.sparkling: { contract: parent }
       - native.sparkling: { contract: sparkling }
       - native.sparkling: { contract: mapped }

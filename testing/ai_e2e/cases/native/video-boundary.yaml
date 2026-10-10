@@ -26,7 +26,7 @@ cases:
             another action. When scrolling, stay inside the actual video demo
             panel, not the blank area outside it.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -61,7 +61,7 @@ cases:
             "Src Bad" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -84,7 +84,7 @@ cases:
             "Src Empty" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -97,7 +97,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -106,7 +106,7 @@ cases:
             "Play" once. Do not click similarly named buttons or perform another
             action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -145,7 +145,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -154,7 +154,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -171,7 +171,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -184,7 +184,7 @@ cases:
             "Queue" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: attr-state
@@ -197,7 +197,7 @@ cases:
             "Play Pause Empty" once. Do not click similarly named buttons or
             perform another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -259,7 +259,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -268,7 +268,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -285,7 +285,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -298,7 +298,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -307,7 +307,7 @@ cases:
             "Seek Empty" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -349,7 +349,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -365,7 +365,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -374,7 +374,7 @@ cases:
             "Seek Bad" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -403,7 +403,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -412,7 +412,7 @@ cases:
             "Seek Missing" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -441,7 +441,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -450,7 +450,7 @@ cases:
             "Seek Null" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -479,7 +479,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -488,7 +488,7 @@ cases:
             "Seek Text" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -517,7 +517,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -526,7 +526,7 @@ cases:
             "Seek NaN" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -555,7 +555,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -564,7 +564,7 @@ cases:
             "Seek Inf" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -593,7 +593,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -602,7 +602,7 @@ cases:
             "Seek Huge" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
@@ -631,7 +631,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.videoPhase:
           phase: stop-play-null
@@ -643,7 +643,7 @@ cases:
             perform another action. When scrolling, stay inside the actual video
             demo panel, not the blank area outside it.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: status-text
@@ -668,7 +668,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -677,7 +677,7 @@ cases:
             "Unknown" once. Do not click similarly named buttons or perform
             another action.
           options:
-            deepLocate: true
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log

@@ -168,7 +168,7 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
       if (step.node === 'recordToReport') return ['screenshot', 'mode_direct'];
       assert.equal(step.node, 'aiAct');
       assert.ok(step.input.prompt.includes('"' + labels[index] + '"'));
-      assert.deepEqual(step.input.options, { deepLocate: true, cacheable: false });
+      assert.deepEqual(step.input.options, { deepLocate: platform === 'android', cacheable: false });
       return ['click', tags[index++]];
     });
     assert.equal(index, 11);

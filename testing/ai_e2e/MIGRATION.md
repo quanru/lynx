@@ -33,6 +33,24 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+The next local correction passes 152 model-free checks and typechecking.
+Run 38028650562's iOS VideoBoundary grounding cropped a 400-by-400 area at
+(163,1374), entirely below the visible gray panel. Its repeated scroll gestures
+therefore targeted blank space. VideoModes similarly scrolled outside the
+panel. CanonicalSparkling's Open tap hit the upper runtime selector instead;
+the screenshot remained on the homepage after keyboard dismissal. These are
+action-grounding failures, not evidence of weakened business assertions or
+missing video buttons.
+
+iOS video aiAct now uses the SDK's full-frame locator instead of a crop around
+the incorrect planning hint. Android retains its existing deepLocate setting;
+only the iOS homepage Open action also uses full-frame grounding. The same
+source instructions, button counts and all exact assertions remain. A pinned
+SDK regression reproduces the old crop and verifies that full-frame search
+does not inherit it, without calling a model/device. This proves the search
+window correction only; actual corrected iOS actions await the next hosted
+head. Current run 38034582646 still validates the preceding phase-only head.
+
 Current pushed head `3c3a435` is being validated in run 38034582646: Android
 11 / iOS 18, with 148 passing model-free checks. Previous run 38028650562
 passed Android 10/11 and iOS 15/18 after WDA started successfully on rerun.
