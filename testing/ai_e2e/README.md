@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current pushed playback implementation collects Android 13 / iOS 20 cases and passes 174
+Current implementation collects Android 13 / iOS 20 cases and passes 181
 model-free checks on Node 22 and the local Node runtime, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -16,7 +16,11 @@ ordered and consumed once; playback cannot use incomplete or released points.
 Fragments split only at the original ready/paused/stopped boundaries. Every
 original operation remains in order, and speed samples remain in one fragment.
 The runner's 180-second step limit and original assertion windows are unchanged.
-No product implementation, example page, viewport or baseline has been changed.
+No product implementation, example page or baseline has been changed. The
+approved iOS-video-only viewport exception omits fixed physical width/height
+so existing Explorer uses its actual view bounds. Android video and every
+pixel/API fixture retain the original launch geometry. Video source operations,
+assertions and screenshots remain; remote screenshots must verify visibility.
 
 Run 38056035286 (`7446d29`) completed with both device jobs cancelled at their
 60-minute job limits. Android video phases reached the 180-second step limit;
@@ -24,14 +28,14 @@ iOS video controls were not visible after scrolling. Late work also accessed
 destroyed devices. Cancellation guards and split preparation address migration
 issues, but only a new hosted run can establish recovery.
 
-The next local CI correction passes 180 model-free checks. It starts the pinned
+The CI report correction starts the pinned
 Midscene CLI directly, interrupts at 105 minutes and permits a bounded four-minute
 report-finalization grace period within a 120-minute job budget. Assertions,
 step deadlines, retries and device concurrency remain unchanged. An actual
 model-free CLI test proves that direct SIGINT writes a failed total report and
 marks a later case not-run; interrupted execution can never return success.
-This correction is held until the useful `f3973b6` run 38136008306 completes,
-and is not yet included in that run or the delivery mirror.
+This correction and the approved viewport exception require a new hosted head;
+the preceding `f3973b6` run 38136008306 does not include them.
 
 The preceding hosted run 38039839927 (`658bc76`) passed Android 10/11 and
 iOS 14/18, with successful source builds and reporting. Android VideoBoundary

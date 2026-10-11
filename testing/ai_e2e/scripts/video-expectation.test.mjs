@@ -161,7 +161,9 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
     assert.deepEqual(steps[3].input, { duration: 2000, unit: 'ms' });
     const platform = project.name.startsWith('ios') ? 'ios' : 'android';
     assert.equal(project.variables.videoUri, fixtureUri(platform, 'video'));
-    assert.match(decodeURIComponent(project.variables.videoUri), /automation\/video\/main\.lynx\.bundle\?width=/);
+    assert.match(decodeURIComponent(project.variables.videoUri), project.name.startsWith('ios')
+      ? /automation\/video\/main\.lynx\.bundle$/
+      : /automation\/video\/main\.lynx\.bundle\?width=/);
     let index = 0;
     const translated = steps.slice(4).map(step => {
       if (step.node === 'native.video') return ['assert', { ...(!step.input.immediate ? { timeoutMs: 20000 } : {}), ...step.input }];

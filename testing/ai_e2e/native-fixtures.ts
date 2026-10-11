@@ -21,14 +21,17 @@ export function nativeFixture(name: NativeFixtureName) {
   return fixtures[name];
 }
 
-// Retain CaseSet(enable_scale=True)'s platform-specific URL parameters. The
-// registered wrapper is delivered through Midscene's standard launch node.
+// Keep the original fixed viewport for pixel/API fixtures and Android video.
+// Approved iOS video exception: omit the physical-pixel override so Explorer
+// uses its actual view bounds. A 720x1200 override on a 3x display clips the
+// non-scrolling controls; scale=2 does not change Explorer's UIScreen scale.
+// This changes only launch geometry, never the original page or assertions.
 export function fixtureUri(platform: 'android' | 'ios', name: NativeFixtureName): string {
   if (platform !== 'android' && platform !== 'ios') throw new Error('Unknown native fixture platform.');
-  const scale = platform === 'android'
+  const scale = platform === 'ios' && name === 'video' ? '' : platform === 'android'
     ? 'width=1080&height=1664&density=320'
     : 'width=720&height=1200&scale=2';
   return 'lynx://open?url=' + encodeURIComponent(
-    `file://lynx?local://${nativeFixture(name).path}.lynx.bundle?${scale}`,
+    `file://lynx?local://${nativeFixture(name).path}.lynx.bundle${scale ? '?' + scale : ''}`,
   );
 }

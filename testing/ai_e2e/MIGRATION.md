@@ -33,6 +33,17 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
+The approved iOS-video viewport correction uses the existing Explorer fallback
+to actual view bounds instead of its fixed 720x1200 physical-pixel override.
+Explorer divides those original dimensions by UIScreen scale (3x on the baseline
+iPhone), then subtracts status/navigation height, leaving a clipped video panel.
+The scale=2 URL parameter does not override this UIScreen calculation. Only
+iOS video launch geometry changes: Android video and all pixel/API fixtures
+retain their original parameters. No product implementation, page, baseline,
+assertion, timing window or original operation is changed. Remote screenshots
+must establish that controls are visible; this is not inferred from URI tests.
+The complete local correction passes 181 model-free checks and typechecking.
+
 Run 38056035286 at `7446d29` completed with both Android/iOS device jobs
 cancelled at their 60-minute job limits. Its remote contract gate and both
 source builds passed; report assembly/publication jobs also succeeded. This
@@ -58,10 +69,10 @@ the ordered trace and the source-owned assertion deadlines independently of
 model preparation. Product implementations, example pages, launch viewport,
 media, original pixel baselines and retry policy remain unchanged.
 
-Pushed playback correction `f3973b6` is validating in run 38136008306. Its
+The preceding playback correction `f3973b6` is validating in run 38136008306. Its
 remote model-free contract gate passed; source builds/device acceptance remain
 pending. A subsequent local CI report-finalization correction passes 180 checks
-and remains held to avoid cancelling that useful run. It launches the pinned
+was initially held to avoid cancelling that useful run. It launches the pinned
 CLI directly, forwards interruption and retains a bounded grace period before
 the job deadline. An actual synthetic CLI run, without models/devices, verifies
 a failed total HTML report with both interrupted and not-run case identities.

@@ -76,6 +76,27 @@ test('standard launch retains original native bundle and platform scaling parame
   }
 });
 
+test('approved viewport exception uses actual bounds only for iOS video; every pixel/API fixture and Android video keeps original geometry', () => {
+  const fixtures = {
+    video: 'automation/video/main', image: 'showcase/image/main',
+    layoutLinear: 'showcase/layout/linear', textEvent: 'showcase/text/text_event',
+    event: 'automation/event/main', domFocus: 'automation/dom-focus/main',
+    insertText: 'automation/input_insert_text/main',
+  };
+  for (const platform of ['android', 'ios']) {
+    for (const [fixture, path] of Object.entries(fixtures)) {
+      const nested = new URL(fixtureUri(platform, fixture)).searchParams.get('url');
+      const original = platform === 'android' ? '?width=1080&height=1664&density=320' : '?width=720&height=1200&scale=2';
+      assert.equal(nested, 'file://lynx?local://' + path + '.lynx.bundle' + (platform === 'ios' && fixture === 'video' ? '' : original));
+    }
+  }
+  // Verify the existing Explorer capability rather than assuming scale=2 is
+  // honored or supplying a larger, off-screen physical-pixel override.
+  const explorer = readFileSync(new URL('../../../explorer/darwin/ios/lynx_explorer/LynxExplorer/LynxViewShellViewController.m', import.meta.url), 'utf8');
+  assert.match(explorer, /hasExplicitViewportSize[\s\S]*?containsObject:@"height"[\s\S]*?containsObject:@"width"/);
+  assert.match(explorer, /screenSizeForCurrentBounds[\s\S]*?\[\[UIScreen mainScreen\] scale\][\s\S]*?return self\.view\.bounds\.size;/);
+});
+
 test('existence checks retain the original three-second helper timeout on both platforms', () => {
   for (const platform of ['android', 'ios']) {
     const source = readFileSync(new URL(`../../integration_test/test_script/lib/${platform}/test.py`, import.meta.url), 'utf8');
