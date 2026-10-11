@@ -33,17 +33,30 @@ the original pixel baseline.
 
 ## Prerequisites and acceptance
 
-Current pushed `7446d29` is executing Android/iOS device cases in run
-38056035286; its remote contract gate and both source builds passed. No device
-acceptance is inferred while these jobs execute. The next local correction
-passes 169 Node 22 model-free checks and typechecking. It forwards the runner's
+Run 38056035286 at `7446d29` completed with both Android/iOS device jobs
+cancelled at their 60-minute job limits. Its remote contract gate and both
+source builds passed; report assembly/publication jobs also succeeded. This
+does not establish device acceptance. Android's complete playback phases hit
+the 180-second step limit. iOS could not reveal video buttons by scrolling.
+The next correction passes 174 model-free checks and typechecking. It forwards the runner's
 step cancellation signal into video preparation aiAct and checks cancellation
 after every uncancellable location result, before/after SDK taps and between
 original playback operations. Late custom-node work cannot start subsequent
 taps after its original deadline. The pinned SDK has no public aiLocate
 cancellation option; this guard does not claim to abort an in-flight model
-request or an already-started physical action. No timeout is extended. This
-correction is held locally while the useful current-head device run completes.
+request or an already-started physical action. No timeout is extended.
+
+Visibility preparation and each individual visual location are now separate
+model-only runner steps, using the existing `native.videoPhase` node rather
+than adding a general-purpose action DSL. Case/attempt-owned points must be
+complete and consumed in order, once, before playback. Release/cancellation
+invalidates late results. Complete playback is split at the original inactive
+boundaries, including the next section's existing pause/stop assertion where
+needed. No extra tap, wait, read or sample is added, and speed comparisons keep
+their single-read samples in one fragment. Original operation replay verifies
+the ordered trace and the source-owned assertion deadlines independently of
+model preparation. Product implementations, example pages, launch viewport,
+media, original pixel baselines and retry policy remain unchanged.
 
 Latest completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
 14/18; builds and report publication passed. Android's first VideoBoundary

@@ -53,15 +53,41 @@ export function originalVideoPlayback(name) {
   });
   assert.equal(section, name === 'VideoBasic' ? 9 : 6);
   assert.equal(sample, name === 'VideoBasic' ? 0 : 3);
-  const phases = name === 'VideoBasic'
-    ? { 'basic-playback': operations.filter(op => op.section >= 2 && op.section <= 7), 'basic-loop': operations.filter(op => op.section === 9) }
-    : { 'attributes-playback': operations.filter(op => op.section >= 2) };
+  // Preparation may only run while the original trace is ready, paused or
+  // stopped. Move each next section's existing pause/stop and its assertion
+  // into the preceding fragment; never add a playback action or source read.
+  const phases = {};
+  const select = (key, start, end) => { phases[key] = operations.slice(start, end); };
+  const sectionStart = section => operations.findIndex(op => op.section === section);
+  const afterState = section => {
+    const index = operations.findIndex(op => op.section === section &&
+      (op.type === 'video' && ['paused', 'stopped'].includes(op.input.equal)));
+    assert.ok(index >= 0, 'Missing original safe preparation boundary');
+    return index + 1;
+  };
+  if (name === 'VideoBasic') {
+    select('basic-play-pause', sectionStart(2), sectionStart(4));
+    select('basic-seek-stop', sectionStart(4), sectionStart(6));
+    select('basic-restart-ended', sectionStart(6), afterState(8));
+    select('basic-loop', sectionStart(9), operations.length);
+  } else {
+    const boundaries = [sectionStart(2), afterState(3), afterState(4), afterState(5), afterState(6), operations.length];
+    ['attributes-fit', 'attributes-speed', 'attributes-interval', 'attributes-invalid', 'attributes-tiny'].forEach((key, index) => select(key, boundaries[index], boundaries[index + 1]));
+  }
   const steps = [{ recordToReport: 'Start isolated Explorer for ' + name }, { wait: { duration: 5000, unit: 'ms' } }, { launch: '${videoUri}' }, { wait: { duration: 2000, unit: 'ms' } }];
   const emitted = new Set();
   for (const op of operations) {
     const phase = Object.keys(phases).find(key => phases[key].includes(op));
     if (phase) {
-      if (!emitted.has(phase)) { steps.push({ 'native.videoPhase': { phase } }); emitted.add(phase); }
+      if (!emitted.has(phase)) {
+        const labels = [...new Set(phases[phase].filter(op => op.type === 'tap').map(op => op.label))];
+        // Give each model request its own existing runner deadline. The actual
+        // original playback fragment and all its assertion deadlines stay unchanged.
+        steps.push({ 'native.videoPhase': { phase, prepare: 'visibility' } });
+        labels.forEach((_label, index) => steps.push({ 'native.videoPhase': { phase, prepare: index } }));
+        steps.push({ 'native.videoPhase': { phase } });
+        emitted.add(phase);
+      }
       continue;
     }
     if (op.type === 'section') continue;

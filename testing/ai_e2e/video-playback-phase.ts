@@ -15,7 +15,8 @@ type Operation = { section: number } & (
   { type: 'sample'; variable: 'slow_time' | 'fast_time' | 'fast_count'; tag: string } |
   { type: 'guard'; condition: string }
 );
-export type VideoPlaybackPhase = 'basic-ready' | 'basic-playback' | 'basic-loop' | 'attributes-playback';
+export type VideoPlaybackPhase = 'basic-ready' | 'basic-play-pause' | 'basic-seek-stop' | 'basic-restart-ended' | 'basic-loop' |
+  'attributes-fit' | 'attributes-speed' | 'attributes-interval' | 'attributes-invalid' | 'attributes-tiny';
 const plans: Record<VideoPlaybackPhase, Operation[]> = JSON.parse(readFileSync(new URL('./video-playback-plans.json', import.meta.url), 'utf8'));
 export function isVideoPlaybackPhase(phase: string): phase is VideoPlaybackPhase {
   return Object.hasOwn(plans, phase);
@@ -52,9 +53,11 @@ export async function executeVideoPlaybackPhase(
   capture: (title: string) => Promise<void>,
   clock = defaultClock,
   signal?: AbortSignal,
+  prepared?: ReadonlyMap<string, number[]>,
 ) {
   const operations = videoPlaybackOperations(phase);
-  const points = await prepareVideoButtons(agent, operations.filter(op => op.type === 'tap').map(op => op.label), signal);
+  signal?.throwIfAborted();
+  const points = prepared ?? await prepareVideoButtons(agent, operations.filter(op => op.type === 'tap').map(op => op.label), signal);
   const samples = new Map<string, number | bigint>();
   for (const op of operations) {
     signal?.throwIfAborted();

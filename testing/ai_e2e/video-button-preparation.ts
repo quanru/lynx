@@ -3,10 +3,10 @@ import type { VideoTimedAgent } from './video-action-phase.ts';
 
 // All model work precedes the source-bound playback fragment. Cached points
 // are local to this fragment and may not survive navigation or scrolling.
-export async function prepareVideoButtons(agent: VideoTimedAgent, labels: readonly string[], signal?: AbortSignal) {
+export async function makeVideoButtonsVisible(agent: VideoTimedAgent, labels: readonly string[], signal?: AbortSignal) {
   signal?.throwIfAborted();
   const unique = [...new Set(labels)];
-  if (!unique.length) return new Map<string, number[]>();
+  if (!unique.length) return;
   let unexpectedAction = false;
   const remove = agent.addProgressListener(event => {
     const data = event.data as { action?: { name?: string } } | undefined;
@@ -17,16 +17,26 @@ export async function prepareVideoButtons(agent: VideoTimedAgent, labels: readon
   } finally { remove(); }
   signal?.throwIfAborted();
   if (unexpectedAction) throw new Error('Video visibility preparation performed a non-scroll action.');
+}
+
+export async function locateVideoButton(agent: VideoTimedAgent, label: string, signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Locate the actual button, not the status text or blank space.', { deepLocate: false, cacheable: false });
+  // The pinned aiLocate API cannot abort an in-flight request. Never accept a
+  // late result or start a subsequent physical action after cancellation.
+  signal?.throwIfAborted();
+  if (!Array.isArray(result?.center) || result.center.length !== 2 || result.center.some(value => !Number.isFinite(value) || value < 0)) throw new Error('Invalid visual point for original timed video action.');
+  return [...result.center];
+}
+
+export async function prepareVideoButtons(agent: VideoTimedAgent, labels: readonly string[], signal?: AbortSignal) {
+  await makeVideoButtonsVisible(agent, labels, signal);
+  const unique = [...new Set(labels)];
   const points = new Map<string, number[]>();
   for (const label of unique) {
-    signal?.throwIfAborted();
-    const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Locate the actual button, not the status text or blank space.', { deepLocate: false, cacheable: false });
-    // aiLocate has no public cancellation option in the pinned SDK. A late
-    // result must never start another location or enter physical playback.
-    signal?.throwIfAborted();
-    if (!Array.isArray(result?.center) || result.center.length !== 2 || result.center.some(value => !Number.isFinite(value) || value < 0)) throw new Error('Invalid visual point for original timed video action.');
-    if ([...points.values()].some(point => isDeepStrictEqual(point, result.center))) throw new Error('Distinct original video buttons resolved to the same point.');
-    points.set(label, [...result.center]);
+    const center = await locateVideoButton(agent, label, signal);
+    if ([...points.values()].some(point => isDeepStrictEqual(point, center))) throw new Error('Distinct original video buttons resolved to the same point.');
+    points.set(label, center);
   }
   return points;
 }

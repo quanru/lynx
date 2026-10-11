@@ -11,13 +11,14 @@ import { parseVideoFloat } from '../video-float.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dom = (tag, text) => ({ nodeId: 0, nodeName: '#document', children: [{ nodeId: 1, nodeName: 'TEXT', attributes: ['lynx-test-tag', tag], children: [{ nodeId: 2, nodeName: 'RAW-TEXT', attributes: ['text', text] }] }] });
+const allPhases = Object.keys({ ...originalVideoPlayback('VideoBasic').phases, ...originalVideoPlayback('VideoAttributes').phases });
 
 test('cancelled complete playback cannot continue from preparation into source reads or actions', async () => {
   const controller = new AbortController();
   const reason = new Error('Original node deadline');
   controller.abort(reason);
   const agent = { aiAct: async () => assert.fail(), aiLocate: async () => assert.fail(), addProgressListener: () => assert.fail(), callActionInActionSpace: async () => assert.fail() };
-  for (const phase of ['basic-ready', 'basic-playback', 'basic-loop', 'attributes-playback']) {
+  for (const phase of allPhases) {
     await assert.rejects(executeVideoPlaybackPhase(agent, phase, async () => assert.fail(), async () => assert.fail(), undefined, controller.signal), error => error === reason);
   }
 });
@@ -86,7 +87,7 @@ function fixture(phase, defect) {
 }
 
 test('timed fragments make all model calls before playback and retain every SDK physical tap, sleep and single read', async () => {
-  for (const phase of ['basic-ready', 'basic-playback', 'basic-loop', 'attributes-playback']) {
+  for (const phase of allPhases) {
     const f = fixture(phase); await f.run();
     const original = videoPlaybackOperations(phase);
     assert.equal(f.queue.length, 0);
@@ -100,7 +101,7 @@ test('timed fragments make all model calls before playback and retain every SDK 
 
 test('speed and tiny interval reject the exact original boundaries without retries, extra samples or widened windows', async () => {
   for (const defect of [{ fast_time: '2.9 / 10.0' }, { slow_time: '3.5 / 10.0' }, { fast_count: 'timeupdate=29' }]) {
-    const f = fixture('attributes-playback', defect);
+    const f = fixture(defect.fast_count ? 'attributes-tiny' : 'attributes-speed', defect);
     await assert.rejects(f.run(), /advance faster|not be clamped/);
   }
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoAttributes.py', import.meta.url), 'utf8');

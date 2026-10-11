@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 165
+Current implementation collects Android 13 / iOS 20 cases and passes 174
 model-free checks on Node 22 and the local Node runtime, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -9,6 +9,20 @@ playback, then use standard SDK physical taps without intervening model calls;
 ordinary volume/mute/loop setup remains aiAct. Original timing and acceptance
 are unchanged. All 17 originally enabled native modules have implementations;
 the original disabled ListBase stays disabled. This is not device acceptance.
+
+Each playback fragment now splits visibility preparation and each visual
+location into separate model-only runner steps. Grounding is case/attempt-owned,
+ordered and consumed once; playback cannot use incomplete or released points.
+Fragments split only at the original ready/paused/stopped boundaries. Every
+original operation remains in order, and speed samples remain in one fragment.
+The runner's 180-second step limit and original assertion windows are unchanged.
+No product implementation, example page, viewport or baseline has been changed.
+
+Run 38056035286 (`7446d29`) completed with both device jobs cancelled at their
+60-minute job limits. Android video phases reached the 180-second step limit;
+iOS video controls were not visible after scrolling. Late work also accessed
+destroyed devices. Cancellation guards and split preparation address migration
+issues, but only a new hosted run can establish recovery.
 
 The preceding hosted run 38039839927 (`658bc76`) passed Android 10/11 and
 iOS 14/18, with successful source builds and reporting. Android VideoBoundary

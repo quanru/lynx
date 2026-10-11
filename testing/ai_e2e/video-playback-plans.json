@@ -1,5 +1,5 @@
 {
-  "basic-playback": [
+  "basic-play-pause": [
     {
       "section": 2,
       "type": "section",
@@ -134,7 +134,9 @@
       "section": 3,
       "type": "sleep",
       "ms": 2000
-    },
+    }
+  ],
+  "basic-seek-stop": [
     {
       "section": 4,
       "type": "section",
@@ -281,7 +283,9 @@
       "section": 5,
       "type": "capture",
       "title": "stopped"
-    },
+    }
+  ],
+  "basic-restart-ended": [
     {
       "section": 6,
       "type": "section",
@@ -467,6 +471,26 @@
       "section": 7,
       "type": "sleep",
       "ms": 2000
+    },
+    {
+      "section": 8,
+      "type": "section",
+      "title": "--------Test8: Test loop on;-------"
+    },
+    {
+      "section": 8,
+      "type": "tap",
+      "tag": "btn-stop",
+      "label": "Stop"
+    },
+    {
+      "section": 8,
+      "type": "video",
+      "input": {
+        "tag": "status-text",
+        "equal": "stopped",
+        "timeoutMs": 20000
+      }
     }
   ],
   "basic-loop": [
@@ -571,7 +595,7 @@
       }
     }
   ],
-  "attributes-playback": [
+  "attributes-fit": [
     {
       "section": 2,
       "type": "section",
@@ -671,7 +695,9 @@
         "equal": "paused",
         "timeoutMs": 20000
       }
-    },
+    }
+  ],
+  "attributes-speed": [
     {
       "section": 3,
       "type": "tap",
@@ -817,7 +843,9 @@
         "equal": "paused",
         "timeoutMs": 20000
       }
-    },
+    }
+  ],
+  "attributes-interval": [
     {
       "section": 4,
       "type": "tap",
@@ -915,7 +943,9 @@
         "equal": "paused",
         "timeoutMs": 20000
       }
-    },
+    }
+  ],
+  "attributes-invalid": [
     {
       "section": 5,
       "type": "tap",
@@ -1003,7 +1033,9 @@
         "equal": "stopped",
         "timeoutMs": 20000
       }
-    },
+    }
+  ],
+  "attributes-tiny": [
     {
       "section": 6,
       "type": "tap",

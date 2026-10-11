@@ -29,14 +29,14 @@ async function fixture() {
       captureFrame: async () => ({ data: Buffer.from('protocol-frame-marker').toString('base64') }),
     }) };
   const runId = 'phase-node-' + ++nextRunId;
-  return { reports, reads, taps, controller,
+  return { reports, reads, taps, controller, agent,
     run: (name, input) => project.nodes.get(name).execute({ scope: 'case', case: { runId }, context, input, signal: controller.signal }) };
 }
 test('the registered native node rejects an expired runner signal before readiness reads or playback', async () => {
   const f = await fixture();
   const reason = new Error('Original runner timeout');
   f.controller.abort(reason);
-  for (const phase of ['basic-ready', 'basic-playback', 'replace-playing-source']) {
+  for (const phase of ['basic-ready', 'basic-play-pause', 'replace-playing-source']) {
     await assert.rejects(f.run('native.videoPhase', { phase }), error => error === reason);
   }
   assert.deepEqual(f.reads, []);
@@ -74,6 +74,23 @@ test('complete playback readiness uses the real registered node without planning
 test('complete playback nodes cannot bypass an unconsumed boundary assertion', async () => {
   const f = await fixture();
   await f.run('native.videoPhase', { phase: 'replace-playing-source' });
-  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-playback' }), /not been consumed/);
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-play-pause' }), /not been consumed/);
   assert.equal(f.taps.length, 2);
+});
+
+test('registered playback preparation has separate model-only steps and cannot bypass missing or partial grounding', async () => {
+  const f = await fixture();
+  let locations = 0;
+  f.agent.aiLocate = async () => ({ center: [100 + ++locations * 50, 100] });
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-loop' }), /Missing case-owned/);
+  await f.run('native.videoPhase', { phase: 'basic-loop', prepare: 'visibility' });
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-loop' }), /Incomplete/);
+  await f.run('native.videoPhase', { phase: 'basic-loop', prepare: 0 });
+  await f.run('native.videoPhase', { phase: 'basic-loop', prepare: 1 });
+  assert.deepEqual(f.reads, []);
+  assert.deepEqual(f.taps, []);
+  assert.equal(locations, 2);
+  f.controller.abort(new Error('runner deadline'));
+  await assert.rejects(f.run('native.videoPhase', { phase: 'basic-loop' }), /runner deadline/);
+  assert.deepEqual(f.taps, []);
 });

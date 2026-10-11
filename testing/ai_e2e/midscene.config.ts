@@ -28,6 +28,7 @@ import { executeVideoActionPhase, videoActionPhaseChecks } from './video-action-
 import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts';
 import { executeVideoPlaybackPhase, isVideoPlaybackPhase } from './video-playback-phase.ts';
 import type { VideoPlaybackPhase } from './video-playback-phase.ts';
+import { VideoPhasePreparation } from './video-phase-preparation.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -72,25 +73,40 @@ type VideoPhaseEvidence = {
   reported?: boolean;
 };
 const videoPhases = new WeakMap<AgentRegistry, Map<string, VideoPhaseEvidence>>();
+const videoPreparations = new WeakMap<AgentRegistry, VideoPhasePreparation>();
+const preparationFor = (registry: AgentRegistry) => {
+  let preparation = videoPreparations.get(registry);
+  if (!preparation) { preparation = new VideoPhasePreparation(); videoPreparations.set(registry, preparation); }
+  return preparation;
+};
 const phasesFor = (registry: AgentRegistry) => {
   let phases = videoPhases.get(registry);
   if (!phases) { phases = new Map(); videoPhases.set(registry, phases); }
   return phases;
 };
 
-const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase }, void, ProjectContext>({
+const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase; prepare?: 'visibility' | number }, void, ProjectContext>({
   name: 'native.videoPhase',
   description: 'Execute a closed original video timing fragment with visual prelocation and real SDK taps, preserving every original assertion and sample.',
   async execute(execution) {
     execution.signal?.throwIfAborted();
-    if (execution.scope !== 'case' || Object.keys(execution.input).length !== 1) throw new Error('Invalid video phase scope or input.');
+    if (execution.scope !== 'case' || Object.keys(execution.input).some(key => !['phase', 'prepare'].includes(key)) ||
+      ('prepare' in execution.input && execution.input.prepare !== 'visibility' &&
+        (typeof execution.input.prepare !== 'number' || !Number.isInteger(execution.input.prepare) || execution.input.prepare < 0))) throw new Error('Invalid video phase scope or input.');
     const playback = isVideoPlaybackPhase(execution.input.phase);
+    if ('prepare' in execution.input && !playback) throw new Error('Invalid preparation for a boundary video phase.');
     if (!playback) videoActionPhaseChecks(execution.input.phase as VideoActionPhase);
     const runId = execution.case.runId;
     const phases = phasesFor(execution.context.agentRegistry);
     if (phases.has(runId)) throw new Error('Previous video phase evidence has not been consumed.');
     const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoTimedAgent;
     if (typeof agent.aiLocate !== 'function' || typeof agent.callActionInActionSpace !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and physical action APIs.');
+    if (isVideoPlaybackPhase(execution.input.phase) && execution.input.prepare !== undefined) {
+      await preparationFor(execution.context.agentRegistry).prepare(runId, execution.input.phase, execution.input.prepare, agent, execution.signal);
+      return;
+    }
+    const prepared = isVideoPlaybackPhase(execution.input.phase) ? preparationFor(execution.context.agentRegistry).consume(runId, execution.input.phase) : undefined;
+    if (playback && execution.input.phase !== 'basic-ready' && !prepared) throw new Error('Missing case-owned video preparation.');
     const session = await execution.context.getNativeSession(runId, 'video');
     const readDocument = async () => {
       execution.signal?.throwIfAborted();
@@ -107,7 +123,7 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
         await agent.recordToReport('Original video source screenshot: ' + title, {
           screenshots: [{ base64: `data:image/jpeg;base64,${frame.data}`, description: 'Captured at the original source checkpoint, without intervening model calls.' }],
         });
-      }, undefined, execution.signal);
+      }, undefined, execution.signal, prepared);
       return;
     }
     const capture: VideoPhaseEvidence['capture'] = {};
@@ -217,6 +233,7 @@ const nodesFor = (
         const phases = phasesFor(slot.current);
         phases.get(runId)?.evidence.dispose();
         phases.delete(runId);
+        preparationFor(slot.current).release(runId);
         return slot.current.releaseAgent(runId);
       },
     } satisfies AgentProvider<ProjectContext>,
