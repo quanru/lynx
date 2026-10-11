@@ -58,6 +58,17 @@ the ordered trace and the source-owned assertion deadlines independently of
 model preparation. Product implementations, example pages, launch viewport,
 media, original pixel baselines and retry policy remain unchanged.
 
+Pushed playback correction `f3973b6` is validating in run 38136008306. Its
+remote model-free contract gate passed; source builds/device acceptance remain
+pending. A subsequent local CI report-finalization correction passes 180 checks
+and remains held to avoid cancelling that useful run. It launches the pinned
+CLI directly, forwards interruption and retains a bounded grace period before
+the job deadline. An actual synthetic CLI run, without models/devices, verifies
+a failed total HTML report with both interrupted and not-run case identities.
+The 120-minute job budget / 105-minute CLI budget only permit complete execution
+and report finalization; original assertion windows, 180-second step deadlines,
+retry policy and device concurrency are not extended or changed.
+
 Latest completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
 14/18; builds and report publication passed. Android's first VideoBoundary
 attempt passed its prelocated playing/source-switch fragment, then failed the

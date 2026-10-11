@@ -1,0 +1,7 @@
+cases:
+  - name: interrupted synthetic case
+    steps:
+      - ci.waitForCancellation: {}
+  - name: unexecuted synthetic case
+    steps:
+      - ci.mustNotRun: {}

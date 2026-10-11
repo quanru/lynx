@@ -146,7 +146,7 @@ jobs:
     needs: build-explorer
     if: always() && !cancelled() && needs.build-explorer.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
       MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
@@ -228,7 +228,7 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           npm run typecheck
-          npm test -- --project android-explorer
+          node scripts/run-ci.mjs --project android-explorer
 
       - name: Verify read-only DevTool transport prerequisite
         id: probe-devtool
@@ -297,7 +297,7 @@ jobs:
     needs: build-explorer
     if: always() && !cancelled() && needs.build-explorer.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
       MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
@@ -372,7 +372,7 @@ jobs:
         working-directory: testing/ai_e2e
         run: |
           npm run typecheck
-          npm test -- --project ios-explorer
+          node scripts/run-ci.mjs --project ios-explorer
 
       - name: Verify read-only DevTool transport prerequisite
         id: probe-devtool
