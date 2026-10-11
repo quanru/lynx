@@ -69,7 +69,9 @@ print(json.dumps(events))`], { input: JSON.stringify({ helpers, case: source }),
     assert.match(actions.at(-1).input.prompt, /Open button directly to the right/);
     assert.match(actions.at(-1).input.prompt, /BELOW its heading and ABOVE the Fullscreen/);
     assert.match(actions.at(-1).input.prompt, /Do not tap the separate Sparkling Go runtime selector/);
-    for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: action !== actions.at(-1), cacheable: false });
+    assert.match(actions.at(-1).input.prompt, /smaller lower red Open button/);
+    assert.match(actions.at(-1).input.prompt, /wider upper red control/);
+    for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
     const contracts = steps.filter(s => s.node === 'native.sparkling').map(s => s.input);
     assert.deepEqual(contracts.slice(0, open[3] ? 3 : 2), open[3]
       ? [{ contract: 'home' }, { contract: 'runtime', runtime: open[3] }, { contract: 'parent' }]

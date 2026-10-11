@@ -266,7 +266,9 @@ const androidSetup = defineProjectSetup<ProjectContext>({
       if (!entry) {
         const device = new AndroidDevice(udid);
         await device.connect();
-        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html`, aiContexts });
+        // Original source waits own readiness; do not add the SDK's default
+        // 300ms post-action delay to every tap in a ten-second video contract.
+        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html`, aiContexts, waitAfterAction: 0 });
         entry = { device, agent };
         runs.set(runId, entry);
         // Bootstrap once per case run, before its first AI node. Store the entry
@@ -336,7 +338,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
       if (!entry) {
         const device = new IOSDevice({ wdaPort, wdaHost });
         await device.connect();
-        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html`, aiContexts });
+        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html`, aiContexts, waitAfterAction: 0 });
         entry = { device, agent };
         runs.set(runId, entry);
         // WDA launch preserves deep navigation state. Terminate and launch once
@@ -423,7 +425,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: false, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
+      variables: { videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },

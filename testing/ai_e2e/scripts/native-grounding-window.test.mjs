@@ -25,3 +25,17 @@ test('full-frame iOS grounding does not inherit the evidenced blank planning cro
   assert.equal(search.config, undefined, 'The SDK locator receives the full frame, not the blank search crop');
   assert.ok(visiblePanelPoint.x < shotSize.width && visiblePanelPoint.y < shotSize.height);
 });
+
+test('current iOS video bounds put the evidenced Play and Mute controls inside SDK refinement crops', () => {
+  // Run 38137942374: both full-frame model points fell below the blue button.
+  // These are diagnostic test coordinates, never production action targets.
+  for (const { point, button } of [
+    { point: [374, 1678], button: { top: 1586, bottom: 1663, center: [374, 1625] } },
+    { point: [719, 2105], button: { top: 2024, bottom: 2101, center: [719, 2062] } },
+  ]) {
+    assert.ok(point[1] > button.bottom, 'The original full-frame point missed the button.');
+    const crop = expandSearchArea(mergeSearchAreaResults({ center: point }), { width: 1206, height: 2622 });
+    assert.ok(button.center[0] >= crop.left && button.center[0] < crop.left + crop.width);
+    assert.ok(button.top >= crop.top && button.bottom < crop.top + crop.height);
+  }
+});

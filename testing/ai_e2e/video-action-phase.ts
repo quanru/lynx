@@ -7,7 +7,7 @@ export type VideoActionPhase = 'replace-playing-source' | 'stop-play-null';
 export interface VideoTimedAgent {
   aiAct(prompt: string, options: { deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
   addProgressListener(listener: AgentProgressListener): () => void;
-  aiLocate(prompt: string, options: { deepLocate: false; cacheable: false }): Promise<{ center: number[] }>;
+  aiLocate(prompt: string, options: { deepLocate: true; cacheable: false }): Promise<{ center: number[] }>;
   callActionInActionSpace(type: string, input: unknown): Promise<unknown>;
 }
 

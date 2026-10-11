@@ -52,6 +52,52 @@ test('actual SDK Tap schema and task execution deliver prelocated points to the 
   assert.deepEqual(taps[0], [{ x: 200, y: 100 }]);
 });
 
+test('ordinary video deep location refines a planning point before its single SDK Tap and applies iOS scale once', async () => {
+  const { TaskBuilder } = await import('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs');
+  const { defineActionTap } = await import('@midscene/core/device');
+  for (const deepLocate of [false, true]) {
+    let calls = 0;
+    const taps = [];
+    const builder = new TaskBuilder({ interfaceInstance: {}, actionSpace: [defineActionTap(point => taps.push(point))], service: {
+      locate: async input => {
+        assert.equal(input.deepLocate, true);
+        calls++;
+        return { element: { center: [374, 1625] } };
+      },
+    } });
+    const { tasks } = await builder.build([{ type: 'Tap', param: { locate: {
+      prompt: 'Play', locatedPixelResult: { center: [374, 1678] }, deepLocate, cacheable: false,
+    } }, thought: '' }]);
+    for (const task of tasks) await task.executor({ task: { timing: {} }, uiContext: { shrunkShotToLogicalRatio: 3, deprecatedDpr: 3 } });
+    assert.equal(calls, deepLocate ? 1 : 0);
+    assert.deepEqual(taps, [{ x: Math.round(374 / 3), y: Math.round((deepLocate ? 1625 : 1678) / 3) }]);
+  }
+});
+
+test('public SDK waitAfterAction zero removes only the extra post-tap delay, not an original source wait', async t => {
+  const { TaskBuilder } = await import('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs');
+  const { defineActionTap } = await import('@midscene/core/device');
+  const delays = [];
+  t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
+    delays.push(delay);
+    queueMicrotask(() => callback(...args));
+    return {};
+  });
+  for (const waitAfterAction of [undefined, 0]) {
+    delays.length = 0;
+    let taps = 0;
+    const builder = new TaskBuilder({ interfaceInstance: {}, waitAfterAction, actionSpace: [defineActionTap(() => taps++)], service: {
+      locate: async () => assert.fail('A prelocated physical tap cannot invoke a model'),
+    } });
+    const { tasks } = await builder.build([{ type: 'Tap', param: { locate: {
+      prompt: 'Play', locatedPixelResult: { center: [374, 1625] }, deepLocate: false, cacheable: false,
+    } }, thought: '' }]);
+    for (const task of tasks) await task.executor({ task: { timing: {} }, uiContext: { shrunkShotToLogicalRatio: 3, deprecatedDpr: 3 } });
+    assert.equal(taps, 1);
+    assert.deepEqual(delays, waitAfterAction === 0 ? [200] : [200, 300]);
+  }
+});
+
 test('pinned SDK honors prelocated screenshot points without a second model call; deepLocate would call it again', async () => {
   const { TaskBuilder } = await import(new URL('../node_modules/@midscene/core/dist/es/agent/task-builder.mjs', import.meta.url));
   for (const deepLocate of [false, true]) {
@@ -99,7 +145,7 @@ test('all visual planning precedes both real SDK taps and original inter-action 
   const evidence = await f.run();
   assert.deepEqual(f.trace.map(item => item[0]), ['prepare', 'locate', 'locate', 'tap', 'assert', 'capture', 'assert', 'tap']);
   assert.equal(await evidence.consume(playing), true);
-  assert.deepEqual(f.trace.filter(item => item[0] === 'locate').map(item => item[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: false, cacheable: false }]);
+  assert.deepEqual(f.trace.filter(item => item[0] === 'locate').map(item => item[2]), [{ deepLocate: true, cacheable: false }, { deepLocate: true, cacheable: false }]);
   assert.deepEqual(f.trace.filter(item => item[0] === 'tap').map(item => item[1].locate.locatedPixelResult.center), [[100, 100], [200, 100]]);
 });
 test('capture or device delay cannot replay stale playing into a late second tap', async () => {

@@ -7,7 +7,7 @@ import { videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action
 
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
-  const deepLocate = variableBridge ? '${videoDeepLocate}' : platform === 'android';
+  const deepLocate = variableBridge ? '${videoDeepLocate}' : true;
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBoundary.py', import.meta.url), 'utf8');
   const events = JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./extract-video-boundary.py', import.meta.url))], {
     input: JSON.stringify({ source, platform }), encoding: 'utf8',

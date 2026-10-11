@@ -69,10 +69,14 @@ the ordered trace and the source-owned assertion deadlines independently of
 model preparation. Product implementations, example pages, launch viewport,
 media, original pixel baselines and retry policy remain unchanged.
 
-The preceding playback correction `f3973b6` is validating in run 38136008306. Its
-remote model-free contract gate passed; source builds/device acceptance remain
-pending. A subsequent local CI report-finalization correction passes 180 checks
-was initially held to avoid cancelling that useful run. It launches the pinned
+Hosted head `3b592b6` completed run 38137942374 with Android 11/13 and iOS
+15/20 passed. Its remote model-free contract gate, current-source builds,
+reporting and Pages passed; the current-run HTML report returned HTTP 200.
+Device acceptance remains incomplete. The preceding `f3973b6`
+run 38136008306 passed its contracts and builds but was superseded before device
+acceptance. The report-finalization correction `4ca5303` was initially held
+locally, then included in the current head with the approved viewport change.
+It launches the pinned
 CLI directly, forwards interruption and retains a bounded grace period before
 the job deadline. An actual synthetic CLI run, without models/devices, verifies
 a failed total HTML report with both interrupted and not-run case identities.
@@ -80,7 +84,28 @@ The 120-minute job budget / 105-minute CLI budget only permit complete execution
 and report finalization; original assertion windows, 180-second step deadlines,
 retry policy and device concurrency are not extended or changed.
 
-Latest completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
+The next migration-layer correction passes 184 model-free checks and
+typechecking. Actual iOS screenshots show Play [374,1678] below its blue
+button (vertical extent 1586..1663), and Mute [719,2105] below its button
+(2024..2101). SDK coordinates use the expected 3x screenshot-to-logical mapping;
+the model points themselves miss. A VideoModes Clear point [123,1290] also
+misses the first button row, so earlier queue callbacks cannot be assumed
+cleared. Standard deep location now refines video targets before tapping;
+timed fragments retain all model work before playback and deepLocate=false
+for their final physical taps. Source-bound preparation ownership and
+cancellation guards remain. Homepage Open also uses deep location and names
+the smaller lower red button rather than the wider upper runtime selector.
+
+Android VideoAttributes reached Pause about 10.9 seconds after Play, after the
+ten-second clip ended. The public agent option waitAfterAction=0 removes only
+the SDK's additional 300ms post-action wait; the original Python waits, sample
+windows, screenshot checkpoints and media duration remain unchanged. A pinned
+SDK regression verifies the removed delay and unchanged single-tap/scale path.
+Remote acceptance is still required. VideoBoundary's Android Seek Empty
+continues to return seek_ok instead of the original expected seek_fail; this
+does not prove a product defect without a same-environment original-case run.
+
+Earlier completed run 38039839927 (`658bc76`) passed Android 10/11 and iOS
 14/18; builds and report publication passed. Android's first VideoBoundary
 attempt passed its prelocated playing/source-switch fragment, then failed the
 Seek Empty `seek_fail` expectation with `seek_ok:success=true`. The actual

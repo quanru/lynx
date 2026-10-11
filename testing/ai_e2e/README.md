@@ -1,7 +1,7 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 181
-model-free checks on Node 22 and the local Node runtime, plus typechecking and
+Current implementation collects Android 13 / iOS 20 cases and passes 184
+model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
 Approved playback-sensitive fragments visually prelocate buttons before
@@ -34,8 +34,26 @@ report-finalization grace period within a 120-minute job budget. Assertions,
 step deadlines, retries and device concurrency remain unchanged. An actual
 model-free CLI test proves that direct SIGINT writes a failed total report and
 marks a later case not-run; interrupted execution can never return success.
-This correction and the approved viewport exception require a new hosted head;
-the preceding `f3973b6` run 38136008306 does not include them.
+Both corrections are included in hosted head `3b592b6`, run 38137942374.
+Its model-free gate, source builds and reporting passed; devices finished
+Android 11/13 and iOS 15/20. The full current-run HTML report was published and
+returned HTTP 200. This is not device acceptance. The preceding `f3973b6` run
+38136008306 does not include these corrections and was superseded before
+device acceptance.
+
+Current-run screenshots and action records prove that the iOS Play and Mute
+points fell into background gaps below their buttons. A VideoModes Clear point
+also missed the button, leaving earlier callback entries in the log. Video
+actions now use standard SDK deep location; preparation still precedes playback,
+and the timed physical Tap path retains deepLocate=false with no model calls.
+Homepage Open uses deep location and distinguishes the smaller lower Open
+button from the wider upper selected runtime control. The public agent option
+waitAfterAction=0 removes the SDK's added 300ms after each action: Android's
+object-fit fragment otherwise reached its original Pause after the ten-second
+clip ended. Original source sleeps, assertions, media, screenshots and tap
+counts remain unchanged. These corrections pass 184 model-free checks but
+require a new hosted run. Android Seek Empty still needs an unchanged original
+case on the same device/environment before attributing it to product behavior.
 
 The preceding hosted run 38039839927 (`658bc76`) passed Android 10/11 and
 iOS 14/18, with successful source builds and reporting. Android VideoBoundary
