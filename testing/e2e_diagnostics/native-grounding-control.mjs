@@ -22,7 +22,7 @@ const cases = [
 const results = [];
 for (const target of cases) {
   const screenshot = 'data:image/jpeg;base64,' + readFileSync(resolve(directory, 'grounding-' + target.name + '.jpeg')).toString('base64');
-  for (const mode of ['locate-full', 'locate-deep', 'act-balance', 'act-deepThink']) {
+  for (const mode of ['locate-full', 'act-balance-no-context', 'act-fast-no-context', 'act-deepThink-no-context']) {
     const controller = new AbortController();
     const stop = new Error('Diagnostic stopped after first simulated tap');
     const deadline = setTimeout(() => controller.abort(new Error('Diagnostic deadline')), 180_000);
@@ -35,10 +35,10 @@ for (const target of cases) {
         point = [x * 3, y * 3];
         controller.abort(stop);
       })], url: async () => 'static-ci-screenshot://' + target.name, destroy: async () => {},
-    }, { generateReport: true, autoPrintReportMsg: false, reportFileName: target.name + '-' + mode, aiContexts: { aiAct: context } });
+    }, { generateReport: true, autoPrintReportMsg: false, reportFileName: target.name + '-' + mode, aiContexts: mode.endsWith('-no-context') ? {} : { aiAct: context } });
     try {
       if (mode.startsWith('locate-')) point = (await agent.aiLocate(target.locate, { deepLocate: mode === 'locate-deep', cacheable: false })).center;
-      else await agent.aiAct(target.act, { deepLocate: true, cacheable: false, effort: mode === 'act-balance' ? 'balance' : 'deepThink', abortSignal: controller.signal });
+      else await agent.aiAct(target.act, { deepLocate: true, cacheable: false, effort: mode.includes('deepThink') ? 'deepThink' : mode.includes('fast') ? 'fast' : 'balance', abortSignal: controller.signal });
     } catch (error) {
       if (!(point && controller.signal.reason === stop)) failure = error?.name ?? 'Error';
     } finally {
