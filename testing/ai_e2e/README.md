@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 199
+Current implementation collects Android 13 / iOS 20 cases and passes 201
 model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -34,17 +34,44 @@ Static hosted screenshot controls also reproduce deep refinement selecting the
 wrong crowded seek button. Timed seek preparation now preserves the full row
 for visual location, without stored target coordinates or weaker assertions.
 Other button locations retain deep refinement; ordinary actions remain aiAct.
-Ordinary `aiAct` uses `effort: deepThink, deepLocate: false, cacheable: false`,
-without extra coordinate-conversion context. In SDK 1.13.1, this separates
-planning from full-frame visual location; balanced planning with only
+Ordinary `aiAct` uses `effort: deepThink, cacheable: false`, without extra
+coordinate-conversion context. Small video controls on both platforms and the
+iOS Event inline-text target enable independent deep refinement. Homepage
+actions, other core actions and the crowded Seek 2s control retain full-frame
+location. In SDK 1.13.1,
+deep-think separates planning from visual location; balanced planning with only
 deepLocate disabled would instead reuse the planner's inline point. A public
-SDK regression verifies two separate requests and the uncropped locate image.
+SDK regression verifies the full-frame path's two separate requests and
+uncropped locate image.
+The follow-up is locally checked, not yet hosted-accepted:
+[alternating control 38286576224](https://github.com/quanru/lynx/actions/runs/38286576224)
+misses Latest's marked blue body in five full-frame trials and hits it in all
+five independently refined trials, with identical images/prompts/full schemas.
+Current-source run [38284421384](https://github.com/quanru/lynx/actions/runs/38284421384)
+completed Android 9/13 and iOS 16/20, with no unrun cases. Android has three
+provider-RPM failures and one misgrounded burst button. iOS fails Event,
+VideoAttributes, VideoBoundary and VideoModes; all Sparkling routes and the
+complete second VideoBasic attempt pass. The exact failures remain failures.
+In [control 38292801372](https://github.com/quanru/lynx/actions/runs/38292801372),
+independent refinement recovers the iOS inline-text/volume/mute/source/loop
+targets missed by full-frame location on the same failed images. Earlier iOS
+refinement missed homepage Open, so navigation is not switched. VideoModes
+now describes Seek 2s by its second position and neighbors in the crowded row;
+scrolling cannot unclip its fixed-width text. The operation remains one aiAct
+click, with unchanged ordered source assertions. No target coordinates,
+original waits, fixtures or product implementations change in this follow-up.
+Credentialed Android/iOS jobs share one run-local CI slot; source builds still
+run in parallel. Provider retries use two retries and 30-second backoff inside
+the unchanged step deadline. An inert public-SDK regression verifies that step
+cancellation interrupts the backoff without sending another request or input.
+Other repositories sharing this endpoint still need adequate RPM capacity or
+separate endpoints; this is not a cross-repository quota reservation.
 Full iOS action-space control [38279235964](https://github.com/quanru/lynx/actions/runs/38279235964)
 locates URL input, Seek 2s and Open correctly in two trials each. Src Bad first
 requests Scroll, which a static first-action control cannot evaluate. Earlier
 Tap-only controls did not generalize to full action schemas. These samples
-establish a grounding-path correction, not complete device acceptance; all
-original prompts, assertions, action counts and timing remain unchanged.
+establish a grounding-path correction, not complete device acceptance; original
+assertions, action counts and timing remain unchanged.
 No example page or baseline has been changed. The
 approved iOS-video-only viewport exception omits fixed physical width/height
 so existing Explorer uses its actual view bounds. Android video and every
@@ -215,9 +242,11 @@ captured a 1080x2400 screencast and physical rectangle `(0, 210, 1080, 1664)`;
 the crop matches the original view dimensions, not a pixel-baseline pass. iOS
 finished 3/6: DomFocus, InputInsertText and the home smoke passed; Event and both
 Showcase navigation cases failed. Report assembly and Pages publication passed.
-The standard `aiAct` option `deepLocate: true` is now used only for Event and
-Showcase-entry targets, with caching disabled. In SDK 1.13.1, this bypasses the
-planning model's direct point and performs a dedicated visual locate instead.
+At that historical checkpoint, the standard `aiAct` option `deepLocate: true`
+was enabled for Event and Showcase-entry targets, with caching disabled.
+With balanced planning in SDK 1.13.1, this refines a crop around the planner's
+inline point; it does not provide independent full-frame localization. Later
+controls above expose the resulting wrong-crop failure and supersede that path.
 It does not add atomic action nodes, selectors, coordinates or extra Event
 clicks. No local model calls were made. Run 37948887444 at `3ebd94d` then passed
 both source builds, Android 6/6, iOS 6/6 and Pages. All 12 cases passed first

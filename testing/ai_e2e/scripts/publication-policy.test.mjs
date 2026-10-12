@@ -2,6 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+test('native CI serializes credentialed jobs and bounds provider retries without cancelling the other platform', async () => {
+  const workflow = await readFile(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  for (const platform of ['android', 'ios']) {
+    const job = workflow.split('  ' + platform + '-ai-e2e:')[1].split(/\n {2}(?=\S)/)[0];
+    assert.match(job, /concurrency:\s+group: midscene-native-model-\$\{\{ github\.run_id \}\}\s+cancel-in-progress: false/);
+    assert.match(job, /MIDSCENE_MODEL_RETRY_COUNT: '2'/);
+    assert.match(job, /MIDSCENE_MODEL_RETRY_INTERVAL: '30000'/);
+    assert.match(job, /needs: build-explorer/);
+    assert.match(job, /if: always\(\) && !cancelled\(\)/);
+  }
+  const build = workflow.split('  build-explorer:')[1].split('  contract-check:')[0];
+  assert.doesNotMatch(build, /concurrency:|MIDSCENE_MODEL_RETRY/);
+  assert.match(build, /fail-fast: false/);
+});
+
 test('both platforms consume current-source artifacts and verify their revision', async () => {
   const workflow = await readFile(
     new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url),

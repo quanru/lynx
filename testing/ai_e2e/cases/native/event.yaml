@@ -15,7 +15,7 @@ cases:
       - native.expect: { fixture: event, tag: count, text: "2" }
       - aiAct:
           prompt: Click only the inline text "Click Me" at the right end of "Test inline-text:Click Me" inside the lowest of the three blue buttons, beneath "Click to change CSS", once. Tap inside those letters, not the surrounding button or blank page. Stop after that single click.
-          options: { effort: deepThink, deepLocate: false, cacheable: false }
+          options: { effort: deepThink, deepLocate: "${eventInlineDeepLocate}", cacheable: false }
       - native.expect:
           fixture: event
           tag: button2

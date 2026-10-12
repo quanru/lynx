@@ -2,6 +2,33 @@
 
 ## Current checkpoint (2026-10-13)
 
+The latest completed full-device run is
+[38284421384](https://github.com/quanru/lynx/actions/runs/38284421384), head
+`ff4d15c`: Android 9/13, iOS 16/20, no unrun cases. Both current-source builds
+and 199 model-free checks pass. All seven Sparkling cases and the complete
+second iOS VideoBasic attempt pass. Android's three video RPM-limit failures
+are distinct from VideoModes' physical taps below its button. iOS Event,
+VideoAttributes, VideoBoundary and VideoModes still fail original contracts.
+
+The current follow-up preserves every original assertion, operation and
+timing window. It refines small video controls on both platforms and only the
+iOS Event inline-text action; full-frame homepage navigation is unchanged.
+The crowded ordinary Seek 2s action stays aiAct/full-frame, with its second
+position and neighbors made explicit, avoiding futile scrolling for clipped
+text. Timed seek preparation retains its previously validated full-frame path.
+Static control [38292801372](https://github.com/quanru/lynx/actions/runs/38292801372)
+uses actual failed ff4d15c images and complete inert action schemas; these
+controls do not substitute for a new full device run. Provider jobs are
+serialized with bounded 30-second retry backoff, inside the original step
+deadline. All 201 local model-free checks, typechecking and actionlint pass.
+The completed control recovers all twelve repeated failed-target trials with
+independent refinement (full-frame: zero of twelve). The explicit Seek 2s
+candidate hits the second control twice on each path; it retains full-frame
+context because earlier crowded-seek refinement selected the wrong neighbor.
+This remains static evidence, not full-device acceptance of the follow-up.
+
+## Historical investigation checkpoints
+
 Run [38212166291](https://github.com/quanru/lynx/actions/runs/38212166291)
 at `a48b56f` completed Android 11/13 and iOS 16/20. Contract checks, both
 current-source builds, report assembly and Pages publication succeeded; device
@@ -78,6 +105,29 @@ path and uncropped image. No stored coordinates or atomic action nodes are
 introduced. This is not a complete device pass. The preceding control
 38278584243 hit model transport timeouts, not grounding failures; the successful
 control uses the same IPv4 Node options as the device workflow.
+
+The initial Android follow-up retained independent deep-think planning but enabled
+refinement for ordinary video actions only. In static control
+[38286576224](https://github.com/quanru/lynx/actions/runs/38286576224), five
+alternating full-frame Latest trials land just below its marked button body,
+while all five independently refined trials hit it. The complete Android
+action space, original image and original prompt remain identical. iOS and
+non-video actions initially remained full-frame; the earlier iOS refinement
+control missed Open. The completed ff4d15c run subsequently supplied the
+small-control iOS evidence used by the current follow-up above.
+No source assertions, fixtures, timing, media or saved target points change.
+
+That run's Android result is 9/13, with no unrun cases. Three video cases
+exhaust their provider retries on HTTP 429 endpoint RPM limits. VideoModes
+instead records two physical Play Pause Stop taps below the actual button;
+the unchanged callback/state assertions correctly reject them. Model quotas
+and visual grounding are separate failures, not evidence for weakening either
+original contract. The local follow-up serializes credentialed device jobs,
+keeps source builds parallel and uses two provider retries with 30-second
+backoff. A public-SDK inert-server test verifies that the existing step abort
+interrupts this backoff, prevents another request and performs no device input.
+Other repositories can still share the endpoint; CI serialization does not
+guarantee an account-wide quota reservation.
 
 The independent unchanged Appium control in
 [38190434034](https://github.com/quanru/lynx/actions/runs/38190434034)

@@ -169,8 +169,13 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
       if (step.node === 'native.video') return ['assert', { ...(!step.input.immediate ? { timeoutMs: 20000 } : {}), ...step.input }];
       if (step.node === 'recordToReport') return ['screenshot', 'mode_direct'];
       assert.equal(step.node, 'aiAct');
-      assert.ok(step.input.prompt.includes('"' + labels[index] + '"'));
-      assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
+      if (index === 9) {
+        assert.match(step.input.prompt, /^Click the single Seek 2s button once:/);
+        assert.match(step.input.prompt, /SECOND blue control/);
+        assert.match(step.input.prompt, /between Seek 0s and Near End/);
+        assert.match(step.input.prompt, /already on screen, do not scroll/);
+      } else assert.ok(step.input.prompt.includes('"' + labels[index] + '"'));
+      assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: index !== 9, cacheable: false });
       return ['click', tags[index++]];
     });
     assert.equal(index, 11);

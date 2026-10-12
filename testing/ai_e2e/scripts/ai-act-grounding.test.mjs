@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { collectWorkflowDocument } from '@midscene/test';
 import { loadTestProject } from '@midscene/test/config';
 
-test('all ordinary native actions use independent full-frame grounding without changing their action node', async () => {
+test('native actions independently refine small controls but retain full-frame navigation and crowded seek context', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const project of loaded.projects) {
@@ -21,7 +21,12 @@ test('all ordinary native actions use independent full-frame grounding without c
       });
       for (const item of document.cases) for (const step of item.definition.steps) if (step.node === 'aiAct') {
         count++;
-        assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false },
+        const crowdedSeek = sourcePath === 'cases/native/video-modes.yaml'
+          && step.input.prompt.startsWith('Click the single Seek 2s button once:');
+        const inlineText = project.name.startsWith('ios') && sourcePath === 'cases/native/event.yaml'
+          && step.input.prompt.startsWith('Click only the inline text');
+        const deepLocate = (/^cases\/native\/video-/.test(sourcePath) && !crowdedSeek) || inlineText;
+        assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate, cacheable: false },
           `${project.name}/${sourcePath}/${item.definition.name}`);
       }
     }

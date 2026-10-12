@@ -54,8 +54,9 @@ cases:
           prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the button labeled "Clear" once. Do not click any other button.
           options: { effort: deepThink, deepLocate: "${videoDeepLocate}", cacheable: false }
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the button labeled "Seek 2s" once. Do not click "Seek 0s", "Near End", or any other seek button.
-          options: { effort: deepThink, deepLocate: "${videoDeepLocate}", cacheable: false }
+          prompt: >-
+            Click the single Seek 2s button once: it is the SECOND blue control in the seek row immediately below Clear / Play / Play Null / Pause / Stop, between Seek 0s and Near End. Its fixed-width label may be clipped to See; use the row and neighbors to identify it. The later fourth control labeled Seek is not Seek 2s. If that second button body is already on screen, do not scroll; scrolling cannot unclip its text. Do not click any other button. Stop after the single click.
+          options: { effort: deepThink, deepLocate: false, cacheable: false }
       - native.video: { tag: callback-log, contains: seek_ok }
       - aiAct:
           prompt: Click the individual playback button labeled exactly "Stop" once. Do not click either combined burst button.

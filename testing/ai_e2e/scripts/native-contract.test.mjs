@@ -27,8 +27,9 @@ test('native collection preserves original ordered assertions, CDP calls and use
     assert.ok(migrated);
     const steps = migrated.steps;
     if (fixture === 'event') {
-      for (const action of steps.filter(step => step.node === 'aiAct')) {
-        assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
+      for (const [index, action] of steps.filter(step => step.node === 'aiAct').entries()) {
+        const deepLocate = project.name.startsWith('ios') && index === 2;
+        assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate, cacheable: false });
       }
       const firstClick = steps.find(step => step.node === 'aiAct').input.prompt;
       assert.match(firstClick, /uppermost blue rectangular button/);

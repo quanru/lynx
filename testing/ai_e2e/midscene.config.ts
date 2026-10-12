@@ -416,7 +416,8 @@ export default defineTestProject<ProjectContext>({
   projects: [
     {
       name: 'android-explorer',
-      variables: { videoBridgeError: '"code":3', videoDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
+      // Refine small controls independently; homepage actions retain full-frame location.
+      variables: { videoBridgeError: '"code":3', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -424,7 +425,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: false, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
+      variables: { videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },
