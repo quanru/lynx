@@ -27,7 +27,7 @@ const cases = [
 const results = [];
 for (const target of cases) {
   const screenshot = 'data:image/jpeg;base64,' + readFileSync(resolve(directory, 'grounding-' + target.name + '.jpeg')).toString('base64');
-  for (const mode of ['deepThink-no-context-1', 'deepThink-no-context-2']) {
+  for (const mode of ['deepThink-full-no-context-1', 'deepThink-full-no-context-2']) {
     const controller = new AbortController();
     const stop = new Error('Diagnostic stopped after first simulated tap');
     const deadline = setTimeout(() => controller.abort(new Error('Diagnostic deadline')), 180_000);
@@ -44,7 +44,7 @@ for (const target of cases) {
       } })), url: async () => 'static-ci-screenshot://' + target.name, destroy: async () => {},
     }, { generateReport: true, autoPrintReportMsg: false, reportFileName: target.name + '-' + mode, aiContexts: mode.includes('-no-context-') ? {} : { aiAct: context } });
     try {
-      await agent.aiAct(target.act, { deepLocate: true, cacheable: false, effort: 'deepThink', abortSignal: controller.signal });
+      await agent.aiAct(target.act, { deepLocate: false, cacheable: false, effort: 'deepThink', abortSignal: controller.signal });
     } catch (error) {
       if (!(actionName && controller.signal.reason === stop)) failure = error?.name ?? 'Error';
     } finally {
