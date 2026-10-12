@@ -29,6 +29,7 @@ import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts'
 import { executeVideoPlaybackPhase, isVideoPlaybackPhase } from './video-playback-phase.ts';
 import type { VideoPlaybackPhase } from './video-playback-phase.ts';
 import { VideoPhasePreparation } from './video-phase-preparation.ts';
+import { videoBoundarySeekPrompts } from './video-boundary-prompts.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -417,7 +418,7 @@ export default defineTestProject<ProjectContext>({
     {
       name: 'android-explorer',
       // Refine small controls independently; homepage actions retain full-frame location.
-      variables: { videoBridgeError: '"code":3', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
+      variables: { ...videoBoundarySeekPrompts('android'), videoBridgeError: '"code":3', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}'] },
@@ -425,7 +426,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
+      variables: { ...videoBoundarySeekPrompts('ios'), videoBridgeError: "method 'unknownVideoMethod' not found", videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },

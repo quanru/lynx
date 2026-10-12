@@ -4,10 +4,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action-phase.ts';
+import { videoBoundarySeekPrompts } from '../video-boundary-prompts.ts';
+
+const seekRow = ['Seek 0s', 'Seek 2s', 'Near End', 'Seek Bad', 'Seek Missing', 'Seek Null', 'Seek Text', 'Seek NaN', 'Seek Inf', 'Seek Huge'];
 
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
   const deepLocate = variableBridge ? '${videoDeepLocate}' : true;
+  const seekPrompts = videoBoundarySeekPrompts(platform);
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBoundary.py', import.meta.url), 'utf8');
   const events = JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./extract-video-boundary.py', import.meta.url))], {
     input: JSON.stringify({ source, platform }), encoding: 'utf8',
@@ -43,6 +47,16 @@ export function originalVideoBoundary(platform, variableBridge = false) {
       assert.equal(kind, 'click');
       const label = labels.get(value);
       assert.ok(label, 'Missing original visible label for ' + value);
+      const seekIndex = seekRow.indexOf(label);
+      if (seekIndex >= 0) {
+        assert.ok(seekIndex >= 3, 'Review any new source action in the crowded seek row');
+        const variable = 'videoBoundary' + label.replaceAll(' ', '');
+        assert.ok(seekPrompts[variable], 'Missing reviewed seek description');
+        return { aiAct: {
+          prompt: variableBridge ? '${' + variable + '}' : seekPrompts[variable],
+          options: { effort: 'deepThink', deepLocate: label === 'Seek Null' ? false : deepLocate, cacheable: false },
+        } };
+      }
       return { aiAct: {
         prompt: `When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
         options: { effort: 'deepThink', deepLocate, cacheable: false },

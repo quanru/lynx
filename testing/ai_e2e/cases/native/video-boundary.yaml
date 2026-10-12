@@ -374,11 +374,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Bad" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekBad}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}
@@ -414,11 +410,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Missing" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekMissing}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}
@@ -454,14 +446,10 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Null" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekNull}
           options:
             effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            deepLocate: false
             cacheable: false
       - native.video:
           tag: callback-log
@@ -494,11 +482,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Text" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekText}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}
@@ -534,11 +518,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek NaN" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekNaN}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}
@@ -574,11 +554,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Inf" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekInf}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}
@@ -614,11 +590,7 @@ cases:
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Huge" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekHuge}
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}

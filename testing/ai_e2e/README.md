@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 201
+Current implementation collects Android 13 / iOS 20 cases and passes 202
 model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -37,17 +37,48 @@ Other button locations retain deep refinement; ordinary actions remain aiAct.
 Ordinary `aiAct` uses `effort: deepThink, cacheable: false`, without extra
 coordinate-conversion context. Small video controls on both platforms and the
 iOS Event inline-text target enable independent deep refinement. Homepage
-actions, other core actions and the crowded Seek 2s control retain full-frame
+actions, other core actions and the crowded Seek 2s / Seek Null controls retain full-frame
 location. In SDK 1.13.1,
 deep-think separates planning from visual location; balanced planning with only
 deepLocate disabled would instead reuse the planner's inline point. A public
 SDK regression verifies the full-frame path's two separate requests and
 uncropped locate image.
-The follow-up is locally checked, not yet hosted-accepted:
+Baseline `3c3c192` [run 38293483556](https://github.com/quanru/lynx/actions/runs/38293483556)
+finishes Android 12/13 and iOS 19/20, with no unrun cases. Every other case,
+including complete VideoAttributes, VideoBasic and VideoModes, passes its first
+attempt. Only VideoBoundary fails on both platforms, so this is not complete
+current-head acceptance. iOS times out twice in its Seek Bad action.
+Boundary's first attempt scrolls for Seek Null even though the seek row is
+visible: the fixed-width label is clipped. The second attempt's Seek Bad
+point lands on Near End, and the unchanged callback assertion rejects seek_ok.
+The follow-up describes seven crowded controls through per-platform prompt
+variables in `video-boundary-prompts.ts`. Android uses source-defined order;
+iOS Bad/Null/Text/NaN use the local text that actually remains visible. It
+retains refinement except for Seek Null, without changing the original 36
+clicks, waits, error messages or callback checks. These are ordinary public
+aiAct nodes, not custom actions or stored device coordinates.
+[Control 38300403813](https://github.com/quanru/lynx/actions/runs/38300403813)
+uses the actual failure images and complete inert Android schema. Seek Bad's
+candidate hits 2/2 refined trials and 1/2 full-frame trials; Seek Null hits
+2/2 full-frame trials and 1/2 refined trials. These small static samples are
+not device acceptance. All 202 model-free checks and typechecking pass; the
+follow-up requires its own hosted run.
+
+Expanded inert control [38304552723](https://github.com/quanru/lynx/actions/runs/38304552723)
+hits 14/14 Android regions but rejects the original shared iOS descriptions
+(7/16). Full-frame comparison also hits 7/16. Visible local anchors in
+[38306040423](https://github.com/quanru/lynx/actions/runs/38306040423) recover
+Bad (8/8) and Null (4/4). The right-side anchor candidate in
+[38306686449](https://github.com/quanru/lynx/actions/runs/38306686449) refines
+Text correctly in 3/4 trials and NaN in 4/4 across two failed images. The miss
+is retained, not treated as success. This best-measured prompt candidate still
+requires a complete new device run; static controls are not acceptance.
+
+Earlier diagnostic evidence:
 [alternating control 38286576224](https://github.com/quanru/lynx/actions/runs/38286576224)
 misses Latest's marked blue body in five full-frame trials and hits it in all
 five independently refined trials, with identical images/prompts/full schemas.
-Current-source run [38284421384](https://github.com/quanru/lynx/actions/runs/38284421384)
+Previous current-source run [38284421384](https://github.com/quanru/lynx/actions/runs/38284421384)
 completed Android 9/13 and iOS 16/20, with no unrun cases. Android has three
 provider-RPM failures and one misgrounded burst button. iOS fails Event,
 VideoAttributes, VideoBoundary and VideoModes; all Sparkling routes and the

@@ -2,6 +2,38 @@
 
 ## Current checkpoint (2026-10-13)
 
+Baseline `3c3c192` [run 38293483556](https://github.com/quanru/lynx/actions/runs/38293483556)
+passes both current-source builds and its 201 model-free checks. Android
+finishes 12/13 and iOS 19/20, with no unrun cases. All other cases, including
+VideoAttributes, VideoBasic and VideoModes, pass their complete first attempts.
+VideoBoundary fails on both platforms, so this is not full-device acceptance.
+iOS times out twice in Seek Bad before its original callback assertions.
+On Android, a clipped Seek Null label causes
+repeated scrolling in attempt one; attempt two taps Near End instead of
+Seek Bad, and the original seek_fail assertion rejects actual seek_ok.
+
+The follow-up keeps all 36 original clicks and every ordered callback,
+error message, wait and timeout. Seven crowded seek controls use per-platform
+prompt variables: source-owned order on Android and visible local anchors for
+iOS Bad, Null, Text and NaN. Only Seek Null switches to full-frame
+location; other boundary controls retain independent refinement. With actual
+failed images, [inert control 38300403813](https://github.com/quanru/lynx/actions/runs/38300403813)
+hits Seek Bad in 2/2 refined trials (full-frame: 1/2) and Seek Null in 2/2
+full-frame trials (refined: 1/2). Its complete action schemas never connect a
+device or send input. All 202 model-free checks and typechecking pass; this
+prompt/option correction requires a separate hosted acceptance run.
+
+Expanded inert control [38304552723](https://github.com/quanru/lynx/actions/runs/38304552723)
+hits 14/14 Android regions but rejects the original shared iOS descriptions
+(7/16). Full-frame comparison also hits 7/16. Visible local anchors in
+[38306040423](https://github.com/quanru/lynx/actions/runs/38306040423) recover
+Bad (8/8) and Null (4/4). Right-side anchors in
+[38306686449](https://github.com/quanru/lynx/actions/runs/38306686449) refine
+Text correctly in 3/4 trials and NaN in 4/4 across two failed images. The miss
+remains a miss; this best-measured candidate requires its own full device run.
+
+## Previous full-device checkpoint
+
 The latest completed full-device run is
 [38284421384](https://github.com/quanru/lynx/actions/runs/38284421384), head
 `ff4d15c`: Android 9/13, iOS 16/20, no unrun cases. Both current-source builds
