@@ -1,0 +1,41 @@
+name: Native grounding screenshot control (diagnostic only)
+on:
+  push:
+    branches: [midscene/grounding-control-38212166291]
+permissions:
+  contents: read
+concurrency:
+  group: native-grounding-control
+  cancel-in-progress: false
+jobs:
+  compare:
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Install the exact source SDK
+        working-directory: testing/ai_e2e
+        run: npm ci --no-audit --no-fund
+      - name: Compare immutable screenshots without any device actions
+        env:
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+        run: node testing/e2e_diagnostics/native-grounding-control.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: native-grounding-control
+          path: |
+            grounding-control/results.json
+            midscene_run/report/
+          if-no-files-found: error
+          retention-days: 14
