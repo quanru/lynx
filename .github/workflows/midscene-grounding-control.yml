@@ -4,6 +4,9 @@ on:
     branches: [midscene/grounding-control-38212166291]
 permissions:
   contents: read
+env:
+  # Match the main acceptance workflow's public-provider network settings.
+  NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
 concurrency:
   group: native-grounding-control
   cancel-in-progress: false
