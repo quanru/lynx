@@ -106,7 +106,10 @@ jobs:
       - name: Install pinned original framework and Appium
         timeout-minutes: 15
         run: |
-          python3 -m pip install --disable-pip-version-check -r source/testing/integration_test/test_script/requirements.in
+          # The legacy CI common-deps action also installs these tools; the
+          # framework uses six without declaring it in its wheel metadata.
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          python3 source/testing/integration_test/test_script/manage.py runtest --help
           npm install --prefix "$RUNNER_TEMP/original-control-server" --no-audit --no-fund appium@2.11.2
           "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" driver install espresso@4.0.0
       - name: Start identical headless emulator configuration
@@ -168,6 +171,9 @@ jobs:
           mkdir -p "$CONTROL_DIR"
           if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
           if [ -f source/testing/ai_e2e/emulator.log ]; then cp source/testing/ai_e2e/emulator.log "$CONTROL_DIR/"; fi
+          entered=no
+          if [ -f "$CONTROL_DIR/original.log" ] && grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*VideoBoundary[[:space:]]*\]' "$CONTROL_DIR/original.log"; then entered=yes; fi
+          printf 'Original VideoBoundary body entered: %s\n\n' "$entered" >> "$GITHUB_STEP_SUMMARY"
           # shellcheck disable=SC2016 # Backticks are literal Markdown, not shell commands.
           printf '## Original Android VideoBoundary diagnostic\n\nProducer: [run %s](%s/%s/actions/runs/%s). Original execution: `%s`.\n\nThis is an independent Appium/Espresso control, not Midscene acceptance. APK hashes, signature-only payload comparison, installed APK identity, original logs and screenshots are retained in the diagnostic artifact. A setup failure does not establish an original-case failure.\n' "$SOURCE_RUN_ID" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$SOURCE_RUN_ID" "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload original control evidence
