@@ -22,9 +22,12 @@ const cases = [
     act: 'When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the video mode button labeled "Latest" once. Do not click any playback button.' },
 ];
 const results = [];
-for (const target of cases) {
+for (const target of cases.filter(target => target.name === 'android-latest')) {
   const screenshot = 'data:image/jpeg;base64,' + readFileSync(resolve(directory, 'grounding-' + target.name + '.jpeg')).toString('base64');
-  for (const mode of ['deepThink-refined-no-context-1', 'deepThink-refined-no-context-2']) {
+  for (const mode of Array.from({ length: 5 }, (_, index) => [
+    `deepThink-full-frame-no-context-${index + 1}`,
+    `deepThink-refined-no-context-${index + 1}`,
+  ]).flat()) {
     const controller = new AbortController();
     const stop = new Error('Diagnostic stopped after first simulated tap');
     const deadline = setTimeout(() => controller.abort(new Error('Diagnostic deadline')), 180_000);
@@ -41,7 +44,7 @@ for (const target of cases) {
       } })), url: async () => 'static-ci-screenshot://' + target.name, destroy: async () => {},
     }, { generateReport: true, autoPrintReportMsg: false, reportFileName: target.name + '-' + mode, aiContexts: mode.includes('-no-context-') ? {} : { aiAct: context } });
     try {
-      await agent.aiAct(target.act, { deepLocate: true, cacheable: false, effort: 'deepThink', abortSignal: controller.signal });
+      await agent.aiAct(target.act, { deepLocate: mode.includes('-refined-'), cacheable: false, effort: 'deepThink', abortSignal: controller.signal });
     } catch (error) {
       if (!(actionName && controller.signal.reason === stop)) failure = error?.name ?? 'Error';
     } finally {
