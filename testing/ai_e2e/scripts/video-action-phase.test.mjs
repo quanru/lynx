@@ -10,13 +10,14 @@ test('runner cancellation reaches preparation and late planning/location results
     const reason = new Error('Original node deadline');
     let removed = 0, locations = 0, taps = 0;
     const agent = {
+      getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
       addProgressListener: () => () => removed++,
       aiAct: async (_prompt, options) => {
         assert.equal(options.abortSignal, controller.signal);
         if (stage === 'prepare') controller.abort(reason);
       },
       aiLocate: async () => { locations++; controller.abort(reason); return { center: [100, 100] }; },
-      callActionInActionSpace: async () => taps++,
+      interface: { inputPrimitives: { pointer: { tap: async () => taps++ } } },
     };
     await assert.rejects(executeVideoActionPhase(agent, 'replace-playing-source', async () => assert.fail(), async () => assert.fail(), controller.signal), error => error === reason);
     assert.equal(removed, 1);
@@ -120,6 +121,7 @@ function fixture() {
   let taps = 0;
   let listener;
   const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
     addProgressListener: value => { listener = value; return () => { listener = undefined; }; },
     aiAct: async prompt => { trace.push(['prepare', prompt]); listener?.({ scope: 'aiAct', phase: 'action_running', data: { action: { name: 'Scroll' } } }); },
     aiLocate: async (prompt, options) => {
@@ -127,12 +129,10 @@ function fixture() {
       assert.equal(taps, 0, 'No model call may follow playback start');
       return { center: prompt.includes('"Src B"') || prompt.includes('"Stop"') ? [200, 100] : [100, 100] };
     },
-    callActionInActionSpace: async (type, input) => {
-      assert.equal(type, 'Tap');
-      assert.equal(input.locate.deepLocate, false);
-      trace.push(['tap', input]);
+    interface: { inputPrimitives: { pointer: { tap: async point => {
+      trace.push(['tap', point]);
       state = ++taps === 1 ? 'playing' : 'ready';
-    },
+    } } } },
   };
   const source = async input => { trace.push(['assert', input]); assert.equal(state, 'playing', 'Original playing state must genuinely pass'); };
   const capture = async () => { trace.push(['capture', state]); };
@@ -140,13 +140,13 @@ function fixture() {
     run: () => executeVideoActionPhase(agent, 'replace-playing-source', source, capture) };
 }
 
-test('all visual planning precedes both real SDK taps and original inter-action checks', async () => {
+test('all visual planning precedes both public device taps and original inter-action checks', async () => {
   const f = fixture();
   const evidence = await f.run();
   assert.deepEqual(f.trace.map(item => item[0]), ['prepare', 'locate', 'locate', 'tap', 'assert', 'capture', 'assert', 'tap']);
   assert.equal(await evidence.consume(playing), true);
-  assert.deepEqual(f.trace.filter(item => item[0] === 'locate').map(item => item[2]), [{ deepLocate: true, cacheable: false }, { deepLocate: true, cacheable: false }]);
-  assert.deepEqual(f.trace.filter(item => item[0] === 'tap').map(item => item[1].locate.locatedPixelResult.center), [[100, 100], [200, 100]]);
+  assert.ok(f.trace.filter(item => item[0] === 'locate').every(item => item[2].deepLocate === true && item[2].cacheable === false && item[2].uiContext));
+  assert.deepEqual(f.trace.filter(item => item[0] === 'tap').map(item => item[1]), [{ x: 100, y: 100 }, { x: 200, y: 100 }]);
 });
 test('capture or device delay cannot replay stale playing into a late second tap', async () => {
   const f = fixture();
@@ -205,9 +205,9 @@ test('case cleanup permanently disposes source-time evidence', async () => {
 test('failed physical taps never produce consumable source evidence or hidden retries', async () => {
   for (const failureAt of [1, 2]) {
     const f = fixture();
-    const tap = f.agent.callActionInActionSpace;
+    const tap = f.agent.interface.inputPrimitives.pointer.tap;
     let count = 0;
-    f.agent.callActionInActionSpace = async (...args) => { if (++count === failureAt) throw new Error('physical failure'); return tap(...args); };
+    f.agent.interface.inputPrimitives.pointer.tap = async (...args) => { if (++count === failureAt) throw new Error('physical failure'); return tap(...args); };
     await assert.rejects(f.run(), /physical failure/);
     assert.equal(count, failureAt);
   }

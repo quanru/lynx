@@ -15,7 +15,7 @@ interface LynxVideoPlayable {
     fun play()
     fun pause()
     fun stop()
-    fun seek(positionMs: Long)
+    fun seek(positionMs: Long, onComplete: () -> Unit)
 
     fun getDuration(): Long
     fun getCurrentPosition(): Long

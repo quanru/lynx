@@ -87,7 +87,7 @@ const phasesFor = (registry: AgentRegistry) => {
 
 const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase; prepare?: 'visibility' | number }, void, ProjectContext>({
   name: 'native.videoPhase',
-  description: 'Execute a closed original video timing fragment with visual prelocation and real SDK taps, preserving every original assertion and sample.',
+  description: 'Execute a closed original video timing fragment with visual prelocation and public device taps, preserving every original assertion and sample.',
   async execute(execution) {
     execution.signal?.throwIfAborted();
     if (execution.scope !== 'case' || Object.keys(execution.input).some(key => !['phase', 'prepare'].includes(key)) ||
@@ -100,7 +100,7 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
     const phases = phasesFor(execution.context.agentRegistry);
     if (phases.has(runId)) throw new Error('Previous video phase evidence has not been consumed.');
     const agent = await execution.context.agentRegistry.getAgent(runId) as MidsceneUIAgent & VideoTimedAgent;
-    if (typeof agent.aiLocate !== 'function' || typeof agent.callActionInActionSpace !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and physical action APIs.');
+    if (typeof agent.aiLocate !== 'function' || typeof agent.getUIContext !== 'function' || typeof agent.interface?.inputPrimitives?.pointer?.tap !== 'function' || typeof agent.addProgressListener !== 'function' || typeof agent.aiAct !== 'function') throw new Error('Video phase requires public SDK visual location, progress and device input APIs.');
     if (isVideoPlaybackPhase(execution.input.phase) && execution.input.prepare !== undefined) {
       await preparationFor(execution.context.agentRegistry).prepare(runId, execution.input.phase, execution.input.prepare, agent, execution.signal);
       return;

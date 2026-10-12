@@ -21,12 +21,19 @@ export async function makeVideoButtonsVisible(agent: VideoTimedAgent, labels: re
 
 export async function locateVideoButton(agent: VideoTimedAgent, label: string, signal?: AbortSignal) {
   signal?.throwIfAborted();
-  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Labels in crowded blue rows can be truncated. Locate the center INSIDE the actual blue button body, not its text baseline, status text or blank space. For Seek 2s, use the second control in the seek row directly below Clear/Play/Play Null/Pause/Stop, between Seek 0s and Near End.', { deepLocate: true, cacheable: false });
+  // Bind location and coordinate conversion to the SAME public UI context.
+  // DPR alone is insufficient when the SDK resizes a device screenshot.
+  const uiContext = await agent.getUIContext();
+  signal?.throwIfAborted();
+  const ratio = uiContext.shrunkShotToLogicalRatio;
+  const { width, height } = uiContext.shotSize;
+  if (![ratio, width, height].every(value => Number.isFinite(value) && value > 0)) throw new Error('Invalid video location screenshot geometry.');
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Labels in crowded blue rows can be truncated. Locate the center INSIDE the actual blue button body, not its text baseline, status text or blank space. For Seek 2s, use the second control in the seek row directly below Clear/Play/Play Null/Pause/Stop, between Seek 0s and Near End.', { deepLocate: true, cacheable: false, uiContext });
   // The pinned aiLocate API cannot abort an in-flight request. Never accept a
   // late result or start a subsequent physical action after cancellation.
   signal?.throwIfAborted();
-  if (!Array.isArray(result?.center) || result.center.length !== 2 || result.center.some(value => !Number.isFinite(value) || value < 0)) throw new Error('Invalid visual point for original timed video action.');
-  return [...result.center];
+  if (!Array.isArray(result?.center) || result.center.length !== 2 || result.center.some((value, index) => !Number.isFinite(value) || value < 0 || value >= [width, height][index])) throw new Error('Invalid visual point for original timed video action.');
+  return result.center.map(value => Math.round(value / ratio));
 }
 
 export async function prepareVideoButtons(agent: VideoTimedAgent, labels: readonly string[], signal?: AbortSignal) {
@@ -45,6 +52,9 @@ export async function tapPreparedVideoButton(agent: VideoTimedAgent, label: stri
   signal?.throwIfAborted();
   const center = points.get(label);
   if (!center) throw new Error('Original video button was not visually prelocated.');
-  await agent.callActionInActionSpace('Tap', { locate: { prompt: label, locatedPixelResult: { center: [...center] }, deepLocate: false, cacheable: false } });
+  // These phase-local points are already logical device coordinates. Calling
+  // the public primitive avoids extra model calls, screenshots and SDK delays
+  // inside the original playback window. The source still owns its captures.
+  await agent.interface.inputPrimitives.pointer.tap({ x: center[0], y: center[1] });
   signal?.throwIfAborted();
 }

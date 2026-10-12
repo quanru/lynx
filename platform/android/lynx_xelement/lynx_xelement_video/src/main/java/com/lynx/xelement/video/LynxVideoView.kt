@@ -36,6 +36,7 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
     private var isBuffering: Boolean = false
     private var suppressNextPlayingForLoop: Boolean = false
     private var suppressNextPaused: Boolean = false
+    private val pendingSeekCompletions = mutableListOf<() -> Unit>()
     @Volatile
     private var isReleased: Boolean = false
     @Volatile
@@ -77,6 +78,12 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
         cachedIsPlaying = player.isPlaying && player.playbackState != Player.STATE_ENDED
     }
 
+    private fun completePendingSeeks() {
+        val completions = pendingSeekCompletions.toList()
+        pendingSeekCompletions.clear()
+        completions.forEach { it() }
+    }
+
     private fun <T> readPlayerState(cachedValue: T, read: () -> T): T =
         if (!isReleased && isOnMainThread()) {
             read()
@@ -95,8 +102,14 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
                     if (isBuffering) {
                         isBuffering = false
                     }
+                    // Media3 masks an accepted seek as BUFFERING immediately.
+                    // READY follows the playback-thread acknowledgement; the
+                    // synchronous SEEK discontinuity is not completion.
+                    completePendingSeeks()
                 }
                 Player.STATE_ENDED -> {
+                    // A valid seek to the exact duration may end directly.
+                    completePendingSeeks()
                     if (loop) {
                         notifyCallback { onLooped() }
                         suppressNextPlayingForLoop = true
@@ -144,21 +157,9 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
             if (isReleased) {
                 return
             }
+            pendingSeekCompletions.clear()
             val errorMsg = error.message ?: "Unknown playback error"
             notifyCallback { onError(error.errorCode, errorMsg) }
-        }
-
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            if (isReleased) {
-                return
-            }
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                // Seek completed
-            }
         }
 
         override fun onRenderedFirstFrame() {
@@ -203,6 +204,7 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
 
     override fun setSrc(src: String?) {
         runOnMainThread {
+            pendingSeekCompletions.clear()
             currentSrc = src
             hasFiredFirstFrame = false
             isExplicitlyStopped = false
@@ -302,6 +304,7 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
 
     override fun stop() {
         runOnMainThread {
+            pendingSeekCompletions.clear()
             isExplicitlyStopped = true
             suppressNextPaused = suppressNextPaused || player.isPlaying
             player.stop()
@@ -312,9 +315,18 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
         }
     }
 
-    override fun seek(positionMs: Long) {
+    override fun seek(positionMs: Long, onComplete: () -> Unit) {
         runOnMainThread {
             val targetPositionMs = positionMs.coerceAtLeast(0)
+            // An idle player only records a future seek position. It cannot
+            // transition back to READY until a later prepare/play operation.
+            if (player.playbackState == Player.STATE_IDLE) {
+                player.seekTo(targetPositionMs)
+                cachedCurrentPositionMs = targetPositionMs
+                onComplete()
+                return@runOnMainThread
+            }
+            pendingSeekCompletions.add(onComplete)
             player.seekTo(targetPositionMs)
             cachedCurrentPositionMs = targetPositionMs
         }
@@ -354,6 +366,7 @@ class LynxVideoView(context: Context) : LynxVideoPlayable {
         isReleased = true
         callback = null
         runOnMainThread(allowAfterRelease = true) {
+            pendingSeekCompletions.clear()
             player.removeListener(playerListener)
             playerView.player = null
             player.clearVideoSurface()

@@ -10,7 +10,9 @@ test('crowded seek-row preparation uses source-owned neighbors and does not dema
   const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
   assert.match(source, /<text>Seek 0s<\/text>[\s\S]*?<text>Seek 2s<\/text>[\s\S]*?<text>Near End<\/text>/);
   const calls = [];
+  const uiContext = { shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } };
   const agent = { addProgressListener: () => () => {},
+    getUIContext: async () => uiContext,
     aiAct: async (prompt, options) => calls.push(['act', prompt, options]),
     aiLocate: async (prompt, options) => { calls.push(['locate', prompt, options]); return { center: [100, 100] }; } };
   await makeVideoButtonsVisible(agent, ['Clear', 'Seek 2s', 'Play', 'Stop']);
@@ -19,7 +21,7 @@ test('crowded seek-row preparation uses source-owned neighbors and does not dema
   assert.match(calls[0][1], /finish without scrolling/);
   assert.match(calls[0][1], /scrolling cannot reveal text clipped inside a button/);
   assert.match(calls[1][1], /center INSIDE the actual blue button body/);
-  assert.deepEqual(calls.map(call => call[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: true, cacheable: false }]);
+  assert.deepEqual(calls.map(call => call[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: true, cacheable: false, uiContext }]);
 });
 
 test('split phases retain the entire original ordered trace and only prepare at inactive source boundaries', () => {
@@ -45,9 +47,10 @@ function fixture() {
   const preparation = new VideoPhasePreparation();
   let requests = 0, taps = 0;
   const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
     addProgressListener: () => () => {}, aiAct: async () => requests++,
     aiLocate: async () => ({ center: [100 + ++requests * 10, 100] }),
-    callActionInActionSpace: async () => taps++,
+    interface: { inputPrimitives: { pointer: { tap: async () => taps++ } } },
   };
   return { preparation, agent, counts: () => ({ requests, taps }) };
 }

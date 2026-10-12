@@ -69,11 +69,18 @@ function fixture(phase, defect) {
     }
     if (op.type === 'sample') queue.push({ tag: op.tag, text: { slow_time: '1.0 / 10.0', fast_time: '5.0 / 10.0', fast_count: 'timeupdate=30' }[op.variable], variable: op.variable });
   }
+  const labelsByX = new Map();
   const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
     addProgressListener: () => () => {},
     aiAct: async () => { assert.equal(taps, 0); trace.push('prepare'); },
-    aiLocate: async () => { assert.equal(taps, 0); trace.push('locate'); return { center: [100 + ++location * 50, 100] }; },
-    callActionInActionSpace: async (type, input) => { assert.equal(type, 'Tap'); assert.equal(input.locate.deepLocate, false); taps++; trace.push(['tap', input.locate.prompt]); },
+    aiLocate: async prompt => {
+      assert.equal(taps, 0); trace.push('locate');
+      const x = 100 + ++location * 50;
+      labelsByX.set(x, JSON.parse(prompt.match(/labeled exactly (".*?") in/)[1]));
+      return { center: [x, 100] };
+    },
+    interface: { inputPrimitives: { pointer: { tap: async point => { taps++; trace.push(['tap', labelsByX.get(point.x)]); } } } },
   };
   const read = async () => {
     const item = queue.shift(); assert.ok(item, 'No extra or hidden source read');
@@ -127,7 +134,9 @@ test('new phases are closed and immutable, and malformed preparation cannot issu
   const changed = videoPlaybackOperations('basic-loop'); changed[0].title = 'changed';
   assert.notEqual(videoPlaybackOperations('basic-loop')[0].title, 'changed');
   let taps = 0;
-  const agent = { addProgressListener: () => () => {}, aiAct: async () => {}, aiLocate: async () => ({ center: [10, 20] }), callActionInActionSpace: async () => taps++ };
+  const agent = { addProgressListener: () => () => {}, aiAct: async () => {},
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
+    aiLocate: async () => ({ center: [10, 20] }), interface: { inputPrimitives: { pointer: { tap: async () => taps++ } } } };
   await assert.rejects(executeVideoPlaybackPhase(agent, 'basic-loop', async () => assert.fail(), async () => assert.fail()), /same point/);
   assert.equal(taps, 0);
 });

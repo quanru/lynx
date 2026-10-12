@@ -301,8 +301,12 @@ open class LynxUIVideo(context: LynxContext, params: Any?) : LynxUI<View>(contex
                 "position out of range"
             )
         }
-        playable.seek((positionSec * 1000.0).toLong())
-        return RequestExecutionResult.Finished(LynxUIMethodConstants.SUCCESS)
+        playable.seek((positionSec * 1000.0).toLong()) {
+            // Capture this request, not whichever request is current when the
+            // asynchronous player acknowledgement arrives after a source change.
+            finishRequestAfterEvent(request)
+        }
+        return RequestExecutionResult.WaitForEvent
     }
 
     private fun isNumericParam(params: ReadableMap, name: String): Boolean =

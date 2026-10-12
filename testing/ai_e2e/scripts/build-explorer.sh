@@ -16,6 +16,9 @@ if [ "$platform" = android ]; then
   cd explorer/android
   ./gradlew :LynxExplorer:assembleWithSparklingNoasanDebug \
     -PIntegrationTest -PabiList=x86_64 --no-daemon --max-workers=2
+  ./gradlew :LynxExplorer:testWithSparklingNoasanDebugUnitTest \
+    --tests com.lynx.explorer.video.LynxVideoSeekTest \
+    -PIntegrationTest -PabiList=x86_64 --no-daemon --max-workers=2
   apk=lynx_explorer/build/outputs/apk/withSparklingNoasan/debug/LynxExplorer-withSparkling-noasan-debug.apk
   test -f "$apk"
   cp "$apk" "$output/LynxExplorer.apk"

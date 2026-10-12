@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import type { AgentProgressListener } from '@midscene/core';
+import type { AgentProgressListener, UIContext } from '@midscene/core';
 import type { VideoExpectation } from './video-expectation.ts';
 import { prepareVideoButtons, tapPreparedVideoButton } from './video-button-preparation.ts';
 
@@ -7,8 +7,9 @@ export type VideoActionPhase = 'replace-playing-source' | 'stop-play-null';
 export interface VideoTimedAgent {
   aiAct(prompt: string, options: { deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
   addProgressListener(listener: AgentProgressListener): () => void;
-  aiLocate(prompt: string, options: { deepLocate: true; cacheable: false }): Promise<{ center: number[] }>;
-  callActionInActionSpace(type: string, input: unknown): Promise<unknown>;
+  getUIContext(): Promise<UIContext>;
+  aiLocate(prompt: string, options: { deepLocate: true; cacheable: false; uiContext: UIContext }): Promise<{ center: number[] }>;
+  interface: { inputPrimitives: { pointer: { tap(point: { x: number; y: number }): Promise<void> } } };
 }
 
 export function videoActionPhaseChecks(phase: VideoActionPhase): VideoExpectation[] {
@@ -26,8 +27,9 @@ export function videoActionPhaseTargets(phase: VideoActionPhase): readonly [stri
 }
 
 // Only two source-bound playback-time fragments use this path. All model
-// calls finish before playback starts; standard SDK Tap actions then drive
-// the real device. No selector, DOM click, fixture action hook or media change.
+// calls finish before playback starts; public device input primitives then
+// drive real taps without TaskBuilder's automatic screenshots. Original source
+// screenshots stay in place. No selector, fixture action hook or media change.
 export async function executeVideoActionPhase(
   agent: VideoTimedAgent,
   phase: VideoActionPhase,

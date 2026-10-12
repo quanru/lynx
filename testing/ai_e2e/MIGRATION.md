@@ -2,14 +2,15 @@
 
 ## Current checkpoint (2026-10-12)
 
-Run [38189385689](https://github.com/quanru/lynx/actions/runs/38189385689)
-at `b93dd4f` completed Android 11/13 and iOS 15/20. Contract checks, both
+Run [38212166291](https://github.com/quanru/lynx/actions/runs/38212166291)
+at `a48b56f` completed Android 11/13 and iOS 16/20. Contract checks, both
 current-source builds, report assembly and Pages publication succeeded; device
-acceptance remains incomplete. The failed iOS modules were HotExternalURL,
-Event, VideoAttributes, VideoBasic and VideoBoundary. Android failed
+acceptance remains incomplete. HotExternalURL and Event now pass. The failed
+iOS modules were MalformedCanonicalNoFallback, VideoAttributes, VideoBasic
+and VideoBoundary. Android failed
 VideoAttributes and VideoBoundary.
 
-The next migration-layer change retries only structured WDA HTTP 404
+The migration-layer visibility fix retries only structured WDA HTTP 404
 `no such element` / `stale element reference` errors from element reads during
 an explicit visibility observation. It repeats the complete native/CDP
 identity proof within the original deadline, without restarting the device,
@@ -20,7 +21,8 @@ Video preparation now distinguishes intrinsic label truncation from an
 off-screen button body. The unchanged fixture's second seek-row button is
 Seek 2s, between Seek 0s and Near End; scrolling cannot unclip its fixed-width
 text. Preparation remains scroll-only and all model work remains before the
-original playback fragment. These corrections require new hosted acceptance.
+original playback fragment. The latest iOS evidence still requires investigation
+of incorrect video grounding and the malformed-route visibility timeout.
 
 Android VideoAttributes' two failed attempts show no model calls during the
 fit fragment, but SDK Tap tasks take approximately 1.2–1.9 seconds each,
@@ -29,12 +31,23 @@ the ten-second clip ends. Explicit report writes take only milliseconds;
 deferring them is not an evidence-backed timing fix. Original media,
 assertions and timing windows are not changed.
 
+The approved follow-up uses only public `device.inputPrimitives.pointer.tap`
+inside closed playback fragments. `aiLocate` receives a specific public
+`getUIContext()` snapshot; its point is converted using that snapshot's
+`shrunkShotToLogicalRatio`, not a hard-coded DPR. Geometry/bounds and cancellation
+are checked before physical input. Original screenshots remain in source order;
+ordinary actions remain `aiAct`. All 191 model-free checks pass on Node 22.
+
 The independent unchanged Appium control in
 [38190434034](https://github.com/quanru/lynx/actions/runs/38190434034)
 also fails VideoBoundary's Seek Empty assertion with `seek_ok:success=true`.
-This requires implementation/contract reconciliation rather than weakening
-the migrated assertion. Its verified diagnostic setup fixes are now included
-in the migration branch.
+The approved Android implementation fix waits for the player's READY/ENDED
+acknowledgement rather than treating `seekTo` or its synchronous discontinuity
+as completion. Completion retains the original request identity; source changes
+and destruction cancel it once, and stale acknowledgements cannot finish a new
+request. Direct mode retains immediate acknowledgement. Explorer Robolectric
+regressions are wired into the hosted Android source build. Both unchanged
+Appium and Midscene cases must pass against the new APK before acceptance.
 
 The 13/20 totals count modules, including three additive smoke cases per
 platform. They are not a repository-wide native test inventory or counts of

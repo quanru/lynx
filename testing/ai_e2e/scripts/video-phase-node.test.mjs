@@ -10,8 +10,9 @@ async function fixture() {
   const reports = [], reads = [], taps = [];
   let state = 'ready';
   const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 1, shotSize: { width: 1206, height: 2622 } }),
     aiLocate: async prompt => ({ center: prompt.includes('"Src B"') ? [200, 100] : [100, 100] }),
-    callActionInActionSpace: async (type, input) => { taps.push([type, input]); state = taps.length === 1 ? 'playing' : 'ready'; },
+    interface: { inputPrimitives: { pointer: { tap: async point => { taps.push(point); state = taps.length === 1 ? 'playing' : 'ready'; } } } },
     addProgressListener: () => () => {},
     aiAct: async () => { assert.equal(taps.length, 0, 'Only visibility preparation may plan before playback'); },
     recordToReport: async (...args) => reports.push(args),

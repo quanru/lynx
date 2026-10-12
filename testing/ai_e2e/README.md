@@ -1,11 +1,13 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 184
+Current implementation collects Android 13 / iOS 20 cases and passes 191
 model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
 Approved playback-sensitive fragments visually prelocate buttons before
-playback, then use standard SDK physical taps without intervening model calls;
+playback, then use public device input primitives without intervening model calls
+or automatic SDK screenshots. Each point is converted once using the exact
+public UI context used for its visual location; original source captures remain;
 ordinary volume/mute/loop setup remains aiAct. Original timing and acceptance
 are unchanged. All 17 originally enabled native modules have implementations;
 the original disabled ListBase stays disabled. This is not device acceptance.
@@ -16,7 +18,12 @@ ordered and consumed once; playback cannot use incomplete or released points.
 Fragments split only at the original ready/paused/stopped boundaries. Every
 original operation remains in order, and speed samples remain in one fragment.
 The runner's 180-second step limit and original assertion windows are unchanged.
-No product implementation, example page or baseline has been changed. The
+The unchanged original Appium control reproduced Android's early seek-success
+callback. The approved minimal Android fix now waits for player acknowledgement
+in serial modes and preserves source-change cancellation and direct mode.
+Hosted regression checks cover request completion, cancellation, stale callbacks
+and queue/latest/direct behavior; new device acceptance is still required.
+No example page or baseline has been changed. The
 approved iOS-video-only viewport exception omits fixed physical width/height
 so existing Explorer uses its actual view bounds. Android video and every
 pixel/API fixture retain the original launch geometry. Video source operations,
