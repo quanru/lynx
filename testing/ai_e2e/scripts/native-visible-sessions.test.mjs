@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createVisibleNativeSessions } from '../native-visible-sessions.ts';
-import { NativeVisibilityStaleElementError } from '../native-wda.ts';
+import { createOwnedDeviceVisibilityReader, NativeVisibilityStaleElementError } from '../native-wda.ts';
 
 const rect = { x: 0, y: 0, width: 240, height: 400 };
 const quad = [0, 0, 240, 0, 240, 400, 0, 400];
@@ -10,6 +10,48 @@ function document(role) {
     { nodeId: 2, nodeName: 'text', attributes: ['lynx-test-tag', 'nav-role'], children: [{ nodeId: 3, nodeName: 'raw-text', attributes: ['text', role] }] },
   ] }] } };
 }
+
+test('a stale root query restarts native discovery and binds only the freshly observed CDP identity', async t => {
+  t.mock.method(console, 'warn', () => {});
+  const element = id => ({ 'element-6066-11e4-a52e-4f735466cecf': id });
+  const failure = Object.assign(new Error('Root result disappeared while WDA serialized it'), {
+    name: 'WebDriverRequestError', status: 404, response: { value: { error: 'stale element reference' } },
+  });
+  let queries = 0, connections = 0, refreshes = 0;
+  const reads = [];
+  const reader = createOwnedDeviceVisibilityReader(async (method, endpoint, data) => {
+    reads.push([method, endpoint]);
+    if (endpoint === '/elements') {
+      assert.equal(method, 'POST');
+      if (++queries === 1) throw failure;
+      return { value: [element('new-parent')] };
+    }
+    if (endpoint.endsWith('/displayed')) return { value: true };
+    if (endpoint.endsWith('/elements')) return { value: data.value === ".//*[@name='nav-role']" ? [element('parent-role')] : [] };
+    if (endpoint.endsWith('/text') || endpoint.endsWith('/attribute/value')) return { value: 'parent' };
+    if (endpoint.endsWith('/attribute/label')) return { value: '' };
+    if (endpoint.endsWith('/attribute/name')) return { value: 'nav-role' };
+    if (endpoint.endsWith('/rect')) return { value: rect };
+    assert.fail(endpoint);
+  });
+  const sessions = createVisibleNativeSessions(async () => {
+    connections++;
+    return { close() {}, refreshSessions: async () => {
+      refreshes++;
+      assert.equal(queries, 2, 'An incomplete native observation cannot select a CDP session');
+      return [{ session_id: 1 }, { session_id: 7 }];
+    }, request: async (id, method) => method === 'DOM.getDocument' ? document(id === 7 ? 'parent' : 'child') : { model: { padding: quad } } };
+  }, async () => reader);
+  try {
+    const bound = await sessions.observe('case', 'nav-role', 'parent', 1000);
+    assert.equal(queries, 2);
+    assert.equal(connections, 1);
+    assert.equal(refreshes, 1);
+    assert.equal(bound.sessionId, 7);
+    assert.equal(bound.viewId, 'new-parent');
+    assert.ok(reads.every(([, endpoint]) => endpoint === '/elements' || endpoint.startsWith('/element/new-parent/') || endpoint.startsWith('/element/parent-role/')));
+  } finally { sessions.releaseAll(); }
+});
 
 test('routing retries a stale native observation inside its original deadline and proves the new identity', async () => {
   let observations = 0, connections = 0;

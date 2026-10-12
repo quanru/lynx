@@ -2,6 +2,43 @@
 
 ## Current checkpoint (2026-10-13)
 
+Head `160e97e`, [run 38307906560](https://github.com/quanru/lynx/actions/runs/38307906560),
+finishes Android 13/13 (all first attempts) and iOS 19/20. All four complete
+video cases pass first attempts on each platform. Each of the fourteen crowded
+seek actions has one physical tap inside its intended visible control, verified
+from actual pre-tap screenshots and traces; iOS WDA taps also match. Original
+operations, callback/pixel assertions and timing are unchanged.
+
+Only HotExternalURL fails both iOS attempts, at the canonical destination's
+visible role observation, with HTTP 404. Its AI alert action sends one tap
+and dismissal/home checks pass. MalformedCanonicalNoFallback passes on retry.
+Contracts, both source builds, report assembly and Pages succeed. The actual
+Summary has 33 loaded clickable previews, one failed case first and 32 passes
+in the closed appendix; all 36 unique public URLs return HTTP 200. The failed
+preview opens the HTML report at the correct attempt and failed role step.
+
+The follow-up extends only structured stale/missing-element classification to
+root `/elements` reads. WDA materializes returned native elements before
+returning the list, so navigation may invalidate a result during that phase.
+Existing observation recovery reacquires all native/CDP identities inside the
+unchanged deadline, without opening another case session. Invalid sessions,
+other status/error codes and unstructured responses still fail. Tests establish
+the old failure, fresh identity binding, strict negative classification and
+unchanged timeout behavior. Failed reads expose only endpoint/status/error-code
+metadata, not request bodies or full SDK errors. All 205 model-free checks and
+typechecking pass; complete new-head acceptance remains pending.
+
+[AI-action control 38319752085](https://github.com/quanru/lynx/actions/runs/38319752085)
+passes two baseline trials and one candidate trial. The fourth trial fails a
+capability observation when a root query takes 2,508 ms against the original
+two-second binding limit. The unchanged original Appium case then fails its
+homepage readiness assertion. Neither this control nor the four passing
+native-alert trials captures a root stale/missing response, so the recovery
+branch remains unexercised on a live device. These distinct failures remain
+recorded; deadlines, assertions and source fixtures are unchanged.
+
+## Previous grounding checkpoint
+
 Baseline `3c3c192` [run 38293483556](https://github.com/quanru/lynx/actions/runs/38293483556)
 passes both current-source builds and its 201 model-free checks. Android
 finishes 12/13 and iOS 19/20, with no unrun cases. All other cases, including
@@ -209,16 +246,16 @@ the original pixel baseline.
 | core/DomFocus | Actual `DOM.focus` CDP calls, exact focus/blur targets | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | core/InputInsertText | Actual `Input.insertText`, unfocused no-op, exact values/counts/target | Original contract passed on Android and iOS, first attempts, run 37937713083 |
 | sparkling/CanonicalSparkling | Canonical routing and exact Sparkling capabilities | Passed iOS, run 38039839927 |
-| sparkling/HotExternalURL | Hot external route and container/session ownership | Passed iOS, run 38039839927 |
-| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Implemented; visibility check failed iOS, run 38039839927 |
-| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Implemented; visibility check failed iOS, run 38039839927 |
+| sparkling/HotExternalURL | Hot external route and container/session ownership | Current iOS 38307906560 fails both visible observations; original controls pass separately |
+| sparkling/MalformedCanonicalNoFallback | Exact malformed-canonical rejection without legacy fallback | Passed iOS after one complete retry in 38307906560 |
+| sparkling/MappedLegacyToSparkling | Mapped route mode and Sparkling capabilities | Passed iOS first attempt in 38307906560 |
 | sparkling/RawOpenLegacy | Raw legacy routing and mode | Passed iOS, run 38039839927 |
 | sparkling/RawOpenSparkling | Raw Sparkling routing and capabilities | Passed iOS, run 38039839927 |
 | sparkling/RouterOpenClose | Unique container IDs, parent/child session binding, close and restored parent | Passed iOS, run 38039839927 |
-| xelement/VideoBasic | Original playback callbacks, payloads and ordering | Complete YAML/source contracts implemented; Android/iOS device validation pending |
-| xelement/VideoBoundary | Original boundary/error callback contracts | Implemented locally; Android/iOS device validation pending |
-| xelement/VideoModes | Original mode-specific callback/state contracts | Implemented locally; Android/iOS device validation pending |
-| xelement/VideoAttributes | Original attribute, timing and event contracts | Complete YAML/source contracts implemented; Android/iOS device validation pending |
+| xelement/VideoBasic | Original playback callbacks, payloads and ordering | Both platforms pass complete first attempts in 38307906560 |
+| xelement/VideoBoundary | Original boundary/error callback contracts | Both platforms pass complete first attempts in 38307906560; crowded targets individually audited |
+| xelement/VideoModes | Original mode-specific callback/state contracts | Both platforms pass complete first attempts in 38307906560 |
+| xelement/VideoAttributes | Original attribute, timing and event contracts | Both platforms pass complete first attempts in 38307906560 |
 
 ## Prerequisites and acceptance
 

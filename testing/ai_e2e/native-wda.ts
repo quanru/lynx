@@ -4,6 +4,7 @@ export interface VisibleNativeContext {
   viewRect: NativeRect;
   anchor: { tag: string; rect: NativeRect; texts: string[] };
 }
+interface WdaReadFailure { name?: string; status?: number; response?: { value?: { error?: string } } }
 
 // Navigation may remove a native element between discovery and its read. This
 // invalidates the whole observation, not the case's WDA session or CDP lease.
@@ -15,8 +16,10 @@ export class NativeVisibilityStaleElementError extends Error {
 }
 
 function staleElementRead(error: unknown, endpoint: string) {
-  const failure = error as { name?: string; status?: number; response?: { value?: { error?: string } } };
-  return endpoint.startsWith('/element/') && failure?.name === 'WebDriverRequestError'
+  const failure = error as WdaReadFailure;
+  // WDA serializes each root-query result before returning its element ID.
+  // Navigation can remove that result even before an /element/:id read starts.
+  return (endpoint === '/elements' || endpoint.startsWith('/element/')) && failure?.name === 'WebDriverRequestError'
     && failure.status === 404 && ['no such element', 'stale element reference'].includes(failure.response?.value?.error ?? '');
 }
 
@@ -72,6 +75,14 @@ export function createOwnedDeviceVisibilityReader(readRequest: (method: 'GET' | 
       if (Date.now() >= deadline) throw new Error('Native visibility observation timed out.');
       return responseValue(result);
     } catch (error) {
+      const failure = error as WdaReadFailure;
+      if (failure?.name === 'WebDriverRequestError' && Number.isInteger(failure.status)) {
+        // Protocol metadata only: never log request bodies or the full SDK error.
+        console.warn('Native visibility WDA read failed:', JSON.stringify({
+          endpoint, status: failure.status,
+          code: typeof failure.response?.value?.error === 'string' ? failure.response.value.error : 'unknown',
+        }));
+      }
       if (Date.now() < deadline && staleElementRead(error, endpoint)) throw new NativeVisibilityStaleElementError(error);
       throw error;
     } finally { clearTimeout(timer!); }

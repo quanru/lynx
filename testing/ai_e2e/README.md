@@ -1,8 +1,40 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 202
+Current implementation collects Android 13 / iOS 20 cases and passes 205
 model-free checks on Node 22, plus typechecking and
-workflow validation. Complete VideoBasic and VideoAttributes cases preserve
+workflow validation.
+
+At head `160e97e`, [run 38307906560](https://github.com/quanru/lynx/actions/runs/38307906560)
+passes Android 13/13 on first attempts and iOS 19/20. All eight platform video
+cases pass their complete first attempts. Actual screenshots and action traces
+confirm one correct tap for each of the fourteen crowded seek actions; all
+original assertions and timing remain. HotExternalURL fails both iOS attempts
+with HTTP 404 while observing the canonical destination; its preceding AI
+alert action succeeds with one physical tap. MalformedCanonicalNoFallback
+passes after one complete retry. Contracts, source builds, report assembly
+and Pages pass. The Summary has 33 loaded linked previews, one failure first,
+and 32 passes collapsed; all 36 public image/report URLs return HTTP 200.
+
+The follow-up recognizes structured stale/missing-element failures during
+WDA root-result serialization as incomplete observations, just like later
+element reads. It re-observes native and CDP identities inside the original
+deadline. Invalid sessions, unrelated HTTP 404s, HTTP 500s and malformed errors
+still fail. No action, assertion, fixture, deadline or product source changes.
+Regression tests first fail on the old handler, then pass with fresh identity
+binding; all 205 model-free checks and typechecking pass. Failed reads log only
+the endpoint, HTTP status and protocol error code, never request bodies or the
+full SDK error. Complete new-head device acceptance remains pending.
+
+[Focused AI-action control 38319752085](https://github.com/quanru/lynx/actions/runs/38319752085)
+passes both baseline trials and one candidate trial. The other candidate trial
+fails a capability observation: its root query takes 2,508 ms against the
+original two-second binding limit. The subsequent unchanged original Appium
+case also fails its homepage readiness assertion. These are separate failures,
+not evidence for widening either deadline. No root stale/missing response is
+captured in this comparison or the four passing native-alert trials; neither
+experiment exercises the recovery branch or proves the main failure fixed.
+
+Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
 Approved playback-sensitive fragments visually prelocate buttons before
 playback, then use public device input primitives without intervening model calls

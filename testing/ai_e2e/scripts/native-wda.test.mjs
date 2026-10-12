@@ -8,7 +8,8 @@ import { attachNativeVisibilityReader, createOwnedDeviceVisibilityReader, displa
 
 const element = id => ({ 'element-6066-11e4-a52e-4f735466cecf': id });
 
-test('only structured stale-element reads invalidate an owned native observation', async () => {
+test('only structured stale-element reads and root queries invalidate an owned native observation', async t => {
+  t.mock.method(console, 'warn', () => {});
   for (const code of ['no such element', 'stale element reference', 'invalid session id', 'unknown error']) {
     for (const status of [404, 500]) {
       const failure = Object.assign(new Error('Controlled WDA failure'), {
@@ -21,9 +22,44 @@ test('only structured stale-element reads invalidate an owned native observation
       await assert.rejects(reader.contexts('nav-role'), error => status === 404 && ['no such element', 'stale element reference'].includes(code)
         ? error instanceof NativeVisibilityStaleElementError && error.cause === failure : error === failure);
       const search = createOwnedDeviceVisibilityReader(async () => { throw failure; });
-      await assert.rejects(search.contexts('nav-role'), error => error === failure, 'Search/session failures must not be classified as disappearing elements');
+      await assert.rejects(search.contexts('nav-role'), error => status === 404 && ['no such element', 'stale element reference'].includes(code)
+        ? error instanceof NativeVisibilityStaleElementError && error.cause === failure : error === failure);
     }
   }
+});
+
+test('root queries do not retry unstructured, malformed or misidentified errors', async t => {
+  t.mock.method(console, 'warn', () => {});
+  for (const details of [
+    {},
+    { name: 'Error', status: 404, response: { value: { error: 'stale element reference' } } },
+    { name: 'WebDriverRequestError', status: '404', response: { value: { error: 'no such element' } } },
+    { name: 'WebDriverRequestError', status: 404 },
+    { name: 'WebDriverRequestError', status: 404, response: { value: null } },
+    { name: 'WebDriverRequestError', status: 404, response: { error: 'no such element' } },
+    { name: 'WebDriverRequestError', status: 404, response: { value: { error: 'no such alert' } } },
+  ]) {
+    const failure = Object.assign(new Error('HTTP 404: stale element reference'), details);
+    let reads = 0;
+    const reader = createOwnedDeviceVisibilityReader(async () => { reads++; throw failure; });
+    await assert.rejects(reader.contexts('nav-role'), error => error === failure);
+    assert.equal(reads, 1);
+  }
+});
+
+test('native read diagnostics expose only endpoint, status and error code', async t => {
+  const warnings = [];
+  t.mock.method(console, 'warn', (...values) => warnings.push(values));
+  const failure = Object.assign(new Error('Private response detail'), {
+    name: 'WebDriverRequestError', status: 404,
+    request: { headers: { authorization: 'must-not-be-logged' } },
+    response: { value: { error: 'stale element reference', message: 'Private page data' } },
+  });
+  const reader = createOwnedDeviceVisibilityReader(async () => { throw failure; });
+  await assert.rejects(reader.contexts('nav-role'), NativeVisibilityStaleElementError);
+  assert.deepEqual(warnings, [['Native visibility WDA read failed:', JSON.stringify({
+    endpoint: '/elements', status: 404, code: 'stale element reference',
+  })]]);
 });
 
 test('public case-owned device reader exposes only native reads and stops after late SDK replies', async () => {
