@@ -6,6 +6,11 @@ lynx-e2e-appium 0.0.15 / Appium 2.11.2 / Espresso 4.0.0 stack. The existing
 `test_case_name` filter selects one complete source case. No callback, action,
 assertion, wait, fixture, baseline or original runner is patched.
 
+Setup retains the original tools/common-deps requirements and pins pip 25.0.1:
+the unchanged legacy reporter imports `pip._internal.utils.compat.stdlib_pkgs`,
+which newer pip removes. Reporter/module/filter loading is checked before
+starting an emulator. This compatibility setup is not a source-case pass.
+
 The diagnostic reuses the exact Android source artifact from a completed
 Midscene producer run, checks its manifest checksum and capabilities, and checks
 out the build's precise source revision. The producer head must be that revision

@@ -109,7 +109,19 @@ jobs:
           # The legacy CI common-deps action also installs these tools; the
           # framework uses six without declaring it in its wheel metadata.
           python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          # Unchanged lynx-e2e-appium's reporter imports pip's legacy stdlib_pkgs.
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
           python3 source/testing/integration_test/test_script/manage.py runtest --help
+          PYTHONPATH=source/testing/integration_test/test_script python3 - <<'PY'
+          from pathlib import Path
+          from lynx_e2e._impl.manage.report import get_installed_distributions
+          from android_test.xelement import xelementTest
+          from lib.test_runner.case_set import CaseSet
+          get_installed_distributions()
+          cases = CaseSet(case_set_path=str(Path('source/testing/integration_test/test_script/case_sets/xelement'))).get_cases()
+          assert [case.name for case in cases] == ['VideoBoundary']
+          print('Original reporter, module and single-case filter loaded; no device actions executed.')
+          PY
           npm install --prefix "$RUNNER_TEMP/original-control-server" --no-audit --no-fund appium@2.11.2
           "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" driver install espresso@4.0.0
       - name: Start identical headless emulator configuration
