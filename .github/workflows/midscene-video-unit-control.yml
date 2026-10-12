@@ -1,0 +1,63 @@
+name: Android video request regression control
+on:
+  push:
+    branches: [midscene/video-unit-control-38270018228]
+permissions:
+  contents: read
+jobs:
+  unit:
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: lynx
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.11'
+      - name: Install public prerequisites
+        working-directory: lynx
+        run: |
+          python3 -m pip install -r tools/vpython_tools/requirements.txt
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: ~/.habitat_cache
+          key: midscene-habitat-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lynx/.habitat', 'lynx/dependencies/**') }}
+          restore-keys: midscene-habitat-${{ runner.os }}-${{ runner.arch }}-
+      - name: Synchronize pinned tools
+        working-directory: lynx
+        env:
+          HABITAT_CONCURRENCY: '2'
+        run: tools/hab sync . --target sparkling,tools_shared
+      - name: Install Android SDK components
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;21.1.6352462" "platforms;android-33" "build-tools;29.0.2"'
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          java-version: '11'
+          distribution: zulu
+      - name: Run actual video request scheduler regressions without a device
+        working-directory: lynx
+        run: |
+          set -e
+          source tools/envsetup.sh
+          cd explorer/android
+          ./gradlew :LynxExplorer:testWithSparklingNoasanDebugUnitTest \
+            --tests com.lynx.explorer.video.LynxVideoSeekTest \
+            -PIntegrationTest -PabiList=x86_64 --no-daemon --max-workers=2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: android-video-request-regressions
+          path: |
+            lynx/explorer/android/lynx_explorer/build/test-results/testWithSparklingNoasanDebugUnitTest/
+            lynx/explorer/android/lynx_explorer/build/reports/tests/testWithSparklingNoasanDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
