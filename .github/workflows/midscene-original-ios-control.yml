@@ -1,0 +1,209 @@
+name: Original iOS route control (diagnostic only)
+
+on:
+  push:
+    branches: [midscene/ios-route-control-38307906560]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: original-ios-route-control-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ios-original:
+    name: Original iOS HotExternalURL (not migration acceptance)
+    if: github.repository == 'quanru/lynx'
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      platform: ios
+      server_host: http://127.0.0.1
+      server_port: '4723'
+      test_case_name: HotExternalURL
+      APPIUM_isHeadless: 'True'
+      SOURCE_RUN_ID: '38307906560'
+    steps:
+      - name: Set diagnostic directories
+        run: |
+          printf 'APPIUM_HOME=%s/original-ios-appium\nCONTROL_DIR=%s/original-ios-control\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: f14b2e6dd71c4045384f54b47be15f1af767b71f
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Verify immutable producer identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          const get = async path => {
+            const response = await fetch('https://api.github.com/repos/quanru/lynx/' + path, {
+              headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json' },
+              signal: AbortSignal.timeout(30_000),
+            });
+            assert.equal(response.ok, true, 'Producer metadata request failed');
+            return response.json();
+          };
+          const run = await get('actions/runs/38307906560');
+          assert.equal(run.id, 38307906560);
+          assert.equal(run.repository.full_name, 'quanru/lynx');
+          assert.equal(run.path, '.github/workflows/midscene-ai-e2e.yml');
+          assert.equal(run.head_sha, '160e97ec928e2cc9c200be0279b3052ef6ef206d');
+          assert.equal(run.run_attempt, 1);
+          const jobs = await get('actions/runs/38307906560/attempts/1/jobs?per_page=100');
+          assert.equal(jobs.total_count, jobs.jobs.length);
+          const builds = jobs.jobs.filter(job => job.name === 'Build current-source Explorer · ios');
+          assert.equal(builds.length, 1);
+          assert.equal(builds[0].id, 115006503962);
+          assert.equal(builds[0].status, 'completed');
+          assert.equal(builds[0].conclusion, 'success');
+          const artifact = await get('actions/artifacts/11774452686');
+          assert.equal(artifact.name, 'midscene-explorer-source-ios-1');
+          assert.equal(artifact.workflow_run.id, run.id);
+          assert.equal(artifact.expired, false);
+          await mkdir(process.env.CONTROL_DIR, { recursive: true });
+          await writeFile(process.env.CONTROL_DIR + '/producer.json', JSON.stringify({
+            run: run.id, head: run.head_sha, attempt: 1, buildJob: builds[0].id,
+            artifact: artifact.id, checkout: 'f14b2e6dd71c4045384f54b47be15f1af767b71f',
+          }, null, 2));
+          console.log('Verified current source iOS producer and completed build.');
+          JS
+      - name: Download exact current-source iOS app
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: midscene-explorer-source-ios-1
+          run-id: '38307906560'
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original-ios-control/source-build
+      - name: Verify original source and app checksum
+        run: |
+          git -C source merge-base --is-ancestor 160e97ec928e2cc9c200be0279b3052ef6ef206d HEAD
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import { verifyBuild } from './source/testing/ai_e2e/scripts/verify-build.mjs';
+          const directory = process.env.CONTROL_DIR + '/source-build';
+          await verifyBuild(directory, 'ios', 'f14b2e6dd71c4045384f54b47be15f1af767b71f');
+          const manifest = JSON.parse(readFileSync(directory + '/build.json', 'utf8'));
+          assert.equal(manifest.sha256, 'db7850b9d779fb86395c9354742811cf101aa5966d91f23658f636ed3b176854');
+          console.log('Exact current-source archive and Sparkling fixtures verified.');
+          JS
+          tar -xzf "$CONTROL_DIR/source-build/LynxExplorer.app.tar.gz" -C "$CONTROL_DIR/source-build"
+          git -C source rev-parse HEAD > "$CONTROL_DIR/checkout-sha.txt"
+          shasum -a 256 source/testing/integration_test/test_script/case_sets/sparkling/{HotExternalURL.py,helpers.py,runner.py} > "$CONTROL_DIR/original-source-checksums.txt"
+      - name: Select identical iOS toolchain
+        run: node source/testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
+      - name: Install pinned original framework and Appium
+        timeout-minutes: 15
+        run: |
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          PYTHONPATH=source/testing/integration_test/test_script python3 - <<'PY'
+          from pathlib import Path
+          from lynx_e2e._impl.manage.report import get_installed_distributions
+          from ios_test.sparkling import sparklingTest
+          from lib.test_runner.case_set import CaseSet
+          get_installed_distributions()
+          cases = CaseSet(case_set_path=str(Path('source/testing/integration_test/test_script/case_sets/sparkling'))).get_cases()
+          assert [case.name for case in cases] == ['HotExternalURL']
+          print('Original iOS module, reporter and single-case filter loaded.')
+          PY
+          npm install --prefix "$RUNNER_TEMP/original-ios-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" driver install xcuitest@7.24.18
+      - name: Build and start identical WebDriverAgent
+        working-directory: source/testing/ai_e2e
+        env:
+          WDA_WORKDIR: ${{ runner.temp }}/original-ios-wda
+        run: bash scripts/start-wda.sh
+      - name: Install the verified application
+        run: |
+          xcrun simctl install "$SIMULATOR_UDID" "$CONTROL_DIR/source-build/LynxExplorer.app"
+          xcrun simctl get_app_container "$SIMULATOR_UDID" com.lynx.LynxExplorer app > "$CONTROL_DIR/installed-app-path.txt"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { join } from 'node:path';
+          const root = process.env.CONTROL_DIR;
+          const source = root + '/source-build/LynxExplorer.app';
+          const installed = readFileSync(root + '/installed-app-path.txt', 'utf8').trim();
+          assert.ok(installed.endsWith('/LynxExplorer.app'));
+          const evidence = [];
+          const visit = relative => {
+            for (const item of readdirSync(join(source, relative), { withFileTypes: true })) {
+              const path = join(relative, item.name);
+              if (item.isDirectory()) visit(path);
+              else if (item.isFile()) {
+                const digest = location => createHash('sha256').update(readFileSync(location)).digest('hex');
+                const expected = digest(join(source, path));
+                assert.equal(digest(join(installed, path)), expected, path);
+                evidence.push({ path, sha256: expected });
+              } else assert.fail('Unexpected application payload entry: ' + path);
+            }
+          };
+          visit('');
+          assert.ok(evidence.some(item => item.path === 'LynxExplorer'));
+          writeFileSync(root + '/installed-app-provenance.json', JSON.stringify(evidence, null, 2));
+          console.log('Verified installed application payload files:', evidence.length);
+          JS
+      - name: Start isolated original Appium server
+        run: |
+          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100"}' > "$CONTROL_DIR/appium.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original iOS Appium server did not become ready'
+          exit 1
+      - name: Run unchanged original HotExternalURL
+        id: original
+        timeout-minutes: 10
+        working-directory: source/testing/integration_test/test_script
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          python3 manage.py runtest ios_test.sparkling 2>&1 | tee "$CONTROL_DIR/original.log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*HotExternalURL[[:space:]]*\]' "$CONTROL_DIR/original.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original.log" || status=1
+          fi
+          printf '%s\n' "$status" > "$CONTROL_DIR/original-exit-code.txt"
+          exit "$status"
+      - name: Verify unchanged original source
+        if: always() && steps.original.outcome != 'skipped'
+        run: |
+          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
+          shasum -a 256 --check "$CONTROL_DIR/original-source-checksums.txt"
+      - name: Preserve independent diagnostic evidence
+        if: always()
+        env:
+          ORIGINAL_OUTCOME: ${{ steps.original.outcome }}
+        run: |
+          mkdir -p "$CONTROL_DIR"
+          if [ -f "$RUNNER_TEMP/original-ios-wda/wda.log" ]; then cp "$RUNNER_TEMP/original-ios-wda/wda.log" "$CONTROL_DIR/wda.log"; fi
+          if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
+          printf '## Original iOS HotExternalURL control\n\nProducer: https://github.com/quanru/lynx/actions/runs/38307906560\n\nOriginal execution: %s. This is independent Appium control evidence, not migrated-suite acceptance. No model is called; original source and app payloads remain unchanged. Setup failure is not an original-case failure.\n' "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: original-ios-route-control-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/original-ios-control/*.json
+            ${{ runner.temp }}/original-ios-control/*.txt
+            ${{ runner.temp }}/original-ios-control/*.log
+            ${{ runner.temp }}/original-ios-control/screenshots
+          retention-days: 14
