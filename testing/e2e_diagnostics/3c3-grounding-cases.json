@@ -1,0 +1,42 @@
+[
+  {
+    "name": "android-seek-bad",
+    "platform": "android",
+    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
+    "size": {
+      "width": 411,
+      "height": 914
+    },
+    "physical": {
+      "width": 1080,
+      "height": 2400
+    },
+    "bounds": [
+      335,
+      1060,
+      420,
+      1140
+    ],
+    "prompt": "Click the single \"Seek Bad\" button once: it is the FOURTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Near End and Seek Missing. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click."
+  },
+  {
+    "name": "android-seek-null",
+    "platform": "android",
+    "image": "e385455e-a397-4877-bbe3-72c2a4c8eaa7.jpeg",
+    "size": {
+      "width": 411,
+      "height": 914
+    },
+    "physical": {
+      "width": 1080,
+      "height": 2400
+    },
+    "bounds": [
+      538,
+      1060,
+      626,
+      1140
+    ],
+    "prompt": "Click the single \"Seek Null\" button once: it is the SIXTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Missing and Seek Text. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click."
+  }
+]

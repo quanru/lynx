@@ -8,7 +8,7 @@ import { IOSDevice } from '../ai_e2e/node_modules/@midscene/ios/dist/es/index.mj
 // Fork-only, immutable CI screenshots; never connect a device or send input.
 // Marked image regions are diagnostic scoring only, never production targets.
 const directory = dirname(fileURLToPath(import.meta.url));
-const cases = JSON.parse(readFileSync(resolve(directory, 'ff4-grounding-cases.json')));
+const cases = JSON.parse(readFileSync(resolve(directory, '3c3-grounding-cases.json')));
 const schemas = {
   android: new AndroidDevice('diagnostic-no-device').actionSpace(),
   ios: new IOSDevice({ wdaPort: 1 }).actionSpace(),
