@@ -1,53 +1,5 @@
 [
   {
-    "name": "ios-seek-bad",
-    "platform": "ios",
-    "image": "76d249ee-ad4f-4225-9473-85127a458f3f.jpeg",
-    "size": {
-      "width": 402,
-      "height": 874
-    },
-    "physical": {
-      "width": 1206,
-      "height": 2622
-    },
-    "bounds": [
-      345,
-      1689,
-      460,
-      1810
-    ],
-    "prompt": "Tap once on the white \"Seek\" text immediately to the RIGHT of \"Near\" and immediately to the LEFT of the two-line \"See / Mis\" text. This is the Seek Bad control; the rest of its label is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
-    "deepLocates": [
-      false,
-      true
-    ]
-  },
-  {
-    "name": "ios-seek-null",
-    "platform": "ios",
-    "image": "76d249ee-ad4f-4225-9473-85127a458f3f.jpeg",
-    "size": {
-      "width": 402,
-      "height": 874
-    },
-    "physical": {
-      "width": 1206,
-      "height": 2622
-    },
-    "bounds": [
-      575,
-      1689,
-      690,
-      1810
-    ],
-    "prompt": "Tap once on the FIRST white \"Seek\" text immediately to the RIGHT of the two-line \"See / Mis\" text. This is the Seek Null control; its distinguishing suffix is intrinsically clipped. Do not skip to the second or third \"Seek\" on that side. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
-    "deepLocates": [
-      false,
-      true
-    ]
-  },
-  {
     "name": "ios-seek-text",
     "platform": "ios",
     "image": "76d249ee-ad4f-4225-9473-85127a458f3f.jpeg",
@@ -65,7 +17,31 @@
       805,
       1810
     ],
-    "prompt": "Tap once on the SECOND white \"Seek\" text to the RIGHT of the two-line \"See / Mis\" text. There are three consecutive controls with the identical visible label \"Seek\" on that side; tap the MIDDLE one of those three. This is the Seek Text control; its distinguishing suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
+    "prompt": "Tap once on the white \"Seek\" text TWO controls to the LEFT of the narrow label that looks like \"Seel\". The \"Seel\" label is immediately to the left of the rightmost two-line \"Seek Huge\" control. There is exactly one other \"Seek\" control between your target and \"Seel\". Your target is Seek Text, whose suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
+    "deepLocates": [
+      false,
+      true
+    ]
+  },
+  {
+    "name": "ios-seek-text-image-2",
+    "platform": "ios",
+    "image": "2b313ab7-a9a4-482e-bfe8-4d495b74fc4f.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      690,
+      1689,
+      805,
+      1810
+    ],
+    "prompt": "Tap once on the white \"Seek\" text TWO controls to the LEFT of the narrow label that looks like \"Seel\". The \"Seel\" label is immediately to the left of the rightmost two-line \"Seek Huge\" control. There is exactly one other \"Seek\" control between your target and \"Seel\". Your target is Seek Text, whose suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
     "deepLocates": [
       false,
       true
@@ -89,14 +65,14 @@
       920,
       1810
     ],
-    "prompt": "Tap once on the THIRD white \"Seek\" text to the RIGHT of the two-line \"See / Mis\" text. There are three consecutive controls with the identical visible label \"Seek\" on that side; tap the LAST one of those three, just before the label that looks like \"Seel\". This is the Seek NaN control; its distinguishing suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
+    "prompt": "Tap once on the white \"Seek\" text immediately to the LEFT of the narrow label that looks like \"Seel\". The \"Seel\" label is immediately to the left of the rightmost two-line \"Seek Huge\" control. Your target is Seek NaN, whose suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
     "deepLocates": [
       false,
       true
     ]
   },
   {
-    "name": "ios-seek-bad-attempt-2",
+    "name": "ios-seek-nan-image-2",
     "platform": "ios",
     "image": "2b313ab7-a9a4-482e-bfe8-4d495b74fc4f.jpeg",
     "size": {
@@ -108,12 +84,12 @@
       "height": 2622
     },
     "bounds": [
-      345,
+      805,
       1689,
-      460,
+      920,
       1810
     ],
-    "prompt": "Tap once on the white \"Seek\" text immediately to the RIGHT of \"Near\" and immediately to the LEFT of the two-line \"See / Mis\" text. This is the Seek Bad control; the rest of its label is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
+    "prompt": "Tap once on the white \"Seek\" text immediately to the LEFT of the narrow label that looks like \"Seel\". The \"Seel\" label is immediately to the left of the rightmost two-line \"Seek Huge\" control. Your target is Seek NaN, whose suffix is intrinsically clipped. These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the white text itself, not in a neighboring control. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap.",
     "deepLocates": [
       false,
       true
