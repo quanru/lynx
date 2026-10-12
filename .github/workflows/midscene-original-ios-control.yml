@@ -188,6 +188,75 @@ jobs:
         run: |
           git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
           shasum -a 256 --check "$CONTROL_DIR/original-source-checksums.txt"
+      - name: Install locked public SDK for model-free route observation
+        working-directory: source/testing/ai_e2e
+        run: npm ci --no-audit --no-fund
+      - name: Compare root-query observation handling without a model
+        timeout-minutes: 10
+        working-directory: source/testing/ai_e2e
+        run: |
+          node --import tsx --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { writeFile } from 'node:fs/promises';
+          import { IOSDevice } from '@midscene/ios';
+          import { connectDevtool } from './scripts/devtool-client.mjs';
+          import { createOwnedDeviceVisibilityReader, NativeVisibilityStaleElementError } from './native-wda.ts';
+          import { createVisibleNativeSessions } from './native-visible-sessions.ts';
+          import { createSparklingContracts } from './sparkling-contracts.ts';
+          import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
+          assert.equal(process.env.MIDSCENE_MODEL_API_KEY, undefined);
+          const results = [];
+          const failure = error => ({ name: error?.name, status: error?.status,
+            code: error?.response?.value?.error, message: error?.response?.value?.message ?? error?.message });
+          // Diagnostic only: use original native alert acknowledgement instead
+          // of aiAct to isolate native reads without model credentials. This is
+          // neither unchanged-original execution nor migrated-suite acceptance.
+          for (const [index, mode] of ['baseline', 'root-stale-retry', 'baseline', 'root-stale-retry'].entries()) {
+            const result = { index, mode, reads: [], errors: [], phases: [], passed: false };
+            const device = new IOSDevice({ wdaHost: 'localhost', wdaPort: 8100 });
+            await device.connect();
+            let sessions;
+            try {
+              await device.terminate('com.lynx.LynxExplorer');
+              await device.launch('com.lynx.LynxExplorer');
+              await new Promise(resolve => setTimeout(resolve, 10_000));
+              const request = async (method, endpoint, data) => {
+                const started = Date.now();
+                try { return await device.runWdaRequest(method, endpoint, data); }
+                catch (error) {
+                  const evidence = { method, endpoint, ...failure(error) };
+                  result.errors.push(evidence);
+                  console.log('WDA_OBSERVATION_ERROR', JSON.stringify({ index, mode, ...evidence }));
+                  if (mode === 'root-stale-retry' && method === 'POST' && endpoint === '/elements'
+                      && error?.name === 'WebDriverRequestError' && error?.status === 404
+                      && ['no such element', 'stale element reference'].includes(error?.response?.value?.error)) {
+                    throw new NativeVisibilityStaleElementError(error);
+                  }
+                  throw error;
+                } finally { result.reads.push({ method, endpoint, ms: Date.now() - started }); }
+              };
+              const reader = createOwnedDeviceVisibilityReader(request);
+              sessions = createVisibleNativeSessions(() => connectDevtool({ port: 8901 }), async () => reader);
+              const contract = createSparklingContracts((tag, expected, timeout) => sessions.observe('route-probe-' + index, tag, expected, timeout), reader, {
+                readAlert: timeout => readOwnedRouteAlert(request, timeout),
+                openExternal: route => deliverOwnedExternalRoute(request, route),
+              });
+              for (const phase of ['home', 'externalMalformed', 'alert', 'acknowledge', 'alertDismissed', 'home', 'externalCanonical', 'role', 'sparkling']) {
+                result.phase = phase;
+                if (phase === 'acknowledge') await device.runWdaRequest('POST', '/alert/accept', {});
+                else await contract({ contract: phase });
+                result.phases.push(phase);
+              }
+              result.passed = true;
+            } catch (error) { result.failure = failure(error); }
+            finally { sessions?.releaseAll(); await device.destroy(); }
+            results.push(result);
+            await writeFile(process.env.CONTROL_DIR + '/public-sdk-route-observations.json', JSON.stringify(results, null, 2));
+            console.log('ROUTE_OBSERVATION_RESULT', JSON.stringify({ index, mode, passed: result.passed, phase: result.phase, failure: result.failure, errors: result.errors }));
+          }
+          assert.equal(results.length, 4);
+          console.log('Diagnostic collection complete; a green collection job is not migrated-suite acceptance.');
+          JS
       - name: Preserve independent diagnostic evidence
         if: always()
         env:
