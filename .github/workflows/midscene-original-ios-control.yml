@@ -162,36 +162,54 @@ jobs:
       - name: Install locked public SDK for model-free route observation
         working-directory: source/testing/ai_e2e
         run: npm ci --no-audit --no-fund
-      - name: Compare root-query observation handling without a model
-        timeout-minutes: 10
+      - name: Compare root-query handling with the unchanged source aiAct
+        timeout-minutes: 15
         working-directory: source/testing/ai_e2e
+        env:
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+          MIDSCENE_MODEL_RETRY_COUNT: '2'
+          MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
         run: |
+          bash scripts/preflight-model.sh
           node --import tsx --input-type=module <<'JS'
           import assert from 'node:assert/strict';
-          import { writeFile } from 'node:fs/promises';
-          import { IOSDevice } from '@midscene/ios';
+          import { readFile, writeFile } from 'node:fs/promises';
+          import yaml from 'js-yaml';
+          import { IOSDevice, IOSAgent } from '@midscene/ios';
           import { connectDevtool } from './scripts/devtool-client.mjs';
           import { createOwnedDeviceVisibilityReader, NativeVisibilityStaleElementError } from './native-wda.ts';
           import { createVisibleNativeSessions } from './native-visible-sessions.ts';
           import { createSparklingContracts } from './sparkling-contracts.ts';
           import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
-          assert.equal(process.env.MIDSCENE_MODEL_API_KEY, undefined);
+          assert.ok(process.env.MIDSCENE_MODEL_API_KEY, 'Configured CI model credentials are required');
+          const source = yaml.load(await readFile('./cases/ios-sparkling/route-errors.yaml', 'utf8'));
+          const original = source.cases.find(item => item.name === 'sparkling/HotExternalURL');
+          const actions = original.steps.filter(step => step.aiAct);
+          assert.equal(actions.length, 1);
+          const action = actions[0].aiAct;
           const results = [];
           const failure = error => ({ name: error?.name, status: error?.status,
             code: error?.response?.value?.error, message: error?.response?.value?.message ?? error?.message });
-          // Diagnostic only: use original native alert acknowledgement instead
-          // of aiAct to isolate native reads without model credentials. This is
-          // neither unchanged-original execution nor migrated-suite acceptance.
+          // Diagnostic only: preserve the migrated source's exact AI alert
+          // action, initial capture/wait and original native assertions. The
+          // earlier native /alert/accept control did not reproduce the race.
+          // A focused control is not complete migrated-suite acceptance.
           for (const [index, mode] of ['baseline', 'root-stale-retry', 'baseline', 'root-stale-retry'].entries()) {
             const result = { index, mode, reads: [], errors: [], phases: [], passed: false };
             const device = new IOSDevice({ wdaHost: 'localhost', wdaPort: 8100 });
-            let sessions;
+            let sessions, agent;
             try {
               result.phase = 'connect';
               await device.connect();
+              agent = new IOSAgent(device, { reportFileName: 'route-observation-' + index + '.html', waitAfterAction: 0 });
               result.phase = 'launch';
               await device.terminate('com.lynx.LynxExplorer');
               await device.launch('com.lynx.LynxExplorer');
+              await agent.recordToReport('Restarted original Explorer homepage');
               await new Promise(resolve => setTimeout(resolve, 10_000));
               const request = async (method, endpoint, data) => {
                 const started = Date.now();
@@ -216,13 +234,13 @@ jobs:
               });
               for (const phase of ['home', 'externalMalformed', 'alert', 'acknowledge', 'alertDismissed', 'home', 'externalCanonical', 'role', 'sparkling']) {
                 result.phase = phase;
-                if (phase === 'acknowledge') await device.runWdaRequest('POST', '/alert/accept', {});
+                if (phase === 'acknowledge') await agent.aiAct(action.prompt, { ...action.options, signal: AbortSignal.timeout(180_000) });
                 else await contract({ contract: phase });
                 result.phases.push(phase);
               }
               result.passed = true;
             } catch (error) { result.failure = failure(error); }
-            finally { sessions?.releaseAll(); await device.destroy(); }
+            finally { sessions?.releaseAll(); if (agent) await agent.destroy(); else await device.destroy(); }
             results.push(result);
             await writeFile(process.env.CONTROL_DIR + '/public-sdk-route-observations.json', JSON.stringify(results, null, 2));
             console.log('ROUTE_OBSERVATION_RESULT', JSON.stringify({ index, mode, passed: result.passed, phase: result.phase, failure: result.failure, errors: result.errors }));
@@ -267,7 +285,7 @@ jobs:
           mkdir -p "$CONTROL_DIR"
           if [ -f "$RUNNER_TEMP/original-ios-wda/wda.log" ]; then cp "$RUNNER_TEMP/original-ios-wda/wda.log" "$CONTROL_DIR/wda.log"; fi
           if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
-          printf '## Original iOS HotExternalURL control\n\nProducer: https://github.com/quanru/lynx/actions/runs/38307906560\n\nOriginal execution: %s. This is independent Appium control evidence, not migrated-suite acceptance. No model is called; original source and app payloads remain unchanged. Setup failure is not an original-case failure.\n' "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          printf '## iOS HotExternalURL observation control\n\nProducer: https://github.com/quanru/lynx/actions/runs/38307906560\n\nOriginal Appium execution: %s. The focused SDK comparison uses the unchanged source aiAct and existing CI model secrets. This is diagnostic evidence, not migrated-suite acceptance. Original source and app payloads remain unchanged; setup failure is not an original-case failure.\n' "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -277,4 +295,5 @@ jobs:
             ${{ runner.temp }}/original-ios-control/*.txt
             ${{ runner.temp }}/original-ios-control/*.log
             ${{ runner.temp }}/original-ios-control/screenshots
+            source/testing/ai_e2e/midscene_run
           retention-days: 14
