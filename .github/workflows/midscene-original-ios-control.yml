@@ -159,35 +159,6 @@ jobs:
           writeFileSync(root + '/installed-app-provenance.json', JSON.stringify(evidence, null, 2));
           console.log('Verified installed application payload files:', evidence.length);
           JS
-      - name: Start isolated original Appium server
-        run: |
-          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100"}' > "$CONTROL_DIR/appium.log" 2>&1 &
-          for _ in $(seq 1 30); do
-            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          echo '::error::Original iOS Appium server did not become ready'
-          exit 1
-      - name: Run unchanged original HotExternalURL
-        id: original
-        timeout-minutes: 10
-        working-directory: source/testing/integration_test/test_script
-        shell: bash
-        run: |
-          set +e
-          set -o pipefail
-          python3 manage.py runtest ios_test.sparkling 2>&1 | tee "$CONTROL_DIR/original.log"
-          status=${PIPESTATUS[0]}
-          if [ "$status" -eq 0 ]; then
-            grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*HotExternalURL[[:space:]]*\]' "$CONTROL_DIR/original.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original.log" || status=1
-          fi
-          printf '%s\n' "$status" > "$CONTROL_DIR/original-exit-code.txt"
-          exit "$status"
-      - name: Verify unchanged original source
-        if: always() && steps.original.outcome != 'skipped'
-        run: |
-          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
-          shasum -a 256 --check "$CONTROL_DIR/original-source-checksums.txt"
       - name: Install locked public SDK for model-free route observation
         working-directory: source/testing/ai_e2e
         run: npm ci --no-audit --no-fund
@@ -214,9 +185,11 @@ jobs:
           for (const [index, mode] of ['baseline', 'root-stale-retry', 'baseline', 'root-stale-retry'].entries()) {
             const result = { index, mode, reads: [], errors: [], phases: [], passed: false };
             const device = new IOSDevice({ wdaHost: 'localhost', wdaPort: 8100 });
-            await device.connect();
             let sessions;
             try {
+              result.phase = 'connect';
+              await device.connect();
+              result.phase = 'launch';
               await device.terminate('com.lynx.LynxExplorer');
               await device.launch('com.lynx.LynxExplorer');
               await new Promise(resolve => setTimeout(resolve, 10_000));
@@ -257,6 +230,35 @@ jobs:
           assert.equal(results.length, 4);
           console.log('Diagnostic collection complete; a green collection job is not migrated-suite acceptance.');
           JS
+      - name: Start isolated original Appium server
+        run: |
+          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100"}' > "$CONTROL_DIR/appium.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original iOS Appium server did not become ready'
+          exit 1
+      - name: Run unchanged original HotExternalURL
+        id: original
+        timeout-minutes: 10
+        working-directory: source/testing/integration_test/test_script
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          python3 manage.py runtest ios_test.sparkling 2>&1 | tee "$CONTROL_DIR/original.log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*HotExternalURL[[:space:]]*\]' "$CONTROL_DIR/original.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original.log" || status=1
+          fi
+          printf '%s\n' "$status" > "$CONTROL_DIR/original-exit-code.txt"
+          exit "$status"
+      - name: Verify unchanged original source
+        if: always() && steps.original.outcome != 'skipped'
+        run: |
+          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
+          shasum -a 256 --check "$CONTROL_DIR/original-source-checksums.txt"
       - name: Preserve independent diagnostic evidence
         if: always()
         env:
