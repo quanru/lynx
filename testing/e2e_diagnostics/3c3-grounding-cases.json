@@ -1,166 +1,5 @@
 [
   {
-    "name": "android-seek-bad",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      335,
-      1060,
-      420,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Bad\" button once: it is the FOURTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Near End and Seek Missing. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
-    "name": "android-seek-missing",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      433,
-      1060,
-      526,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Missing\" button once: it is the FIFTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Bad and Seek Null. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
-    "name": "android-seek-null",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      538,
-      1060,
-      626,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Null\" button once: it is the SIXTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Missing and Seek Text. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      false
-    ]
-  },
-  {
-    "name": "android-seek-text",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      638,
-      1060,
-      725,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Text\" button once: it is the SEVENTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Null and Seek NaN. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
-    "name": "android-seek-nan",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      741,
-      1060,
-      830,
-      1140
-    ],
-    "prompt": "Click the single \"Seek NaN\" button once: it is the EIGHTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Text and Seek Inf. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
-    "name": "android-seek-inf",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      846,
-      1060,
-      932,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Inf\" button once: it is the NINTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek NaN and Seek Huge. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
-    "name": "android-seek-huge",
-    "platform": "android",
-    "image": "011d3076-5c7b-4fa7-88bc-1eb59f2e32d5.jpeg",
-    "size": {
-      "width": 411,
-      "height": 914
-    },
-    "physical": {
-      "width": 1080,
-      "height": 2400
-    },
-    "bounds": [
-      945,
-      1060,
-      1079,
-      1140
-    ],
-    "prompt": "Click the single \"Seek Huge\" button once: it is the TENTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is the rightmost control, immediately after Seek Inf. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
-    "deepLocates": [
-      true
-    ]
-  },
-  {
     "name": "ios-seek-bad",
     "platform": "ios",
     "image": "76d249ee-ad4f-4225-9473-85127a458f3f.jpeg",
@@ -180,7 +19,7 @@
     ],
     "prompt": "Click the single \"Seek Bad\" button once: it is the FOURTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Near End and Seek Missing. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -203,7 +42,7 @@
     ],
     "prompt": "Click the single \"Seek Missing\" button once: it is the FIFTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Bad and Seek Null. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -249,7 +88,7 @@
     ],
     "prompt": "Click the single \"Seek Text\" button once: it is the SEVENTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Null and Seek NaN. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -272,7 +111,7 @@
     ],
     "prompt": "Click the single \"Seek NaN\" button once: it is the EIGHTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek Text and Seek Inf. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -295,7 +134,7 @@
     ],
     "prompt": "Click the single \"Seek Inf\" button once: it is the NINTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek NaN and Seek Huge. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -318,7 +157,7 @@
     ],
     "prompt": "Click the single \"Seek Huge\" button once: it is the TENTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is the rightmost control, immediately after Seek Inf. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   },
   {
@@ -341,7 +180,7 @@
     ],
     "prompt": "Click the single \"Seek Bad\" button once: it is the FOURTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Near End and Seek Missing. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click.",
     "deepLocates": [
-      true
+      false
     ]
   }
 ]
