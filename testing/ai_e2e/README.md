@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 191
+Current implementation collects Android 13 / iOS 20 cases and passes 192
 model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -22,7 +22,20 @@ The unchanged original Appium control reproduced Android's early seek-success
 callback. The approved minimal Android fix now waits for player acknowledgement
 in serial modes and preserves source-change cancellation and direct mode.
 Hosted regression checks cover request completion, cancellation, stale callbacks
-and queue/latest/direct behavior; new device acceptance is still required.
+and queue/latest/direct behavior. All five Robolectric tests passed in
+[38274270887](https://github.com/quanru/lynx/actions/runs/38274270887), after
+correcting the abstract/detached LynxContext test fixture. CI retains their
+XML/HTML results even if the source build fails. This is scheduler regression
+evidence, not device acceptance of Media3 playback or the unchanged Appium case.
+Static hosted screenshot controls also reproduce deep refinement selecting the
+wrong crowded seek button. Timed seek preparation now preserves the full row
+for visual location, without stored target coordinates or weaker assertions.
+Other button locations retain deep refinement; ordinary actions remain aiAct.
+The extra coordinate-conversion aiAct context has been removed: hosted static
+controls recover all three inspected targets with default balanced planning.
+The SDK retains coordinate handling; this limited evidence is not suite-wide
+acceptance. Run 38270018228 stopped during Sparkling after wrong-target
+navigation and a step timeout, before reaching the video cases.
 No example page or baseline has been changed. The
 approved iOS-video-only viewport exception omits fixed physical width/height
 so existing Explorer uses its actual view bounds. Android video and every

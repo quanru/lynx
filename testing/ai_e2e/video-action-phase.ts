@@ -8,7 +8,7 @@ export interface VideoTimedAgent {
   aiAct(prompt: string, options: { deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
   addProgressListener(listener: AgentProgressListener): () => void;
   getUIContext(): Promise<UIContext>;
-  aiLocate(prompt: string, options: { deepLocate: true; cacheable: false; uiContext: UIContext }): Promise<{ center: number[] }>;
+  aiLocate(prompt: string, options: { deepLocate: boolean; cacheable: false; uiContext: UIContext }): Promise<{ center: number[] }>;
   interface: { inputPrimitives: { pointer: { tap(point: { x: number; y: number }): Promise<void> } } };
 }
 

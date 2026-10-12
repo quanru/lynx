@@ -36,9 +36,8 @@ import { VideoPhasePreparation } from './video-phase-preparation.ts';
 // Sharing one agent would attach details to the wrong scope and mark the summary unresolved.
 const reportDir = resolve('./midscene_run/report');
 const reportPath = (prefix: string, runId: string) => resolve(reportDir, `${prefix}-${runId}.html`);
-const aiContexts = {
-  aiAct: 'Follow the coordinate format requested by the active action protocol. When it requests normalized 0–1000 coordinates, convert screenshot pixel positions using x / screenshot width * 1000 and y / screenshot height * 1000 before emitting locate.point. Do not label raw screenshot pixels as normalized coordinates. The center of the full screenshot is [500, 500] in that normalized format, regardless of its pixel dimensions. Check that the converted point lies inside the described target, using its left/right and upper/lower relationships.',
-};
+// Keep the SDK's model-specific coordinate protocol. Additional conversion
+// instructions made hosted planning invent image dimensions and miss targets.
 
 // Project context produced by setup and available to YAML nodes. Each project
 // has one registry that creates and releases agents lazily by case runId.
@@ -268,7 +267,7 @@ const androidSetup = defineProjectSetup<ProjectContext>({
         await device.connect();
         // Original source waits own readiness; do not add the SDK's default
         // 300ms post-action delay to every tap in a ten-second video contract.
-        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html`, aiContexts, waitAfterAction: 0 });
+        const agent = new AndroidAgent(device, { reportFileName: `android-${runId}.html`, waitAfterAction: 0 });
         entry = { device, agent };
         runs.set(runId, entry);
         // Bootstrap once per case run, before its first AI node. Store the entry
@@ -338,7 +337,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
       if (!entry) {
         const device = new IOSDevice({ wdaPort, wdaHost });
         await device.connect();
-        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html`, aiContexts, waitAfterAction: 0 });
+        const agent = new IOSAgent(device, { reportFileName: `ios-${runId}.html`, waitAfterAction: 0 });
         entry = { device, agent };
         runs.set(runId, entry);
         // WDA launch preserves deep navigation state. Terminate and launch once

@@ -2,6 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { locateVideoButton, tapPreparedVideoButton } from '../video-button-preparation.ts';
 
+test('clipped seek labels retain the full visual row while other controls keep normal refinement', async () => {
+  const modes = [];
+  const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 3, shotSize: { width: 1206, height: 2622 } }),
+    aiLocate: async (_prompt, options) => { modes.push(options.deepLocate); return { center: [180, 1750] }; },
+  };
+  for (const label of ['Seek 0s', 'Seek 2s', 'Play', 'Pause', 'Src B']) await locateVideoButton(agent, label);
+  assert.deepEqual(modes, [false, false, true, true, true]);
+});
+
 test('visual grounding uses its exact screenshot context and converts to logical coordinates once', async () => {
   for (const ratio of [1, 3, 1.5]) {
     const uiContext = { shrunkShotToLogicalRatio: ratio, deprecatedDpr: 3, shotSize: { width: 1206, height: 2622 } };

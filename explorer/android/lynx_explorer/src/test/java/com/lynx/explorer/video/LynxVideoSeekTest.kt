@@ -44,7 +44,11 @@ class LynxVideoSeekTest {
 
   private fun fixture(mode: String = "queue"): Pair<LynxUIVideo, Player> {
     val app = RuntimeEnvironment.getApplication()
-    val context = LynxContext(app, app.resources.displayMetrics)
+    val context = object : LynxContext(app, app.resources.displayMetrics) {
+      override fun handleException(error: Exception) { throw error }
+    }
+    // Model an explicitly detached context for the real destroy lifecycle.
+    context.setLynxUIOwner(null)
     // Test the production request scheduler without constructing a decoder.
     val ui = object : LynxUIVideo(context) { override fun initialize() {} }
     val player = Player()

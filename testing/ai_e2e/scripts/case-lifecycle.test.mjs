@@ -73,10 +73,8 @@ for (const name of ['android-explorer', 'ios-explorer']) {
     const second = await context.agentRegistry.getAgent('case-2');
     assert.notEqual(first, second);
     for (const agent of [first, second]) {
-      assert.match(agent.options.aiContexts.aiAct, /active action protocol/);
-      assert.match(agent.options.aiContexts.aiAct, /x \/ screenshot width \* 1000/);
-      assert.match(agent.options.aiContexts.aiAct, /y \/ screenshot height \* 1000/);
-      assert.match(agent.options.aiContexts.aiAct, /Do not label raw screenshot pixels as normalized coordinates/);
+      assert.equal(agent.options.aiContexts, undefined, 'Use the SDK model-specific protocol without extra coordinate conversion prompts');
+      assert.equal(agent.options.waitAfterAction, 0);
       const steps = events.filter(e => e[0] === agent.device.id).map(e => e[1]);
       assert.deepEqual(steps, ['connect', 'terminate', 'launch']);
     }

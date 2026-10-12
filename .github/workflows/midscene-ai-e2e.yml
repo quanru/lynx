@@ -104,6 +104,16 @@ jobs:
       - name: Build source Explorer with integration fixtures
         working-directory: lynx
         run: bash testing/ai_e2e/scripts/build-explorer.sh '${{ matrix.platform }}' "$RUNNER_TEMP/explorer-build"
+      - name: Retain Android seek regression results
+        if: always() && matrix.platform == 'android'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-android-video-unit-tests-${{ github.run_attempt }}
+          path: |
+            lynx/explorer/android/lynx_explorer/build/test-results/testWithSparklingNoasanDebugUnitTest/
+            lynx/explorer/android/lynx_explorer/build/reports/tests/testWithSparklingNoasanDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: midscene-explorer-source-${{ matrix.platform }}-${{ github.run_attempt }}
