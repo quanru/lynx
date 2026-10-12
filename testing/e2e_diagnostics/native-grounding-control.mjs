@@ -16,7 +16,7 @@ const schemas = {
 const results = [];
 for (const target of cases) {
   const screenshot = 'data:image/jpeg;base64,' + readFileSync(resolve(directory, target.image)).toString('base64');
-  for (const trial of [1, 2]) for (const deepLocate of [false, true]) {
+  for (const trial of [1, 2]) for (const deepLocate of target.deepLocates ?? [false, true]) {
     const mode = deepLocate ? 'independent-refinement' : 'independent-full-frame';
     const controller = new AbortController();
     const stop = new Error('Stopped after first inert action');
