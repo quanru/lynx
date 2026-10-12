@@ -3,6 +3,8 @@ name: Original video control (diagnostic only)
 # Independent of migrated acceptance. The PR trigger reproduces the immutable
 # checkpoint below in a trusted fork PR; dispatch can select another source run.
 on:
+  push:
+    branches: [midscene/original-video-control]
   workflow_dispatch:
     inputs:
       source_run_id:
@@ -27,7 +29,7 @@ concurrency:
 jobs:
   android-original:
     name: Original Android VideoBoundary (not migration acceptance)
-    if: github.event_name == 'workflow_dispatch' || (github.repository == 'quanru/lynx' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'workflow_dispatch' || (github.repository == 'quanru/lynx' && (github.event.pull_request.head.repo.full_name == github.repository || github.ref == 'refs/heads/midscene/original-video-control'))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -87,10 +89,17 @@ jobs:
       - name: Verify revision, capabilities and checksum
         env:
           PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
-          GITHUB_SHA: ${{ steps.build.outputs.sha }}
         run: |
           git -C source merge-base --is-ancestor "$PRODUCER_HEAD" HEAD
-          node source/testing/ai_e2e/scripts/verify-build.mjs "$CONTROL_DIR/source-build" android
+          # The diagnostic workflow SHA is not the producer build SHA. Pass the
+          # verified source checkout explicitly instead of overriding GITHUB_SHA.
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { verifyBuild } from './source/testing/ai_e2e/scripts/verify-build.mjs';
+          const sha = execFileSync('git', ['-C', 'source', 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          await verifyBuild(`${process.env.CONTROL_DIR}/source-build`, 'android', sha);
+          console.log(`Verified original-control source APK at ${sha}`);
+          JS
           git -C source rev-parse HEAD > "$CONTROL_DIR/checkout-sha.txt"
           sha256sum source/testing/integration_test/test_script/case_sets/xelement/{VideoBoundary.py,video_utils.py} > "$CONTROL_DIR/original-source-checksums.txt"
       - name: Install pinned original framework and Appium

@@ -23,8 +23,10 @@ explicit environment differences; a failure is evidence, not automatic proof
 of a product defect.
 
 Workflow: `.github/workflows/midscene-original-control.yml`. A trusted fork PR
-changing this diagnostic reproduces producer run 38146455265 by default. Manual
-dispatch can explicitly select another completed same-repository producer run.
+changing this diagnostic reproduces producer run 38146455265 by default.
+The fork-only `midscene/original-video-control` branch can run diagnostic fixes
+without cancelling a useful main-PR Midscene run. It opens no additional PR.
+Manual dispatch can explicitly select another completed same-repository producer run.
 Its evidence artifact and Summary are separate; no model credentials or Midscene
 passing-case counts are involved. Setup failures and an unexecuted original
 case cannot count as a successful control.
