@@ -36,6 +36,11 @@ jobs:
           fetch-depth: 2
           path: source
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          sparse-checkout: testing/ai_e2e
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
@@ -162,7 +167,28 @@ jobs:
       - name: Install locked public SDK for model-free route observation
         working-directory: source/testing/ai_e2e
         run: npm ci --no-audit --no-fund
-      - name: Compare root-query handling with the unchanged source aiAct
+      - name: Install the audited test-layer polling candidate
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readFile, writeFile } from 'node:fs/promises';
+          import { createHash } from 'node:crypto';
+          const expected = {
+            'native-wda.ts': '6d99d3680b46bad1ac1ae6356777c40e6ce24dc922ce5e34b5fa8722c5b59596',
+            'native-visible-sessions.ts': '536c8eb857ab9ffc7ca874fe7939144257d35e7db7f8ab4c15480af178df973a',
+            'sparkling-contracts.ts': 'd3ce91bb38aa4100094883d4aa8942a860d3e6486037b1d2b463f250b119aade',
+          };
+          for (const [name, hash] of Object.entries(expected)) {
+            const content = await readFile('harness/testing/ai_e2e/' + name);
+            assert.equal(createHash('sha256').update(content).digest('hex'), hash);
+            await writeFile('source/testing/ai_e2e/' + name, content);
+          }
+          await writeFile(process.env.CONTROL_DIR + '/test-layer-candidate.json', JSON.stringify({
+            commit: process.env.GITHUB_SHA, files: expected,
+            boundary: 'Only the three audited test adapters are overlaid; app and original tests remain unchanged.',
+          }, null, 2));
+          JS
+      - name: Compare source polling semantics with the unchanged source aiAct
         timeout-minutes: 15
         working-directory: source/testing/ai_e2e
         env:
@@ -181,7 +207,7 @@ jobs:
           import yaml from 'js-yaml';
           import { IOSDevice, IOSAgent } from '@midscene/ios';
           import { connectDevtool } from './scripts/devtool-client.mjs';
-          import { createOwnedDeviceVisibilityReader, NativeVisibilityStaleElementError } from './native-wda.ts';
+          import { createOwnedDeviceVisibilityReader } from './native-wda.ts';
           import { createVisibleNativeSessions } from './native-visible-sessions.ts';
           import { createSparklingContracts } from './sparkling-contracts.ts';
           import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
@@ -195,11 +221,13 @@ jobs:
           const failure = error => ({ name: error?.name, status: error?.status,
             code: error?.response?.value?.error, message: error?.response?.value?.message ?? error?.message });
           // Diagnostic only: preserve the migrated source's exact AI alert
-          // action, initial capture/wait and original native assertions. The
-          // earlier native /alert/accept control did not reproduce the race.
+          // action, initial capture/wait and original native assertions.
+          // Both modes retain the narrow root recovery. Compare only whether
+          // an in-flight capability observation may finish inside its existing
+          // 15-second assertion budget after its two-second retry window closes.
           // A focused control is not complete migrated-suite acceptance.
-          for (const [index, mode] of ['baseline', 'root-stale-retry', 'baseline', 'root-stale-retry'].entries()) {
-            const result = { index, mode, reads: [], errors: [], phases: [], passed: false };
+          for (const [index, mode] of ['hard-two-second', 'source-poll-window', 'hard-two-second', 'source-poll-window'].entries()) {
+            const result = { index, mode, reads: [], observations: [], errors: [], phases: [], passed: false };
             const device = new IOSDevice({ wdaHost: 'localhost', wdaPort: 8100 });
             let sessions, agent;
             try {
@@ -218,17 +246,22 @@ jobs:
                   const evidence = { method, endpoint, ...failure(error) };
                   result.errors.push(evidence);
                   console.log('WDA_OBSERVATION_ERROR', JSON.stringify({ index, mode, ...evidence }));
-                  if (mode === 'root-stale-retry' && method === 'POST' && endpoint === '/elements'
-                      && error?.name === 'WebDriverRequestError' && error?.status === 404
-                      && ['no such element', 'stale element reference'].includes(error?.response?.value?.error)) {
-                    throw new NativeVisibilityStaleElementError(error);
-                  }
                   throw error;
                 } finally { result.reads.push({ method, endpoint, ms: Date.now() - started }); }
               };
               const reader = createOwnedDeviceVisibilityReader(request);
               sessions = createVisibleNativeSessions(() => connectDevtool({ port: 8901 }), async () => reader);
-              const contract = createSparklingContracts((tag, expected, timeout) => sessions.observe('route-probe-' + index, tag, expected, timeout), reader, {
+              const contract = createSparklingContracts(async (tag, expected, timeout, observationDeadline) => {
+                const started = Date.now();
+                const item = { tag, timeout, completionBudget: observationDeadline === undefined ? null : observationDeadline - started };
+                try {
+                  const bound = await sessions.observe('route-probe-' + index, tag, expected, timeout,
+                    mode === 'source-poll-window' ? observationDeadline : undefined);
+                  item.passed = true;
+                  return bound;
+                } catch (error) { item.passed = false; item.failure = failure(error); throw error; }
+                finally { item.ms = Date.now() - started; result.observations.push(item); }
+              }, reader, {
                 readAlert: timeout => readOwnedRouteAlert(request, timeout),
                 openExternal: route => deliverOwnedExternalRoute(request, route),
               });

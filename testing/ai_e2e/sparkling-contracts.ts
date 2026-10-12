@@ -7,7 +7,7 @@ import { expectOwnedRouteAlert } from './sparkling-native-io.ts';
 type VisibleSessions = ReturnType<typeof createVisibleNativeSessions>;
 type BoundView = Awaited<ReturnType<VisibleSessions['observe']>>;
 type Reader = ReturnType<typeof createOwnedDeviceVisibilityReader>;
-type Observe = (tag: string, expectedText?: string, timeoutMs?: number) => Promise<BoundView>;
+type Observe = (tag: string, expectedText?: string, timeoutMs?: number, observationDeadline?: number) => Promise<BoundView>;
 export type SparklingContract = { contract: 'home' | 'parent' | 'role' | 'legacy' | 'sparkling' | 'mapped'
   | 'rememberParent' | 'child' | 'childIdentity' | 'restoredParent'
   | 'alert' | 'alertDismissed' | 'malformedParent' | 'sameParent' | 'externalMalformed' | 'externalCanonical' }
@@ -51,7 +51,7 @@ export function createSparklingContracts(observe: Observe, reader: Reader, nativ
   async function nonempty(tag: string, forbidden: readonly string[]) {
     const deadline = Date.now() + 15_000;
     for (;;) {
-      const view = await observe(tag, undefined, Math.min(2000, deadline - Date.now()));
+      const view = await observe(tag, undefined, Math.min(2000, deadline - Date.now()), deadline);
       const actual = await text(view, tag);
       if (Date.now() <= deadline && actual && !forbidden.includes(actual)) return actual;
       const remaining = deadline - Date.now();
