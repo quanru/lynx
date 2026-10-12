@@ -1,0 +1,142 @@
+[
+  {
+    "name": "ios-inline",
+    "platform": "ios",
+    "image": "cb21873b-0f9c-4e9f-afbe-061a18bc1876.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      480,
+      1060,
+      640,
+      1100
+    ],
+    "prompt": "Click only the inline text \"Click Me\" at the right end of \"Test inline-text:Click Me\" inside the lowest of the three blue buttons, beneath \"Click to change CSS\", once. Tap inside those letters, not the surrounding button or blank page. Stop after that single click."
+  },
+  {
+    "name": "ios-volume",
+    "platform": "ios",
+    "image": "109c55ea-0ec0-44b6-b784-fd9660042562.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      37,
+      2127,
+      260,
+      2205
+    ],
+    "prompt": "Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly \"Vol 0.3\" once. Do not click another button or perform another action."
+  },
+  {
+    "name": "ios-mute",
+    "platform": "ios",
+    "image": "6c7b5a58-59e6-424f-a565-fb758256be3f.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      632,
+      2024,
+      858,
+      2102
+    ],
+    "prompt": "Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly \"Mute\" once. Do not click another button or perform another action."
+  },
+  {
+    "name": "ios-src-empty",
+    "platform": "ios",
+    "image": "5dc15b0e-9d3f-47e6-a42d-1fd68e725fee.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      510,
+      1835,
+      667,
+      1999
+    ],
+    "prompt": "When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly \"Src Empty\" once. Do not click similarly named buttons or perform another action."
+  },
+  {
+    "name": "ios-loop",
+    "platform": "ios",
+    "image": "53646179-6f50-4d46-b995-57a8db2d18bc.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      65,
+      2024,
+      290,
+      2102
+    ],
+    "prompt": "Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly \"Loop On\" once. Do not click another button or perform another action."
+  },
+  {
+    "name": "ios-seek-two-explicit",
+    "platform": "ios",
+    "image": "007793dc-4cd0-49d8-983a-c18b05085c50.jpeg",
+    "size": {
+      "width": 402,
+      "height": 874
+    },
+    "physical": {
+      "width": 1206,
+      "height": 2622
+    },
+    "bounds": [
+      115,
+      1689,
+      229,
+      1810
+    ],
+    "prompt": "Click the single Seek 2s button once: it is the SECOND blue control in the seek row immediately below Clear / Play / Play Null / Pause / Stop, between Seek 0s and Near End. Its fixed-width label may be clipped to See; use the row and neighbors to identify it. The later fourth control labeled Seek is not Seek 2s. If that second button body is already on screen, do not scroll; scrolling cannot unclip its text. Do not click any other button. Stop after the single click."
+  },
+  {
+    "name": "android-burst",
+    "platform": "android",
+    "image": "85ee86e8-325a-4943-a33f-55c0d70b2fdf.jpeg",
+    "size": {
+      "width": 411,
+      "height": 914
+    },
+    "physical": {
+      "width": 1080,
+      "height": 2400
+    },
+    "bounds": [
+      164,
+      1526,
+      451,
+      1577
+    ],
+    "prompt": "When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled \"Play Pause Stop\" once. Do not click the separate Play, Pause, or Stop buttons. Stop after that single click."
+  }
+]

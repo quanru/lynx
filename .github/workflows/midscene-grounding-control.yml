@@ -32,6 +32,8 @@ jobs:
           MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
           MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
           MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+          MIDSCENE_MODEL_RETRY_COUNT: '2'
+          MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
         run: node testing/e2e_diagnostics/native-grounding-control.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
