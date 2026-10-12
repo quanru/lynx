@@ -1,5 +1,46 @@
 # Native integration migration scope
 
+## Current checkpoint (2026-10-12)
+
+Run [38189385689](https://github.com/quanru/lynx/actions/runs/38189385689)
+at `b93dd4f` completed Android 11/13 and iOS 15/20. Contract checks, both
+current-source builds, report assembly and Pages publication succeeded; device
+acceptance remains incomplete. The failed iOS modules were HotExternalURL,
+Event, VideoAttributes, VideoBasic and VideoBoundary. Android failed
+VideoAttributes and VideoBoundary.
+
+The next migration-layer change retries only structured WDA HTTP 404
+`no such element` / `stale element reference` errors from element reads during
+an explicit visibility observation. It repeats the complete native/CDP
+identity proof within the original deadline, without restarting the device,
+switching retained handles, or accepting ambiguous sessions. Search failures,
+invalid sessions, malformed replies and transport failures still fail closed.
+
+Video preparation now distinguishes intrinsic label truncation from an
+off-screen button body. The unchanged fixture's second seek-row button is
+Seek 2s, between Seek 0s and Near End; scrolling cannot unclip its fixed-width
+text. Preparation remains scroll-only and all model work remains before the
+original playback fragment. These corrections require new hosted acceptance.
+
+Android VideoAttributes' two failed attempts show no model calls during the
+fit fragment, but SDK Tap tasks take approximately 1.2–1.9 seconds each,
+with additional 0.3–0.8 second Locate tasks. The original Pause occurs after
+the ten-second clip ends. Explicit report writes take only milliseconds;
+deferring them is not an evidence-backed timing fix. Original media,
+assertions and timing windows are not changed.
+
+The independent unchanged Appium control in
+[38190434034](https://github.com/quanru/lynx/actions/runs/38190434034)
+also fails VideoBoundary's Seek Empty assertion with `seek_ok:success=true`.
+This requires implementation/contract reconciliation rather than weakening
+the migrated assertion. Its verified diagnostic setup fixes are now included
+in the migration branch.
+
+The 13/20 totals count modules, including three additive smoke cases per
+platform. They are not a repository-wide native test inventory or counts of
+individual assertions. Other platform unit/instrumentation suites are outside
+this Appium UI integration migration and must not be described as migrated.
+
 The scope includes all 18 Python case modules under
 `testing/integration_test/test_script/case_sets/`: seven core, seven Sparkling,
 and four XElement video cases. Helper/runner modules are not cases. Sparkling

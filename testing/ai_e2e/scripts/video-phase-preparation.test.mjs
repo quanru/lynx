@@ -3,6 +3,24 @@ import test from 'node:test';
 import { VideoPhasePreparation } from '../video-phase-preparation.ts';
 import { videoPlaybackOperations, executeVideoPlaybackPhase } from '../video-playback-phase.ts';
 import { originalVideoPlayback } from './video-playback-source.mjs';
+import { readFileSync } from 'node:fs';
+import { makeVideoButtonsVisible, locateVideoButton } from '../video-button-preparation.ts';
+
+test('crowded seek-row preparation uses source-owned neighbors and does not demand unclipped text', async () => {
+  const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<text>Seek 0s<\/text>[\s\S]*?<text>Seek 2s<\/text>[\s\S]*?<text>Near End<\/text>/);
+  const calls = [];
+  const agent = { addProgressListener: () => () => {},
+    aiAct: async (prompt, options) => calls.push(['act', prompt, options]),
+    aiLocate: async (prompt, options) => { calls.push(['locate', prompt, options]); return { center: [100, 100] }; } };
+  await makeVideoButtonsVisible(agent, ['Clear', 'Seek 2s', 'Play', 'Stop']);
+  await locateVideoButton(agent, 'Seek 2s');
+  assert.match(calls[0][1], /SECOND blue control/);
+  assert.match(calls[0][1], /finish without scrolling/);
+  assert.match(calls[0][1], /scrolling cannot reveal text clipped inside a button/);
+  assert.match(calls[1][1], /center INSIDE the actual blue button body/);
+  assert.deepEqual(calls.map(call => call[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: true, cacheable: false }]);
+});
 
 test('split phases retain the entire original ordered trace and only prepare at inactive source boundaries', () => {
   for (const name of ['VideoBasic', 'VideoAttributes']) {

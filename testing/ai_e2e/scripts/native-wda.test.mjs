@@ -4,9 +4,27 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { attachNativeVisibilityReader, createOwnedDeviceVisibilityReader, displayAnchors, nativeXPathLiteral } from '../native-wda.ts';
+import { attachNativeVisibilityReader, createOwnedDeviceVisibilityReader, displayAnchors, nativeXPathLiteral, NativeVisibilityStaleElementError } from '../native-wda.ts';
 
 const element = id => ({ 'element-6066-11e4-a52e-4f735466cecf': id });
+
+test('only structured stale-element reads invalidate an owned native observation', async () => {
+  for (const code of ['no such element', 'stale element reference', 'invalid session id', 'unknown error']) {
+    for (const status of [404, 500]) {
+      const failure = Object.assign(new Error('Controlled WDA failure'), {
+        name: 'WebDriverRequestError', status, response: { value: { error: code } },
+      });
+      const reader = createOwnedDeviceVisibilityReader(async (_method, endpoint) => {
+        if (endpoint === '/elements') return { value: [element('disappeared')] };
+        throw failure;
+      });
+      await assert.rejects(reader.contexts('nav-role'), error => status === 404 && ['no such element', 'stale element reference'].includes(code)
+        ? error instanceof NativeVisibilityStaleElementError && error.cause === failure : error === failure);
+      const search = createOwnedDeviceVisibilityReader(async () => { throw failure; });
+      await assert.rejects(search.contexts('nav-role'), error => error === failure, 'Search/session failures must not be classified as disappearing elements');
+    }
+  }
+});
 
 test('public case-owned device reader exposes only native reads and stops after late SDK replies', async () => {
   const calls = [];

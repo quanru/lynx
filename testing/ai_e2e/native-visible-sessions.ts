@@ -1,5 +1,6 @@
 import { decodeDocumentRoot } from './native-dom.ts';
 import type { NativeConnection } from './native-sessions.ts';
+import { NativeVisibilityStaleElementError } from './native-wda.ts';
 import type { createOwnedDeviceVisibilityReader } from './native-wda.ts';
 import { resolveVisibleNativeSession, VisibleNativeBindingError } from './native-visible-session.ts';
 
@@ -70,9 +71,12 @@ export function createVisibleNativeSessions(connect: () => Promise<NativeConnect
           });
         } catch (error) {
           check(lease);
-          // Only zero matches are a mounting/readiness condition. Ambiguity and
-          // malformed/transport failures cannot turn into a later green result.
-          if (!(error instanceof VisibleNativeBindingError) || error.matches !== 0 || Date.now() >= deadline) throw error;
+          // Restart only an incomplete observation: zero matches or a structured
+          // stale native element during navigation. Rebind every native/CDP
+          // identity from scratch; ambiguity and transport errors still fail.
+          const incomplete = error instanceof VisibleNativeBindingError && error.matches === 0
+            || error instanceof NativeVisibilityStaleElementError;
+          if (!incomplete || Date.now() >= deadline) throw error;
           await new Promise(resolve => setTimeout(resolve, Math.min(200, deadline - Date.now())));
           check(lease);
         }

@@ -5,6 +5,21 @@ export interface VisibleNativeContext {
   anchor: { tag: string; rect: NativeRect; texts: string[] };
 }
 
+// Navigation may remove a native element between discovery and its read. This
+// invalidates the whole observation, not the case's WDA session or CDP lease.
+export class NativeVisibilityStaleElementError extends Error {
+  constructor(cause: unknown) {
+    super('Native visibility element disappeared during observation.', { cause });
+    this.name = 'NativeVisibilityStaleElementError';
+  }
+}
+
+function staleElementRead(error: unknown, endpoint: string) {
+  const failure = error as { name?: string; status?: number; response?: { value?: { error?: string } } };
+  return endpoint.startsWith('/element/') && failure?.name === 'WebDriverRequestError'
+    && failure.status === 404 && ['no such element', 'stale element reference'].includes(failure.response?.value?.error ?? '');
+}
+
 // The same priority as the original Sparkling helper. A parent/child role marker
 // takes precedence over homepage controls, which can survive behind a push.
 export const displayAnchors = [
@@ -56,6 +71,9 @@ export function createOwnedDeviceVisibilityReader(readRequest: (method: 'GET' | 
       ]);
       if (Date.now() >= deadline) throw new Error('Native visibility observation timed out.');
       return responseValue(result);
+    } catch (error) {
+      if (Date.now() < deadline && staleElementRead(error, endpoint)) throw new NativeVisibilityStaleElementError(error);
+      throw error;
     } finally { clearTimeout(timer!); }
   });
 }

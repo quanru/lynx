@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createVisibleNativeSessions } from '../native-visible-sessions.ts';
+import { NativeVisibilityStaleElementError } from '../native-wda.ts';
 
 const rect = { x: 0, y: 0, width: 240, height: 400 };
 const quad = [0, 0, 240, 0, 240, 400, 0, 400];
@@ -9,6 +10,33 @@ function document(role) {
     { nodeId: 2, nodeName: 'text', attributes: ['lynx-test-tag', 'nav-role'], children: [{ nodeId: 3, nodeName: 'raw-text', attributes: ['text', role] }] },
   ] }] } };
 }
+
+test('routing retries a stale native observation inside its original deadline and proves the new identity', async () => {
+  let observations = 0, connections = 0;
+  const sessions = createVisibleNativeSessions(async () => {
+    connections++;
+    return { close() {}, refreshSessions: async () => [{ session_id: 7 }],
+      request: async (_id, method) => method === 'DOM.getDocument' ? document('parent') : { model: { padding: quad } } };
+  }, async () => ({ contexts: async () => {
+    if (++observations === 1) throw new NativeVisibilityStaleElementError(new Error('Gone during navigation'));
+    return [{ viewId: 'new-parent', viewRect: rect, anchor: { tag: 'nav-role', rect, texts: ['parent'] } }];
+  } }));
+  const bound = await sessions.observe('case', 'nav-role', 'parent', 1000);
+  assert.equal(observations, 2);
+  assert.equal(connections, 1);
+  assert.equal(bound.sessionId, 7);
+  assert.equal(bound.viewId, 'new-parent');
+  sessions.releaseAll();
+});
+
+test('persistent stale observations time out rather than passing or opening another session', async () => {
+  let connections = 0;
+  const sessions = createVisibleNativeSessions(async () => { connections++; return { close() {} }; },
+    async () => ({ contexts: async () => { throw new NativeVisibilityStaleElementError(new Error('Gone')); } }));
+  await assert.rejects(sessions.observe('case', 'nav-role', 'parent', 20), /timed out|disappeared/);
+  assert.equal(connections, 1);
+  sessions.releaseAll();
+});
 
 test('explicit route observations share only the case socket; retained handles never rebind on push', async () => {
   let role = 'parent', connections = 0, closes = 0;
