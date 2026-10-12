@@ -7,7 +7,7 @@ import { videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action
 
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
-  const deepLocate = variableBridge ? '${videoDeepLocate}' : true;
+  const deepLocate = variableBridge ? '${videoDeepLocate}' : false;
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBoundary.py', import.meta.url), 'utf8');
   const events = JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./extract-video-boundary.py', import.meta.url))], {
     input: JSON.stringify({ source, platform }), encoding: 'utf8',
@@ -45,7 +45,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
       assert.ok(label, 'Missing original visible label for ' + value);
       return { aiAct: {
         prompt: `When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
-        options: { deepLocate, cacheable: false },
+        options: { effort: 'deepThink', deepLocate, cacheable: false },
       } };
     }),
   ];

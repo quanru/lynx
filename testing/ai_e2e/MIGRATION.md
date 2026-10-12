@@ -1,6 +1,6 @@
 # Native integration migration scope
 
-## Current checkpoint (2026-10-12)
+## Current checkpoint (2026-10-13)
 
 Run [38212166291](https://github.com/quanru/lynx/actions/runs/38212166291)
 at `a48b56f` completed Android 11/13 and iOS 16/20. Contract checks, both
@@ -36,7 +36,7 @@ inside closed playback fragments. `aiLocate` receives a specific public
 `getUIContext()` snapshot; its point is converted using that snapshot's
 `shrunkShotToLogicalRatio`, not a hard-coded DPR. Geometry/bounds and cancellation
 are checked before physical input. Original screenshots remain in source order;
-ordinary actions remain `aiAct`. All 192 model-free checks pass on Node 22.
+ordinary actions remain `aiAct`. All 199 model-free checks pass on Node 22.
 
 The hosted immutable-screenshot control
 [38272407575](https://github.com/quanru/lynx/actions/runs/38272407575)
@@ -45,20 +45,39 @@ Full-frame `aiLocate` retains its neighbors and selects the second button.
 The two crowded timed seek targets now use full-frame visual location; other
 targets keep deep refinement. No target coordinates are stored in the cases.
 One static sample is not a device-run reliability claim. Ordinary `aiAct`
-planning is a separate path: turning off its deep refinement would reuse the
-planner's point, not perform a new independent full-frame location.
+balanced planning is a separate path: turning off only its deep refinement
+would reuse the planner's point, not perform a new independent location.
 
 The follow-up screenshot control
 [38273920808](https://github.com/quanru/lynx/actions/runs/38273920808)
 keeps the same SDK/model/images and removes the extra coordinate-conversion
 `aiAct` context. Balanced planning then hits all three marked targets, versus
 one of three with that context; fast/deep-think still each miss a target.
-The integration removes only the extra context and keeps default balanced
+Head `907fe44` removed only the extra context and kept default balanced
 planning and SDK coordinate handling. These small static controls do not
 establish reliability. Run `38270018228` stopped before video cases after a
 wrong URL-input tap led to repeated navigation, a 180-second timeout and
 subsequent WDA connection/resource-drain failures. Its video fixes remain
 device-unverified; timeout, retry and original acceptance limits are unchanged.
+The repeated full iOS action-space control
+[38276353714](https://github.com/quanru/lynx/actions/runs/38276353714)
+still misses URL input/Open twice each with default planning, despite hitting
+Seek 2s twice. The Tap-only improvement does not generalize to real action
+schemas; removing context alone is not a complete grounding fix.
+
+The next control uses the complete iOS action schemas, `effort: deepThink`
+and `deepLocate: false`, without extra context. SDK 1.13.1 then plans without
+inline coordinates and independently locates on the complete screenshot.
+In [38279235964](https://github.com/quanru/lynx/actions/runs/38279235964), URL
+input, Seek 2s and Open are each correctly located twice. Src Bad first requests
+Scroll in both trials; the static control cannot determine its later outcome.
+Ordinary native YAML actions and pre-playback visibility preparation now use
+this configuration, preserving all prompts and original contracts. A real SDK
+test with a local inert model endpoint verifies the independent two-request
+path and uncropped image. No stored coordinates or atomic action nodes are
+introduced. This is not a complete device pass. The preceding control
+38278584243 hit model transport timeouts, not grounding failures; the successful
+control uses the same IPv4 Node options as the device workflow.
 
 The independent unchanged Appium control in
 [38190434034](https://github.com/quanru/lynx/actions/runs/38190434034)
@@ -74,8 +93,14 @@ test instantiated an abstract LynxContext. The corrected test explicitly
 implements that context and initializes its detached owner; all five tests
 pass in [38274270887](https://github.com/quanru/lynx/actions/runs/38274270887),
 with downloaded XML confirming zero failures. XML/HTML results are retained
-even on failed builds. Both unchanged Appium and Midscene cases must still
-pass against a newly published source APK before device acceptance.
+even on failed builds. The unchanged original Appium VideoBoundary passes in
+[38279593401](https://github.com/quanru/lynx/actions/runs/38279593401), consuming
+the `907fe44` source APK from build run 38275815434. The control enters the
+actual case body, records `Caseset passed!`, verifies unchanged test checksums
+and proves the installed APK payload identity. Producer checks require the
+exact successful Android build job in the pinned attempt, even while unrelated
+model-backed jobs are still running. This is original-case acceptance only;
+the migrated Midscene suite must pass separately.
 
 The 13/20 totals count modules, including three additive smoke cases per
 platform. They are not a repository-wide native test inventory or counts of

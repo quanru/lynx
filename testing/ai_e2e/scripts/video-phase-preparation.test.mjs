@@ -21,7 +21,7 @@ test('crowded seek-row preparation uses source-owned neighbors and does not dema
   assert.match(calls[0][1], /finish without scrolling/);
   assert.match(calls[0][1], /scrolling cannot reveal text clipped inside a button/);
   assert.match(calls[1][1], /center INSIDE the actual blue button body/);
-  assert.deepEqual(calls.map(call => call[2]), [{ deepLocate: false, cacheable: false }, { deepLocate: false, cacheable: false, uiContext }]);
+  assert.deepEqual(calls.map(call => call[2]), [{ effort: 'deepThink', deepLocate: false, cacheable: false }, { deepLocate: false, cacheable: false, uiContext }]);
 });
 
 test('split phases retain the entire original ordered trace and only prepare at inactive source boundaries', () => {

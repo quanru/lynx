@@ -1,6 +1,6 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 192
+Current implementation collects Android 13 / iOS 20 cases and passes 199
 model-free checks on Node 22, plus typechecking and
 workflow validation. Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.
@@ -25,22 +25,33 @@ Hosted regression checks cover request completion, cancellation, stale callbacks
 and queue/latest/direct behavior. All five Robolectric tests passed in
 [38274270887](https://github.com/quanru/lynx/actions/runs/38274270887), after
 correcting the abstract/detached LynxContext test fixture. CI retains their
-XML/HTML results even if the source build fails. This is scheduler regression
-evidence, not device acceptance of Media3 playback or the unchanged Appium case.
+XML/HTML results even if the source build fails. The unchanged original
+VideoBoundary also passes in [38279593401](https://github.com/quanru/lynx/actions/runs/38279593401)
+against the `907fe44` APK from source-build run 38275815434. Its original test
+files remain checksum-identical and the installed APK payload is verified.
+This validates the original Android case, not the migrated Midscene suite.
 Static hosted screenshot controls also reproduce deep refinement selecting the
 wrong crowded seek button. Timed seek preparation now preserves the full row
 for visual location, without stored target coordinates or weaker assertions.
 Other button locations retain deep refinement; ordinary actions remain aiAct.
-The extra coordinate-conversion aiAct context has been removed: hosted static
-controls recover all three inspected targets with default balanced planning.
-The SDK retains coordinate handling; this limited evidence is not suite-wide
-acceptance. Run 38270018228 stopped during Sparkling after wrong-target
-navigation and a step timeout, before reaching the video cases.
+Ordinary `aiAct` uses `effort: deepThink, deepLocate: false, cacheable: false`,
+without extra coordinate-conversion context. In SDK 1.13.1, this separates
+planning from full-frame visual location; balanced planning with only
+deepLocate disabled would instead reuse the planner's inline point. A public
+SDK regression verifies two separate requests and the uncropped locate image.
+Full iOS action-space control [38279235964](https://github.com/quanru/lynx/actions/runs/38279235964)
+locates URL input, Seek 2s and Open correctly in two trials each. Src Bad first
+requests Scroll, which a static first-action control cannot evaluate. Earlier
+Tap-only controls did not generalize to full action schemas. These samples
+establish a grounding-path correction, not complete device acceptance; all
+original prompts, assertions, action counts and timing remain unchanged.
 No example page or baseline has been changed. The
 approved iOS-video-only viewport exception omits fixed physical width/height
 so existing Explorer uses its actual view bounds. Android video and every
 pixel/API fixture retain the original launch geometry. Video source operations,
 assertions and screenshots remain; remote screenshots must verify visibility.
+
+The checkpoints below are historical and retain their then-current status.
 
 Run 38056035286 (`7446d29`) completed with both device jobs cancelled at their
 60-minute job limits. Android video phases reached the 180-second step limit;

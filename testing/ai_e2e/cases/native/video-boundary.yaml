@@ -51,6 +51,7 @@ cases:
             "Src Bad" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -74,6 +75,7 @@ cases:
             "Src Empty" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -87,6 +89,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -96,6 +99,7 @@ cases:
             "Play" once. Do not click similarly named buttons or perform another
             action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -135,6 +139,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -144,6 +149,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -161,6 +167,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -174,6 +181,7 @@ cases:
             "Queue" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -187,6 +195,7 @@ cases:
             "Play Pause Empty" once. Do not click similarly named buttons or
             perform another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -249,6 +258,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -258,6 +268,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -275,6 +286,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -288,6 +300,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -297,6 +310,7 @@ cases:
             "Seek Empty" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -339,6 +353,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -355,6 +370,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -364,6 +380,7 @@ cases:
             "Seek Bad" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -393,6 +410,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -402,6 +420,7 @@ cases:
             "Seek Missing" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -431,6 +450,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -440,6 +460,7 @@ cases:
             "Seek Null" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -469,6 +490,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -478,6 +500,7 @@ cases:
             "Seek Text" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -507,6 +530,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -516,6 +540,7 @@ cases:
             "Seek NaN" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -545,6 +570,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -554,6 +580,7 @@ cases:
             "Seek Inf" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -583,6 +610,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -592,6 +620,7 @@ cases:
             "Seek Huge" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -621,6 +650,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.videoPhase:
@@ -648,6 +678,7 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -657,6 +688,7 @@ cases:
             "Unknown" once. Do not click similarly named buttons or perform
             another action.
           options:
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:

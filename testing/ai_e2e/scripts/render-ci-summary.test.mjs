@@ -552,6 +552,38 @@ test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
   );
 });
 
+test('missing platform reports replace the stale site index without claiming a merged run', async (context) => {
+  const site = await mkdtemp(path.join(os.tmpdir(), 'midscene-incomplete-'));
+  context.after(() => rm(site, { recursive: true, force: true }));
+  for (const available of [true, false]) {
+    await writeFile(
+      path.join(site, 'index.html'),
+      '<meta http-equiv="refresh" content="0;url=runs/122-1/native-report.html">',
+    );
+    const reportPath = 'runs/123-1/ios/report/index.html';
+    const merged = await mergeNativeReports(
+      [
+        { label: 'Android <build>', result: 'failure' },
+        {
+          label: 'iOS',
+          result: 'failure',
+          ...(available ? { reportPath } : {}),
+        },
+      ],
+      site,
+      'runs/123-1',
+    );
+    assert.equal(merged, null);
+    const index = await readFile(path.join(site, 'index.html'), 'utf8');
+    assert.match(index, /Incomplete Midscene reports/);
+    assert.match(index, /runs\/123-1/);
+    assert.match(index, /Android &lt;build&gt;: failure/);
+    assert.match(index, /No report was produced/);
+    assert.doesNotMatch(index, /runs\/122-1|http-equiv|native-report|<build>/);
+    assert.equal(index.includes(`href="${reportPath}"`), available);
+  }
+});
+
 test('keeps prior run reports at immutable URLs', async (context) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
   context.after(() => rm(root, { recursive: true, force: true }));

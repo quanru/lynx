@@ -331,7 +331,30 @@ export async function preparePagesSite(
 }
 
 export async function mergeNativeReports(entries, siteDirectory, sitePrefix) {
-  if (entries.some((entry) => !entry.reportPath)) return null;
+  if (entries.some((entry) => !entry.reportPath)) {
+    // A missing platform report must not leave the archived index pointing to
+    // an older, complete run. Keep current evidence links without implying a
+    // complete merged report or inventing evidence for an unexecuted platform.
+    await mkdir(siteDirectory, { recursive: true });
+    const items = entries.map((entry) =>
+      `<li>${escapeHtml(entry.label)}: ${
+        escapeHtml(entry.result ?? 'unknown')
+      } — ${
+        entry.reportPath
+          ? `<a href="${
+            escapeHtml(entry.reportPath)
+          }">Open available report</a>`
+          : 'No report was produced; inspect this run’s Actions logs and artifacts.'
+      }</li>`
+    ).join('\n');
+    await writeFile(
+      path.join(siteDirectory, 'index.html'),
+      `<!doctype html><meta charset="utf-8"><title>Incomplete Midscene reports</title>\n<h1>⚠️ Incomplete Midscene reports</h1>\n<p>${
+        escapeHtml(sitePrefix || 'Current run')
+      }</p>\n<ul>${items}</ul>\n`,
+    );
+    return null;
+  }
   const { mergeReportFiles } = await import('@midscene/core');
   const htmlPaths = entries.map((entry) =>
     path.join(siteDirectory, entry.reportPath)

@@ -71,7 +71,7 @@ print(json.dumps(events))`], { input: JSON.stringify({ helpers, case: source }),
     assert.match(actions.at(-1).input.prompt, /Do not tap the separate Sparkling Go runtime selector/);
     assert.match(actions.at(-1).input.prompt, /smaller lower red Open button/);
     assert.match(actions.at(-1).input.prompt, /wider upper red control/);
-    for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
+    for (const action of actions) assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
     const contracts = steps.filter(s => s.node === 'native.sparkling').map(s => s.input);
     assert.deepEqual(contracts.slice(0, open[3] ? 3 : 2), open[3]
       ? [{ contract: 'home' }, { contract: 'runtime', runtime: open[3] }, { contract: 'parent' }]
@@ -144,7 +144,7 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
   assert.match(actions[3].input.prompt, /exactly once/);
   assert.match(actions[3].input.prompt, /parent page.*expected successful result/);
   assert.match(actions[3].input.prompt, /Do not tap anything on the returned parent page/);
-  for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
+  for (const action of actions) assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
   assert.deepEqual(steps[1].input, { duration: 10000, unit: 'ms' });
 });
 
@@ -182,7 +182,7 @@ namespace['run'](SimpleNamespace(start_step=lambda *args:None))
 print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
     const contracts = item.steps.filter(s => s.node === 'native.sparkling').map(s => s.input);
     const actions = item.steps.filter(s => s.node === 'aiAct');
-    for (const action of actions) assert.deepEqual(action.input.options, { deepLocate: true, cacheable: false });
+    for (const action of actions) assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
     assert.deepEqual(item.steps[1].input, { duration: 10000, unit: 'ms' });
     assert.ok(!item.steps.some(s => ['launch', 'aiTap', 'aiInput', 'native.cdp'].includes(s.node)));
     if (name === 'HotExternalURL') {

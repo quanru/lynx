@@ -91,7 +91,7 @@ export function originalVideoPlayback(name) {
       continue;
     }
     if (op.type === 'section') continue;
-    if (op.type === 'tap') steps.push({ aiAct: { prompt: 'Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly ' + JSON.stringify(op.label) + ' once. Do not click another button or perform another action.', options: { deepLocate: '${videoDeepLocate}', cacheable: false } } });
+    if (op.type === 'tap') steps.push({ aiAct: { prompt: 'Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly ' + JSON.stringify(op.label) + ' once. Do not click another button or perform another action.', options: { effort: 'deepThink', deepLocate: '${videoDeepLocate}', cacheable: false } } });
     else if (op.type === 'video') steps.push({ 'native.video': op.input });
     else if (op.type === 'core') {
       const { message, ...input } = op.input;

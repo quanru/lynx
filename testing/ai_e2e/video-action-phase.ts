@@ -5,7 +5,7 @@ import { prepareVideoButtons, tapPreparedVideoButton } from './video-button-prep
 
 export type VideoActionPhase = 'replace-playing-source' | 'stop-play-null';
 export interface VideoTimedAgent {
-  aiAct(prompt: string, options: { deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
+  aiAct(prompt: string, options: { effort: 'deepThink'; deepLocate: false; cacheable: false; abortSignal?: AbortSignal }): Promise<unknown>;
   addProgressListener(listener: AgentProgressListener): () => void;
   getUIContext(): Promise<UIContext>;
   aiLocate(prompt: string, options: { deepLocate: boolean; cacheable: false; uiContext: UIContext }): Promise<{ center: number[] }>;

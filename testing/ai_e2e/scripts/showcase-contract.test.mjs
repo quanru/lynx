@@ -16,7 +16,7 @@ test('Showcase navigation targets the visible card, not accumulated session hist
     assert.equal(cases.length, 2);
     for (const item of cases) {
       const goal = item.steps[1].input.prompt;
-      assert.deepEqual(item.steps[1].input.options, { deepLocate: true, cacheable: false });
+      assert.deepEqual(item.steps[1].input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
       assert.match(goal, /CENTER of the "Lynx Showcases" words/);
       assert.match(goal, /ABOVE "Sparkling Showcases"/);
       assert.match(goal, /ABOVE Session History/);
