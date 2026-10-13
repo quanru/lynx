@@ -14,30 +14,22 @@ const document = text => ({ nodeId: 0, nodeName: '#document', children: [
   ] },
 ] });
 
-test('crowded boundary seek actions preserve source order with platform-visible descriptions', () => {
+test('boundary seek actions preserve source order and match full labels on both platforms', () => {
   const fixture = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
   const row = fixture.slice(fixture.indexOf('lynx-test-tag="btn-seek-start"'), fixture.indexOf('lynx-test-tag="btn-src-primary"'));
   const labels = [...row.matchAll(/<text>([^<]+)<\/text>/g)].map(match => match[1]);
   assert.deepEqual(labels, ['Seek 0s', 'Seek 2s', 'Near End', 'Seek Bad', 'Seek Missing', 'Seek Null', 'Seek Text', 'Seek NaN', 'Seek Inf', 'Seek Huge']);
   for (const platform of ['android', 'ios']) {
     const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
-    const crowded = actions.filter(action => action.prompt.includes('blue seek row'));
-    assert.equal(crowded.length, 7);
-    crowded.forEach((action, index) => {
-      const localAnchor = platform === 'ios' && [0, 2, 3, 4].includes(index);
-      if (localAnchor) {
-        assert.ok(action.prompt.includes(labels[index + 3]));
-        assert.match(action.prompt, /^Tap once on the /);
-        const anchors = { 0: /RIGHT of "Near"/, 2: /FIRST white "Seek"/, 3: /TWO controls to the LEFT/, 4: /immediately to the LEFT/ };
-        assert.match(action.prompt, anchors[index]);
-      } else {
-        assert.match(action.prompt, new RegExp('^Click the single "' + labels[index + 3] + '" button once:'));
-        assert.ok(action.prompt.includes('ordered ' + labels.join(', ')));
-      }
-      assert.match(action.prompt, /(?:already on screen|row is visible), do not scroll/);
-      assert.match(action.prompt, /Stop after (?:the single click|that single tap)/);
-      assert.doesNotMatch(action.prompt, /\b\d+\s*(?:px|pixels)\b|\[\d+,\s*\d+\]/);
-      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: index !== 2, cacheable: false });
+    const seeks = actions.filter(action => action.prompt.includes('blue seek controls'));
+    assert.equal(seeks.length, 7);
+    seeks.forEach((action, index) => {
+      assert.ok(action.prompt.startsWith('Click the single button labeled exactly "' + labels[index + 3] + '" once'));
+      assert.match(action.prompt, /Match the complete label, including its suffix/);
+      assert.match(action.prompt, /already fully on screen, do not scroll/);
+      assert.match(action.prompt, /Stop after the single tap/);
+      assert.doesNotMatch(action.prompt, /clipped|Seel|NINTH|TENTH|\b\d+\s*(?:px|pixels)\b|\[\d+,\s*\d+\]/);
+      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
     });
   }
 });

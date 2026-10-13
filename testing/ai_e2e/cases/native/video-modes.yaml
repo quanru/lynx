@@ -55,8 +55,8 @@ cases:
           options: { effort: deepThink, deepLocate: "${videoDeepLocate}", cacheable: false }
       - aiAct:
           prompt: >-
-            Click the single Seek 2s button once: it is the SECOND blue control in the seek row immediately below Clear / Play / Play Null / Pause / Stop, between Seek 0s and Near End. Its fixed-width label may be clipped to See; use the row and neighbors to identify it. The later fourth control labeled Seek is not Seek 2s. If that second button body is already on screen, do not scroll; scrolling cannot unclip its text. Do not click any other button. Stop after the single click.
-          options: { effort: deepThink, deepLocate: false, cacheable: false }
+            Click the single button labeled exactly "Seek 2s" once in the video demo panel. Match the complete label, including "2s". If the button is already fully on screen, do not scroll. Otherwise scroll inside the light-gray video demo panel until the button is fully visible. Do not click any other button. Stop after the single tap.
+          options: { effort: deepThink, deepLocate: "${videoDeepLocate}", cacheable: false }
       - native.video: { tag: callback-log, contains: seek_ok }
       - aiAct:
           prompt: Click the individual playback button labeled exactly "Stop" once. Do not click either combined burst button.

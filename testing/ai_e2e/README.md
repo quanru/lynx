@@ -1,18 +1,31 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current local implementation collects Android 13 / iOS 20 cases and passes 211
+Current local implementation collects Android 13 / iOS 20 cases and passes 213
 model-free checks on Node 22, plus typechecking and
 workflow validation.
 
 Head `0f9b58d`, [run 38321539093](https://github.com/quanru/lynx/actions/runs/38321539093),
-finishes iOS 20/20 (19 first attempts, VideoAttributes on retry). HotExternalURL
+finishes Android 13/13 and iOS 20/20, each with one complete-case retry. All
+publication jobs succeed; all 33 linked previews load and 36 image/HTML URLs
+return HTTP 200. This is not complete input acceptance: the iOS VideoBoundary
+trace targets Seek Huge when asked for Seek Inf, and the identical original
+error assertions hide the wrong input. HotExternalURL
 captures a structured root `/elements` 404 `stale element reference`, then
 passes its role assertion in 3,704 ms inside the original 15-second deadline.
-All seven Sparkling cases pass first attempts. Android and publication are
-still running. This follow-up retains the source polling window described
-below, identifies Seek 0s by its original first-button neighbors, and always
-uploads WDA logs, including successful jobs containing a failed case attempt.
-It changes no product implementation, fixture, assertion or playback timing.
+All seven Sparkling cases pass first attempts.
+
+The approved fixture-only follow-up splits the ten seek controls into two rows
+of five, overriding minimum width and spacing only for those buttons. The
+player geometry, labels, test tags, handlers, input parameters, media and
+original Python tests are unchanged. Public visual prompts now match complete
+labels with independent refinement, removing clipped-text and ordinal guesses.
+The page appearance changes; this is not an unchanged-fixture claim or proof
+that the model can read the old clipped layout. Both native platforms require
+fresh complete-case validation and actual input/screenshot audits, including
+joint visibility of prepared controls before timed fragments. No model work or
+scrolling is added during playback. This also retains the source polling-window
+correction below and always uploads WDA logs, including successful jobs with a
+failed first attempt. No additional player implementation is changed.
 
 VideoAttributes' first interval preparation locates Seek 0s inside Near End;
 the retry locates the first button and passes all 49 steps. The subsequent

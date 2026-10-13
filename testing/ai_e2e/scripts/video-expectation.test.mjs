@@ -170,12 +170,12 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
       if (step.node === 'recordToReport') return ['screenshot', 'mode_direct'];
       assert.equal(step.node, 'aiAct');
       if (index === 9) {
-        assert.match(step.input.prompt, /^Click the single Seek 2s button once:/);
-        assert.match(step.input.prompt, /SECOND blue control/);
-        assert.match(step.input.prompt, /between Seek 0s and Near End/);
-        assert.match(step.input.prompt, /already on screen, do not scroll/);
+        assert.match(step.input.prompt, /^Click the single button labeled exactly "Seek 2s" once/);
+        assert.match(step.input.prompt, /Match the complete label, including "2s"/);
+        assert.doesNotMatch(step.input.prompt, /clipped|SECOND|Near End/);
+        assert.match(step.input.prompt, /already fully on screen, do not scroll/);
       } else assert.ok(step.input.prompt.includes('"' + labels[index] + '"'));
-      assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: index !== 9, cacheable: false });
+      assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
       return ['click', tags[index++]];
     });
     assert.equal(index, 11);

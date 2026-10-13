@@ -3,15 +3,27 @@
 ## Current checkpoint (2026-10-13)
 
 Head `0f9b58d`, [run 38321539093](https://github.com/quanru/lynx/actions/runs/38321539093),
-finishes iOS 20/20: 19 first attempts and one VideoAttributes retry. The complete
+finishes Android 13/13 and iOS 20/20, each with one complete-case retry. The complete
 HotExternalURL case now exercises root `/elements` stale-element recovery,
 passing the original role assertion in 3,704 ms inside its 15-second deadline.
-All seven Sparkling cases pass first attempts. Android and publication remain
-pending. The earlier head's results below remain historical evidence.
+All seven Sparkling cases pass first attempts. Publication succeeds: 33 linked
+previews load and all 36 distinct image/HTML URLs return HTTP 200. However,
+iOS VideoBoundary physically targets Seek Huge instead of Seek Inf; identical
+source error assertions allow this wrong input to pass. Runner success is not
+complete migration acceptance. Earlier results remain historical evidence.
 
-The current local follow-up passes 211 model-free checks and typechecking.
-It combines the source polling-window correction below with a source-owned
-first-button description for Seek 0s and unconditional WDA log retention.
+The user-approved fixture follow-up passes 213 model-free checks. It splits
+only the seek controls into two rows of five and scopes flexible widths and
+spacing to those buttons. All ten labels, tags and input bindings are checked
+against their original values; player geometry and original tests are retained.
+Visual prompts now use complete labels and normal independent refinement on
+both platforms, replacing the old clipped-text and ordinal workarounds.
+Screenshots and control positions change, so this is explicitly a fixture
+layout adjustment, not immutable-fixture acceptance. Verify actual target
+inputs and simultaneous timed-control visibility in both original and migrated
+device runs before accepting it. No source assertion, media, playback timing or
+additional player implementation changes. The source polling-window correction
+below and unconditional WDA log retention are included.
 The first VideoAttributes interval attempt visibly locates Seek 0s inside
 Near End; the retry locates the first control and passes all 49 original steps.
 The failed attempt's physical request log was lost because the job ultimately

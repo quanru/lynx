@@ -13,7 +13,7 @@ export async function makeVideoButtonsVisible(agent: VideoTimedAgent, labels: re
     if (event.scope === 'aiAct' && event.phase === 'action_running' && data?.action?.name !== 'Scroll') unexpectedAction = true;
   });
   try {
-    await agent.aiAct('Before the timed video fragment, make these buttons visible together: ' + unique.map(label => JSON.stringify(label)).join(', ') + '. The blue controls use crowded fixed-width rows: their labels may be truncated even when the buttons are fully on screen. The seek row directly below Clear/Play/Play Null/Pause/Stop starts with Seek 0s, then Seek 2s, then Near End; Seek 2s is the SECOND blue control in that row, not the status text. Use the visible row and neighbors to identify a truncated label. If the target button bodies are already on screen, finish without scrolling; scrolling cannot reveal text clipped inside a button. Scroll inside the actual gray video demo panel only if a button body is off screen. Do not tap any button, change playback or scroll the blank area outside the panel.', { effort: 'deepThink', deepLocate: false, cacheable: false, ...(signal ? { abortSignal: signal } : {}) });
+    await agent.aiAct('Before the timed video fragment, make these buttons visible together: ' + unique.map(label => JSON.stringify(label)).join(', ') + '. Match their complete visible labels, including seek suffixes. If all target button bodies and labels are already on screen, finish without scrolling. Scroll inside the actual gray video demo panel only if a target is off screen. Do not tap any button, change playback or scroll the blank area outside the panel.', { effort: 'deepThink', deepLocate: false, cacheable: false, ...(signal ? { abortSignal: signal } : {}) });
   } finally { remove(); }
   signal?.throwIfAborted();
   if (unexpectedAction) throw new Error('Video visibility preparation performed a non-scroll action.');
@@ -28,14 +28,7 @@ export async function locateVideoButton(agent: VideoTimedAgent, label: string, s
   const ratio = uiContext.shrunkShotToLogicalRatio;
   const { width, height } = uiContext.shotSize;
   if (![ratio, width, height].every(value => Number.isFinite(value) && value > 0)) throw new Error('Invalid video location screenshot geometry.');
-  // These clipped labels require the full row's relative positions. Hosted
-  // screenshot controls reproduced deep refinement selecting another seek
-  // button; full-frame grounding retained the correct source-owned neighbors.
-  const deepLocate = label !== 'Seek 0s' && label !== 'Seek 2s';
-  const seekAnchor = label === 'Seek 0s'
-    ? 'Seek 0s is the FIRST, leftmost blue control in the seek row directly below Clear/Play/Play Null/Pause/Stop. It is below Clear and immediately LEFT of Seek 2s; Near End is the THIRD control, not the target. Identify the first button body even when its text shows only "See".'
-    : 'For Seek 2s, use the second control in the seek row directly below Clear/Play/Play Null/Pause/Stop, between Seek 0s and Near End.';
-  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Labels in crowded blue rows can be truncated. Locate the center INSIDE the actual blue button body, not its text baseline, status text or blank space. ' + seekAnchor, { deepLocate, cacheable: false, uiContext });
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Match its complete label, including any seek suffix. Locate the center INSIDE the actual blue button body, not its text baseline, another button, status text or blank space.', { deepLocate: true, cacheable: false, uiContext });
   // The pinned aiLocate API cannot abort an in-flight request. Never accept a
   // late result or start a subsequent physical action after cancellation.
   signal?.throwIfAborted();

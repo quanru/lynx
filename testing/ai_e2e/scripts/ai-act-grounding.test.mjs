@@ -7,12 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { collectWorkflowDocument } from '@midscene/test';
 import { loadTestProject } from '@midscene/test/config';
 
-test('native actions independently refine small controls but retain full-frame navigation and crowded seek context', async () => {
+test('native actions independently refine video controls but retain full-frame navigation', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const project of loaded.projects) {
     const dirs = ['cases/native', ...(project.name.startsWith('ios') ? ['cases/ios-sparkling'] : [])];
-    let count = 0, crowdedCount = 0;
+    let count = 0;
     for (const dir of dirs) for (const file of readdirSync(root + dir).filter(file => /\.ya?ml$/.test(file))) {
       const sourcePath = dir + '/' + file;
       const document = collectWorkflowDocument({ projectId: project.projectId, projectName: project.name,
@@ -21,21 +21,14 @@ test('native actions independently refine small controls but retain full-frame n
       });
       for (const item of document.cases) for (const step of item.definition.steps) if (step.node === 'aiAct') {
         count++;
-        const crowdedSeek = (sourcePath === 'cases/native/video-modes.yaml'
-          && step.input.prompt.startsWith('Click the single Seek 2s button once:'))
-          || (sourcePath === 'cases/native/video-boundary.yaml'
-            && (step.input.prompt.startsWith('Click the single "Seek Null" button once:')
-              || step.input.prompt.includes('This is the Seek Null control;')));
-        if (crowdedSeek) crowdedCount++;
         const inlineText = project.name.startsWith('ios') && sourcePath === 'cases/native/event.yaml'
           && step.input.prompt.startsWith('Click only the inline text');
-        const deepLocate = (/^cases\/native\/video-/.test(sourcePath) && !crowdedSeek) || inlineText;
+        const deepLocate = /^cases\/native\/video-/.test(sourcePath) || inlineText;
         assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate, cacheable: false },
           `${project.name}/${sourcePath}/${item.definition.name}`);
       }
     }
     assert.ok(count > 0, 'The contract must inspect actual collected actions');
-    assert.equal(crowdedCount, 2, 'Keep full-frame grounding for exactly Seek 2s and Seek Null');
   }
 });
 

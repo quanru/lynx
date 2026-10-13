@@ -53,6 +53,18 @@
   font-size: 12px;
 }
 
+/* Keep every seek suffix readable without changing the player geometry. */
+.seek-controls .button {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 2px;
+  margin: 0 2px;
+}
+
+.seek-controls .button text {
+  text-align: center;
+}
+
 .log {
   font-size: 12px;
   color: #666;

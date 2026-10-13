@@ -449,7 +449,7 @@ cases:
           prompt: ${videoBoundarySeekNull}
           options:
             effort: deepThink
-            deepLocate: false
+            deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
           tag: callback-log
