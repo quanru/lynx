@@ -43,22 +43,28 @@ export function createVisibleNativeSessions(connect: () => Promise<NativeConnect
     lease.client = undefined;
   }
   return {
-    async observe(runId: string, tag: string, expectedText?: string, timeoutMs = 20_000) {
+    async observe(runId: string, tag: string, expectedText?: string, timeoutMs = 20_000, observationDeadline?: number) {
       if (typeof tag !== 'string' || !tag || expectedText !== undefined && typeof expectedText !== 'string'
-        || !Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Invalid visible native observation.');
+        || !Number.isFinite(timeoutMs) || timeoutMs <= 0
+        || observationDeadline !== undefined && (!Number.isFinite(observationDeadline) || observationDeadline <= 0)) throw new Error('Invalid visible native observation.');
       const lease = leaseFor(runId);
       const client = await lease.pending;
       check(lease);
       const reader = await getReader(runId);
       check(lease);
-      const deadline = Date.now() + timeoutMs;
+      // The source capability helper's two-second timeout gates starting a
+      // polling attempt, not completing it. An explicit enclosing assertion
+      // deadline bounds that in-flight observation; ordinary reads stay strict.
+      const deadline = Math.min(Date.now() + timeoutMs, observationDeadline ?? Infinity);
+      const completionDeadline = observationDeadline ?? deadline;
       for (;;) {
         const remaining = deadline - Date.now();
         if (remaining <= 0) throw new Error('Visible native fixture readiness timed out.');
         try {
-          const contexts = await reader.contexts(tag, remaining);
+          const contexts = await reader.contexts(tag, completionDeadline - Date.now());
           check(lease);
-          const identity = await resolveVisibleNativeSession(client, contexts, tag, expectedText, deadline - Date.now());
+          if (Date.now() >= completionDeadline) throw new Error('Visible native fixture readiness timed out.');
+          const identity = await resolveVisibleNativeSession(client, contexts, tag, expectedText, completionDeadline - Date.now());
           check(lease);
           const request = async (method: string, params?: Record<string, unknown>) => {
             check(lease);

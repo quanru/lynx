@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { locateVideoButton, tapPreparedVideoButton } from '../video-button-preparation.ts';
+
+test('Seek 0s grounding names its original first control rather than giving only Seek 2s guidance', async () => {
+  const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<text>Seek 0s<\/text>[\s\S]*?<text>Seek 2s<\/text>[\s\S]*?<text>Near End<\/text>/);
+  let prompt;
+  const agent = {
+    getUIContext: async () => ({ shrunkShotToLogicalRatio: 3, shotSize: { width: 1206, height: 2622 } }),
+    aiLocate: async (value, options) => { prompt = value; assert.equal(options.deepLocate, false); return { center: [54, 1783] }; },
+  };
+  assert.deepEqual(await locateVideoButton(agent, 'Seek 0s'), [18, 594]);
+  assert.match(prompt, /Seek 0s is the FIRST, leftmost blue control/);
+  assert.match(prompt, /below Clear and immediately LEFT of Seek 2s/);
+  assert.match(prompt, /Near End is the THIRD control, not the target/);
+  assert.doesNotMatch(prompt, /For Seek 2s, use the second/);
+});
 
 test('clipped seek labels retain the full visual row while other controls keep normal refinement', async () => {
   const modes = [];

@@ -32,7 +32,10 @@ export async function locateVideoButton(agent: VideoTimedAgent, label: string, s
   // screenshot controls reproduced deep refinement selecting another seek
   // button; full-frame grounding retained the correct source-owned neighbors.
   const deepLocate = label !== 'Seek 0s' && label !== 'Seek 2s';
-  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Labels in crowded blue rows can be truncated. Locate the center INSIDE the actual blue button body, not its text baseline, status text or blank space. For Seek 2s, use the second control in the seek row directly below Clear/Play/Play Null/Pause/Stop, between Seek 0s and Near End.', { deepLocate, cacheable: false, uiContext });
+  const seekAnchor = label === 'Seek 0s'
+    ? 'Seek 0s is the FIRST, leftmost blue control in the seek row directly below Clear/Play/Play Null/Pause/Stop. It is below Clear and immediately LEFT of Seek 2s; Near End is the THIRD control, not the target. Identify the first button body even when its text shows only "See".'
+    : 'For Seek 2s, use the second control in the seek row directly below Clear/Play/Play Null/Pause/Stop, between Seek 0s and Near End.';
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Labels in crowded blue rows can be truncated. Locate the center INSIDE the actual blue button body, not its text baseline, status text or blank space. ' + seekAnchor, { deepLocate, cacheable: false, uiContext });
   // The pinned aiLocate API cannot abort an in-flight request. Never accept a
   // late result or start a subsequent physical action after cancellation.
   signal?.throwIfAborted();

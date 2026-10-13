@@ -2,6 +2,28 @@
 
 ## Current checkpoint (2026-10-13)
 
+Head `0f9b58d`, [run 38321539093](https://github.com/quanru/lynx/actions/runs/38321539093),
+finishes iOS 20/20: 19 first attempts and one VideoAttributes retry. The complete
+HotExternalURL case now exercises root `/elements` stale-element recovery,
+passing the original role assertion in 3,704 ms inside its 15-second deadline.
+All seven Sparkling cases pass first attempts. Android and publication remain
+pending. The earlier head's results below remain historical evidence.
+
+The current local follow-up passes 211 model-free checks and typechecking.
+It combines the source polling-window correction below with a source-owned
+first-button description for Seek 0s and unconditional WDA log retention.
+The first VideoAttributes interval attempt visibly locates Seek 0s inside
+Near End; the retry locates the first control and passes all 49 original steps.
+The failed attempt's physical request log was lost because the job ultimately
+passed. Its paused-state failure chain is not fully proven, so no product fix
+or weaker assertion is inferred. Immutable screenshot control 38327440910
+scores both the old and new descriptions 8/8 across the two actual screenshots;
+this validates candidate execution, not a measured reliability gain. No new
+production coordinate, selector, action node or model call during playback is
+introduced. Complete new-head CI is required after push.
+
+### Previous root-recovery baseline
+
 Head `160e97e`, [run 38307906560](https://github.com/quanru/lynx/actions/runs/38307906560),
 finishes Android 13/13 (all first attempts) and iOS 19/20. All four complete
 video cases pass first attempts on each platform. Each of the fourteen crowded
@@ -30,12 +52,42 @@ typechecking pass; complete new-head acceptance remains pending.
 
 [AI-action control 38319752085](https://github.com/quanru/lynx/actions/runs/38319752085)
 passes two baseline trials and one candidate trial. The fourth trial fails a
-capability observation when a root query takes 2,508 ms against the original
-two-second binding limit. The unchanged original Appium case then fails its
+capability observation when a root query takes 2,508 ms against the
+then-migrated hard two-second binding limit. The unchanged original Appium case then fails its
 homepage readiness assertion. Neither this control nor the four passing
 native-alert trials captures a root stale/missing response, so the recovery
 branch remains unexercised on a live device. These distinct failures remain
 recorded; deadlines, assertions and source fixtures are unchanged.
+
+Follow-up control `38323535786`, attempt 2, passes all four SDK trials and the
+unchanged original HotExternalURL. It captures a real root POST /elements
+HTTP 404 `stale element reference` in the third trial, followed by a successful
+fresh query. The complete role observation takes 3,552 ms within its original
+15-second limit. This exercises root recovery on the simulator; the earlier
+main-run error's missing structured payload remains unavailable. Artifact
+`11780937449` passes CRC verification and preserves the unchanged original
+checksums, candidate hashes and all 162 matching installed-app files.
+
+### Capability polling-window parity follow-up
+
+Executing the unchanged original Python helper with a controlled 2,508 ms
+valid observation proves that its `timeout=2` gates the next polling attempt,
+not completion of an already-started one. The migration incorrectly converted
+that window into a hard deadline. The local follow-up retains the two-second
+retry window and the existing 15-second capability assertion deadline, but
+lets an in-flight observation complete between them. It still validates the
+entire native/CDP identity and original result; zero matches after the retry
+window, invalid sessions, malformed responses and outer-deadline overruns fail.
+Ordinary observations keep their current hard deadlines. A repeated nonempty
+value check shares the same absolute assertion deadline, never resetting it.
+
+The source-function differential and three deadline regressions fail before
+the change, then pass. All 209 local model-free checks, typechecking and workflow
+validation pass. The follow-up is not yet pushed to the main PR; independent
+device comparison passes both source-window trials, but their capability
+observations take less than two seconds. The source-function differential,
+not this device run, proves the timing gap. Complete new-head acceptance is
+still required.
 
 ## Previous grounding checkpoint
 

@@ -358,7 +358,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
         let contract = sparklingContracts.get(runId);
         if (!contract) {
           const request = (method: 'GET' | 'POST', endpoint: string, data?: unknown) => device.runWdaRequest(method, endpoint, data);
-          contract = createSparklingContracts((tag, expectedText, timeoutMs) => visibleSessions.observe(runId, tag, expectedText, timeoutMs), await visibilityReader(runId), {
+          contract = createSparklingContracts((tag, expectedText, timeoutMs, observationDeadline) => visibleSessions.observe(runId, tag, expectedText, timeoutMs, observationDeadline), await visibilityReader(runId), {
             readAlert: (timeoutMs) => readOwnedRouteAlert(request, timeoutMs),
             openExternal: (route) => deliverOwnedExternalRoute(request, route),
           });

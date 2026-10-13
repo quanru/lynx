@@ -445,7 +445,8 @@ jobs:
             --output "$GITHUB_STEP_SUMMARY"
 
       - name: Upload WDA log
-        if: failure()
+        # A successful job may contain a failed first case attempt.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: midscene-ai-e2e-log-ios-wda-${{ github.run_attempt }}

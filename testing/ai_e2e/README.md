@@ -1,8 +1,27 @@
 # AI E2E for Lynx Explorer (Midscene)
 
-Current implementation collects Android 13 / iOS 20 cases and passes 205
+Current local implementation collects Android 13 / iOS 20 cases and passes 211
 model-free checks on Node 22, plus typechecking and
 workflow validation.
+
+Head `0f9b58d`, [run 38321539093](https://github.com/quanru/lynx/actions/runs/38321539093),
+finishes iOS 20/20 (19 first attempts, VideoAttributes on retry). HotExternalURL
+captures a structured root `/elements` 404 `stale element reference`, then
+passes its role assertion in 3,704 ms inside the original 15-second deadline.
+All seven Sparkling cases pass first attempts. Android and publication are
+still running. This follow-up retains the source polling window described
+below, identifies Seek 0s by its original first-button neighbors, and always
+uploads WDA logs, including successful jobs containing a failed case attempt.
+It changes no product implementation, fixture, assertion or playback timing.
+
+VideoAttributes' first interval preparation locates Seek 0s inside Near End;
+the retry locates the first button and passes all 49 steps. The subsequent
+paused-state timeout is not fully explained by the retained evidence because
+the old workflow skipped WDA upload after the retry passed. Immutable-screenshot
+control [38327440910](https://github.com/quanru/lynx/actions/runs/38327440910)
+hits 8/8 marked regions with both the exact baseline and first-button anchor.
+This checks the candidate on both actual images; it does not establish a
+statistical reliability improvement or replace current-head device acceptance.
 
 At head `160e97e`, [run 38307906560](https://github.com/quanru/lynx/actions/runs/38307906560)
 passes Android 13/13 on first attempts and iOS 19/20. All eight platform video
@@ -28,11 +47,37 @@ full SDK error. Complete new-head device acceptance remains pending.
 [Focused AI-action control 38319752085](https://github.com/quanru/lynx/actions/runs/38319752085)
 passes both baseline trials and one candidate trial. The other candidate trial
 fails a capability observation: its root query takes 2,508 ms against the
-original two-second binding limit. The subsequent unchanged original Appium
+then-migrated hard two-second binding limit. The subsequent unchanged original Appium
 case also fails its homepage readiness assertion. These are separate failures,
 not evidence for widening either deadline. No root stale/missing response is
 captured in this comparison or the four passing native-alert trials; neither
 experiment exercises the recovery branch or proves the main failure fixed.
+
+Follow-up control [38323535786, attempt 2](https://github.com/quanru/lynx/actions/runs/38323535786)
+passes all four SDK trials and the unchanged original HotExternalURL. Its
+third trial captures POST /elements HTTP 404 `stale element reference` when
+WDA loses the second root identity. A fresh root observation then completes
+the original role assertion in 3,552 ms inside its existing 15-second limit.
+This exercises the narrow root recovery on a real simulator. All 162 installed
+app files match the earlier original control; source checksums are unchanged.
+Artifact `11780937449` passes CRC verification. Attempt 1 only failed WDA
+startup, before any case ran. The old main-run 404 had no structured payload;
+this reproduces its observed native race pattern, not the missing old response.
+
+A separate source-function differential establishes the capability timeout
+divergence: the original `wait_for_visible_view(timeout=2)` accepts a valid
+observation that started inside the polling window and completes after 2,508 ms;
+the migrated hard deadline rejects it. The local follow-up preserves the
+two-second window for starting another observation while allowing an in-flight
+one to complete inside the existing 15-second capability assertion deadline.
+It still proves the full native/CDP identity and all original values, never
+starts another observation after the polling window, and never extends the
+outer assertion deadline. Other observations keep their existing hard limits.
+All 209 model-free checks, typechecking and workflow validation pass. This
+follow-up is not yet on the main PR or device-accepted; run 38321539093 still
+validates the separate root-query fix at `0f9b58d`.
+Both source-window device trials pass, but their capability reads remain
+under two seconds; they do not reproduce the controlled timing discrepancy.
 
 Complete VideoBasic and VideoAttributes cases preserve
 every original operation, wait, screenshot, predicate and speed/count sample.

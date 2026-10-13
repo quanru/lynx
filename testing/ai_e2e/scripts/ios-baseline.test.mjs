@@ -10,6 +10,17 @@ const udid = '11111111-2222-3333-4444-555555555555';
 const runtime = 'com.apple.CoreSimulator.SimRuntime.iOS-26-2';
 const device = { name: 'iPhone 17', isAvailable: true, udid };
 
+test('WDA evidence survives a successful job after a failed case attempt', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  const upload = workflow.split('      - name: Upload WDA log\n')[1]?.split('\n  report-bundle:')[0];
+  assert.ok(upload);
+  assert.match(upload, /if: always\(\)/);
+  assert.match(upload, /name: midscene-ai-e2e-log-ios-wda-\$\{\{ github.run_attempt \}\}/);
+  assert.match(upload, /path: \$\{\{ runner.temp \}\}\/wda-build\/wda.log/);
+  assert.match(upload, /if-no-files-found: ignore/);
+  assert.match(upload, /retention-days: 14/);
+});
+
 test('baseline toolchain rejects the actually observed Xcode 16.4 / iOS 18.5 defaults', () => {
   validateIOSToolchain(iosBaseline);
   for (const toolchain of [undefined, {}, { xcodeVersion: '16.4', simulatorSDK: '18.5' },

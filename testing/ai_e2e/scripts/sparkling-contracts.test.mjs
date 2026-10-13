@@ -13,16 +13,22 @@ const values = { ...mappedProperties, 'nav-container-type': 'sparkling', 'nav-co
   'nav-lynx-sdk-version': '1.0', 'nav-sparkling-navigation': '1', 'nav-spk-pipe': 'available',
   'nav-xelement-input': '', 'nav-is-notch-screen': 'yes', 'bundle-runtime-label': 'Open with Lynx' };
 
-test('Sparkling capability contract retains original ordered exact/nonempty/type checks', async () => {
+test('Sparkling capability contract retains original ordered exact/nonempty/type checks', async t => {
+  t.mock.method(Date, 'now', () => 1000);
   const observations = [], predicates = [];
-  const run = createSparklingContracts(async (tag, expected, timeout) => {
+  const run = createSparklingContracts(async (tag, expected, timeout, observationDeadline) => {
     observations.push([tag, expected ?? null, timeout]);
+    assert.equal(observationDeadline, timeout === 2000 ? 16000 : undefined);
     return { readDocument: async () => root(values) };
   }, { displayedTypes: async tag => { predicates.push(tag); return ['XCUIElementTypeTextField']; } });
   await run({ contract: 'sparkling' });
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/sparkling/helpers.py', import.meta.url), 'utf8');
   const reference = JSON.parse(execFileSync('python3', ['-c', `import ast,json,sys
 tree=ast.parse(sys.stdin.read())
+nonempty_helper=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='assert_nonempty_tag')
+assert ast.literal_eval(nonempty_helper.args.defaults[-1])==15
+binding=next(n for n in ast.walk(nonempty_helper) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='wait_for_visible_view')
+assert next(ast.literal_eval(k.value) for k in binding.keywords if k.arg=='timeout')==2
 function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='assert_sparkling_capabilities')
 calls=[]
 forbidden_values={}
@@ -38,6 +44,23 @@ print(json.dumps({'calls':calls,'forbidden':forbidden_values}))`], { input: sour
   assert.deepEqual(observations, reference.calls);
   assert.deepEqual(Object.fromEntries(Object.entries(nonemptyCapabilities).map(([tag, forbidden]) => [tag, [...forbidden].sort()])), reference.forbidden);
   assert.deepEqual(predicates, ['nav-xelement-input']);
+});
+
+test('capability binding retains one absolute assertion deadline across incomplete values', async t => {
+  let now = 1000, reads = 0;
+  t.mock.method(Date, 'now', () => now);
+  const observations = [];
+  const run = createSparklingContracts(async (tag, _expected, timeout, observationDeadline) => {
+    if (tag === 'nav-container-id') {
+      observations.push([timeout, observationDeadline]);
+      now += ++reads === 1 ? 2508 : 10;
+      return { readDocument: async () => root({ ...values, 'nav-container-id': reads === 1 ? 'absent' : 'container-123' }) };
+    }
+    return { readDocument: async () => root(values) };
+  }, {});
+  await run({ contract: 'rememberParent' });
+  assert.deepEqual(observations, [[2000, 16000], [2000, 16000]]);
+  assert.equal(reads, 2);
 });
 
 test('runtime and Legacy checks reuse original handles without SessionList rediscovery', async () => {
