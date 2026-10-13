@@ -1,0 +1,22 @@
+[
+  {
+    "name": "baseline-1",
+    "image": "9200dc86-f7ec-4909-a448-67e65dba1eee.jpeg",
+    "prompt": "Click the single \"Seek Inf\" button once: it is the NINTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek NaN and Seek Huge. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click."
+  },
+  {
+    "name": "visible-inf-anchor-1",
+    "image": "9200dc86-f7ec-4909-a448-67e65dba1eee.jpeg",
+    "prompt": "Tap once on the narrow white label that looks like \"Seel\", immediately to the LEFT of the rightmost two-line \"Seek Huge\" control. This is the Seek Inf control, SECOND from the RIGHT in the blue seek row; its suffix is clipped. Do not tap \"Seek Huge\" or the \"Seek\" control on the other side of \"Seel\". These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the narrow white \"Seel\" text itself. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap."
+  },
+  {
+    "name": "baseline-2",
+    "image": "6c4e9327-af6c-47ee-af91-c817f41dd58e.jpeg",
+    "prompt": "Click the single \"Seek Inf\" button once: it is the NINTH control from the LEFT in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above the Src A / Src B row. That row contains ten controls, ordered Seek 0s, Seek 2s, Near End, Seek Bad, Seek Missing, Seek Null, Seek Text, Seek NaN, Seek Inf, Seek Huge. It is between Seek NaN and Seek Huge. Labels overlap or are clipped; use this row and its order. Click inside that control's blue body. If the row is already on screen, do not scroll; scrolling cannot unclip text. Do not click any other control. Stop after the single click."
+  },
+  {
+    "name": "visible-inf-anchor-2",
+    "image": "6c4e9327-af6c-47ee-af91-c817f41dd58e.jpeg",
+    "prompt": "Tap once on the narrow white label that looks like \"Seel\", immediately to the LEFT of the rightmost two-line \"Seek Huge\" control. This is the Seek Inf control, SECOND from the RIGHT in the blue seek row; its suffix is clipped. Do not tap \"Seek Huge\" or the \"Seek\" control on the other side of \"Seel\". These controls are in the blue seek row directly below Clear / Play / Play Null / Pause / Stop and above Src A / Src B. Click within the narrow white \"Seel\" text itself. If this row is visible, do not scroll; scrolling cannot unclip these labels. Stop after that single tap."
+  }
+]
