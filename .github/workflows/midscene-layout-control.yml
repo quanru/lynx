@@ -296,7 +296,9 @@ jobs:
           JS
       - name: Start isolated original Appium server
         run: |
-          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100"}' > "$CONTROL_DIR/appium.log" 2>&1 &
+          # Original video actions use CDP, so Appium can be idle while the test runs.
+          # Match the original xelementTest.timeout (1800s), not assertion deadlines.
+          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100","appium:newCommandTimeout":1800}' > "$CONTROL_DIR/appium.log" 2>&1 &
           for _ in $(seq 1 30); do
             if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
             sleep 2
