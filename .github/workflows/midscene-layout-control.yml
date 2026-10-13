@@ -1,0 +1,383 @@
+name: Original video layout control (diagnostic only)
+on:
+  push:
+    branches:
+      - midscene/video-layout-control-a47143b
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: original-video-layout-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  android-original:
+    name: Original android four video cases (independent control)
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SOURCE_RUN_ID: "38332110055"
+      platform: android
+      server_host: http://127.0.0.1
+      server_port: "4723"
+      test_case_name: VideoBasic
+      ANDROID_API: "30"
+      ANDROID_ABI: x86_64
+      AVD_NAME: lynx_midscene
+    steps:
+      - name: Set diagnostic-only directories
+        run: |
+          printf 'APPIUM_HOME=%s/original-layout-android-appium\nCONTROL_DIR=%s/original-layout-android\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf '%s/platform-tools\n' "$ANDROID_HOME" >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          java-version: "17"
+          distribution: zulu
+      - name: Validate producer run identity
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/layout-control-producer.mjs
+      - name: Download exact current-layout application
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: midscene-explorer-source-android-${{ steps.producer.outputs.attempt }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original-layout-android/source-build
+      - name: Read build checkout identity
+        id: build
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync(`${process.env.CONTROL_DIR}/source-build/build.json`, 'utf8'));
+          if (!/^[a-f0-9]{40}$/.test(manifest.sha)) throw new Error('Invalid build revision');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${manifest.sha}\n`);
+          JS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - name: Verify revision, capabilities and checksum
+        env:
+          PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
+        run: node harness/testing/e2e_diagnostics/verify-layout-control-source.mjs
+      - name: Install pinned original framework and Appium
+        timeout-minutes: 15
+        run: |
+          # The legacy CI common-deps action also installs these tools; the
+          # framework uses six without declaring it in its wheel metadata.
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          # Unchanged lynx-e2e-appium's reporter imports pip's legacy stdlib_pkgs.
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          python3 source/testing/integration_test/test_script/manage.py runtest --help
+          PYTHONPATH=source/testing/integration_test/test_script python3 - <<'PY'
+          from pathlib import Path
+          from lynx_e2e._impl.manage.report import get_installed_distributions
+          from android_test.xelement import xelementTest
+          from lib.test_runner.case_set import CaseSet
+          get_installed_distributions()
+          import os
+          for name in ["VideoBasic","VideoAttributes","VideoBoundary","VideoModes"]:
+              os.environ['test_case_name'] = name
+              cases = CaseSet(case_set_path=str(Path('source/testing/integration_test/test_script/case_sets/xelement'))).get_cases()
+              assert [case.name for case in cases] == [name]
+          print('All four unchanged original video cases are selected independently.')
+          PY
+          npm install --prefix "$RUNNER_TEMP/original-control-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" driver install espresso@4.0.0
+      - name: Start identical headless emulator configuration
+        working-directory: source/testing/ai_e2e
+        timeout-minutes: 20
+        run: bash scripts/start-android-emulator.sh
+      - name: Prepare original Espresso signing and preserve payload provenance
+        run: |
+          set -euo pipefail
+          keys="$(node -e 'const p=require("node:path");const r=require.resolve("appium-adb/package.json",{paths:[process.env.APPIUM_HOME+"/node_modules/appium-espresso-driver"]});console.log(p.join(p.dirname(r),"keys"))')"
+          sdk_version="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$sdk_version/apksigner" sign --key "$keys/testkey.pk8" --cert "$keys/testkey.x509.pem" --out "$CONTROL_DIR/control.apk" "$CONTROL_DIR/source-build/LynxExplorer.apk"
+          python3 harness/testing/e2e_diagnostics/apk-provenance.py "$CONTROL_DIR/source-build/LynxExplorer.apk" "$CONTROL_DIR/control.apk" "$CONTROL_DIR/apk-provenance.json"
+          adb shell wm density 320
+          adb install -r -g "$CONTROL_DIR/control.apk"
+          adb shell getprop ro.build.fingerprint > "$CONTROL_DIR/device-fingerprint.txt"
+          adb shell wm size > "$CONTROL_DIR/device-size.txt"
+          adb shell wm density > "$CONTROL_DIR/device-density.txt"
+      - name: Start Appium and retain diagnostic logs
+        run: |
+          nohup "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp > "$CONTROL_DIR/appium.log" 2>&1 &
+          nohup adb logcat > "$CONTROL_DIR/device.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original control Appium server did not become ready'
+          exit 1
+      - name: Run all four unchanged original video cases
+        id: original
+        timeout-minutes: 40
+        working-directory: source/testing/integration_test/test_script
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          overall=0
+          for original_case in VideoBasic VideoAttributes VideoBoundary VideoModes; do
+            export test_case_name="$original_case"
+            python3 manage.py runtest android_test.xelement 2>&1 | tee "$CONTROL_DIR/original-$original_case.log"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              grep -Eq "Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*${original_case}[[:space:]]*\]" "$CONTROL_DIR/original-$original_case.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original-$original_case.log" || status=1
+            fi
+            printf '%s\n' "$status" > "$CONTROL_DIR/original-$original_case-exit-code.txt"
+            if [ "$status" -ne 0 ]; then overall=1; fi
+          done
+          exit "$overall"
+      - name: Verify actual installed APK and unchanged source
+        if: always() && steps.original.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          installed="$(adb shell pm path com.lynx.explorer | tr -d '\r' | sed -n 's/^package://p' | head -n 1)"
+          test -n "$installed"
+          adb pull "$installed" "$CONTROL_DIR/installed.apk"
+          python3 harness/testing/e2e_diagnostics/apk-provenance.py "$CONTROL_DIR/control.apk" "$CONTROL_DIR/installed.apk" "$CONTROL_DIR/installed-apk-provenance.json"
+          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
+          PRODUCER_HEAD=a47143b4c95a51ff3b27eb07ad0a7b320e8c4208 node harness/testing/e2e_diagnostics/verify-layout-control-source.mjs
+      - name: Preserve original video evidence separately
+        if: always()
+        env:
+          ORIGINAL_OUTCOME: ${{ steps.original.outcome }}
+        run: |
+          mkdir -p "$CONTROL_DIR"
+          if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
+          if [ -f source/testing/ai_e2e/emulator.log ]; then cp source/testing/ai_e2e/emulator.log "$CONTROL_DIR/"; fi
+          if [ -f "$RUNNER_TEMP/original-ios-wda/wda.log" ]; then cp "$RUNNER_TEMP/original-ios-wda/wda.log" "$CONTROL_DIR/wda.log"; fi
+          printf '## Original android video layout control\n\nProducer: https://github.com/quanru/lynx/actions/runs/38332110055\n\nFour original cases: VideoBasic, VideoAttributes, VideoBoundary, VideoModes. Execution: %s.\n\nNo model credentials or migrated runner are used. Original Python files match the pre-layout hashes. The current app includes the approved seek-only layout adjustment. Setup failures do not establish original-case failures; inspect each case log and exit code. This is independent control evidence, not migrated acceptance.\n' "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload original layout control evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: original-layout-android-${{ github.run_attempt }}
+          path: |-
+            ${{ runner.temp }}/original-layout-android/*.json
+            ${{ runner.temp }}/original-layout-android/*.txt
+            ${{ runner.temp }}/original-layout-android/*.log
+            ${{ runner.temp }}/original-layout-android/screenshots
+          if-no-files-found: warn
+          retention-days: 14
+  ios-original:
+    name: Original ios four video cases (independent control)
+    if: github.repository == 'quanru/lynx'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      SOURCE_RUN_ID: "38332110055"
+      platform: ios
+      server_host: http://127.0.0.1
+      server_port: "4723"
+      test_case_name: VideoBasic
+      APPIUM_isHeadless: "True"
+    steps:
+      - name: Set diagnostic-only directories
+        run: |
+          printf 'APPIUM_HOME=%s/original-layout-ios-appium\nCONTROL_DIR=%s/original-layout-ios\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - name: Validate producer run identity
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/layout-control-producer.mjs
+      - name: Download exact current-layout application
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: midscene-explorer-source-ios-${{ steps.producer.outputs.attempt }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original-layout-ios/source-build
+      - name: Read build checkout identity
+        id: build
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync(`${process.env.CONTROL_DIR}/source-build/build.json`, 'utf8'));
+          if (!/^[a-f0-9]{40}$/.test(manifest.sha)) throw new Error('Invalid build revision');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${manifest.sha}\n`);
+          JS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - name: Verify revision, capabilities and checksum
+        env:
+          PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
+        run: node harness/testing/e2e_diagnostics/verify-layout-control-source.mjs
+      - name: Extract verified iOS source app
+        run: tar -xzf "$CONTROL_DIR/source-build/LynxExplorer.app.tar.gz" -C "$CONTROL_DIR/source-build"
+      - name: Select identical iOS toolchain
+        run: node source/testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
+      - name: Install pinned original framework and Appium
+        timeout-minutes: 15
+        run: |
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          PYTHONPATH=source/testing/integration_test/test_script python3 - <<'PY'
+          from pathlib import Path
+          from lynx_e2e._impl.manage.report import get_installed_distributions
+          from ios_test.xelement import xelementTest
+          from lib.test_runner.case_set import CaseSet
+          get_installed_distributions()
+          import os
+          for name in ["VideoBasic","VideoAttributes","VideoBoundary","VideoModes"]:
+              os.environ['test_case_name'] = name
+              cases = CaseSet(case_set_path=str(Path('source/testing/integration_test/test_script/case_sets/xelement'))).get_cases()
+              assert [case.name for case in cases] == [name]
+          print('All four unchanged original video cases are selected independently.')
+          PY
+          npm install --prefix "$RUNNER_TEMP/original-ios-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" driver install xcuitest@7.24.18
+      - name: Build and start identical WebDriverAgent
+        working-directory: source/testing/ai_e2e
+        env:
+          WDA_WORKDIR: ${{ runner.temp }}/original-ios-wda
+        run: bash scripts/start-wda.sh
+      - name: Install the verified application
+        run: |
+          xcrun simctl install "$SIMULATOR_UDID" "$CONTROL_DIR/source-build/LynxExplorer.app"
+          xcrun simctl get_app_container "$SIMULATOR_UDID" com.lynx.LynxExplorer app > "$CONTROL_DIR/installed-app-path.txt"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { join } from 'node:path';
+          const root = process.env.CONTROL_DIR;
+          const source = root + '/source-build/LynxExplorer.app';
+          const installed = readFileSync(root + '/installed-app-path.txt', 'utf8').trim();
+          assert.ok(installed.endsWith('/LynxExplorer.app'));
+          const evidence = [];
+          const visit = relative => {
+            for (const item of readdirSync(join(source, relative), { withFileTypes: true })) {
+              const path = join(relative, item.name);
+              if (item.isDirectory()) visit(path);
+              else if (item.isFile()) {
+                const digest = location => createHash('sha256').update(readFileSync(location)).digest('hex');
+                const expected = digest(join(source, path));
+                assert.equal(digest(join(installed, path)), expected, path);
+                evidence.push({ path, sha256: expected });
+              } else assert.fail('Unexpected application payload entry: ' + path);
+            }
+          };
+          visit('');
+          assert.ok(evidence.some(item => item.path === 'LynxExplorer'));
+          writeFileSync(root + '/installed-app-provenance.json', JSON.stringify(evidence, null, 2));
+          console.log('Verified installed application payload files:', evidence.length);
+          JS
+      - name: Start isolated original Appium server
+        run: |
+          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities '{"appium:webDriverAgentUrl":"http://127.0.0.1:8100"}' > "$CONTROL_DIR/appium.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original iOS Appium server did not become ready'
+          exit 1
+      - name: Run all four unchanged original video cases
+        id: original
+        timeout-minutes: 40
+        working-directory: source/testing/integration_test/test_script
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          overall=0
+          for original_case in VideoBasic VideoAttributes VideoBoundary VideoModes; do
+            export test_case_name="$original_case"
+            python3 manage.py runtest ios_test.xelement 2>&1 | tee "$CONTROL_DIR/original-$original_case.log"
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then
+              grep -Eq "Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*${original_case}[[:space:]]*\]" "$CONTROL_DIR/original-$original_case.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original-$original_case.log" || status=1
+            fi
+            printf '%s\n' "$status" > "$CONTROL_DIR/original-$original_case-exit-code.txt"
+            if [ "$status" -ne 0 ]; then overall=1; fi
+          done
+          exit "$overall"
+      - name: Verify installed iOS payload after original execution
+        run: |
+          xcrun simctl get_app_container "$SIMULATOR_UDID" com.lynx.LynxExplorer app > "$CONTROL_DIR/installed-app-path.txt"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { join } from 'node:path';
+          const root = process.env.CONTROL_DIR;
+          const source = root + '/source-build/LynxExplorer.app';
+          const installed = readFileSync(root + '/installed-app-path.txt', 'utf8').trim();
+          assert.ok(installed.endsWith('/LynxExplorer.app'));
+          const evidence = [];
+          const visit = relative => {
+            for (const item of readdirSync(join(source, relative), { withFileTypes: true })) {
+              const path = join(relative, item.name);
+              if (item.isDirectory()) visit(path);
+              else if (item.isFile()) {
+                const digest = location => createHash('sha256').update(readFileSync(location)).digest('hex');
+                const expected = digest(join(source, path));
+                assert.equal(digest(join(installed, path)), expected, path);
+                evidence.push({ path, sha256: expected });
+              } else assert.fail('Unexpected application payload entry: ' + path);
+            }
+          };
+          visit('');
+          assert.ok(evidence.some(item => item.path === 'LynxExplorer'));
+          writeFileSync(root + '/post-installed-app-provenance.json', JSON.stringify(evidence, null, 2));
+          console.log('Verified installed application payload files:', evidence.length);
+          JS
+        if: always() && steps.original.outcome != 'skipped'
+      - name: Verify unchanged original source after execution
+        if: always() && steps.original.outcome != 'skipped'
+        run: |-
+          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
+          PRODUCER_HEAD=a47143b4c95a51ff3b27eb07ad0a7b320e8c4208 node harness/testing/e2e_diagnostics/verify-layout-control-source.mjs
+      - name: Preserve original video evidence separately
+        if: always()
+        env:
+          ORIGINAL_OUTCOME: ${{ steps.original.outcome }}
+        run: |
+          mkdir -p "$CONTROL_DIR"
+          if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
+          if [ -f source/testing/ai_e2e/emulator.log ]; then cp source/testing/ai_e2e/emulator.log "$CONTROL_DIR/"; fi
+          if [ -f "$RUNNER_TEMP/original-ios-wda/wda.log" ]; then cp "$RUNNER_TEMP/original-ios-wda/wda.log" "$CONTROL_DIR/wda.log"; fi
+          printf '## Original ios video layout control\n\nProducer: https://github.com/quanru/lynx/actions/runs/38332110055\n\nFour original cases: VideoBasic, VideoAttributes, VideoBoundary, VideoModes. Execution: %s.\n\nNo model credentials or migrated runner are used. Original Python files match the pre-layout hashes. The current app includes the approved seek-only layout adjustment. Setup failures do not establish original-case failures; inspect each case log and exit code. This is independent control evidence, not migrated acceptance.\n' "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload original layout control evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: original-layout-ios-${{ github.run_attempt }}
+          path: |-
+            ${{ runner.temp }}/original-layout-ios/*.json
+            ${{ runner.temp }}/original-layout-ios/*.txt
+            ${{ runner.temp }}/original-layout-ios/*.log
+            ${{ runner.temp }}/original-layout-ios/screenshots
+          if-no-files-found: warn
+          retention-days: 14
