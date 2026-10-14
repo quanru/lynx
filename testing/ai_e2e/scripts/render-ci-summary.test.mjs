@@ -44,11 +44,33 @@ const run = {
   startedAt: '2026-09-23T12:13:38.780Z',
   endedAt: '2026-09-23T12:14:43.150Z',
   durationMs: 73_000,
-  summary: { total: 1, passed: 1, failed: 0, notRun: 0 },
+  summary: {
+    total: 1,
+    passed: 1,
+    failed: 0,
+    notRun: 0,
+    filtered: 0,
+    collectionErrors: 0,
+    documentFailures: 0,
+    projectFailures: 0,
+  },
+  metrics: {
+    modelCallCount: 0,
+    modelTimeMs: 0,
+    promptTokens: 0,
+    cachedInputTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    collection: {
+      status: 'unknown',
+      reasons: ['Synthetic report fixture has no model usage.'],
+    },
+  },
   projects: [
     {
       projectId: 'project-1',
       name: 'android-explorer',
+      collectionErrors: [],
       documents: [
         {
           documentId: 'document-1',

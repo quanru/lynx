@@ -162,11 +162,6 @@ jobs:
       group: midscene-native-model-${{ github.run_id }}
       cancel-in-progress: false
     env:
-      MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
-      MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
-      MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
-      MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
-      MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
       # Provider retries remain inside the unchanged test-step deadline.
       MIDSCENE_MODEL_RETRY_COUNT: '2'
       MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
@@ -180,7 +175,7 @@ jobs:
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: testing/ai_e2e/package-lock.json
 
@@ -199,8 +194,32 @@ jobs:
         working-directory: testing/ai_e2e
         run: node scripts/verify-build.mjs source-builds android .
 
+      - name: Install Midscene test dependencies
+        working-directory: testing/ai_e2e
+        run: |
+          for attempt in 1 2 3; do
+            npm ci --no-audit --no-fund && exit 0
+            echo "npm ci attempt $attempt failed; retrying." >&2
+            sleep 10
+          done
+          echo "::error:: npm ci failed after 3 attempts" >&2
+          latest_log="$(find "$HOME/.npm/_logs" -maxdepth 1 -type f -name '*-debug-0.log' -print 2>/dev/null | sort | tail -n 1)"
+          if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
+          exit 1
+
       - name: Preflight model endpoint
+        env: &midscene-model-env
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME || secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL || secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY || secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ vars.MIDSCENE_MODEL_REASONING_ENABLED || secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
         run: bash testing/ai_e2e/scripts/preflight-model.sh
+
+      - name: Verify Midscene model compatibility
+        working-directory: testing/ai_e2e
+        env: *midscene-model-env
+        run: npm run check:model
 
       - name: Start headless Android emulator
         working-directory: testing/ai_e2e
@@ -217,19 +236,6 @@ jobs:
           "$ANDROID_HOME/platform-tools/adb" shell wm density | tr -d '\r' | awk '/^Physical density:/ { physical=$3 } /^Override density:/ { override=$3 } END { active=override ? override : physical; exit (active != "320") }'
           "$ANDROID_HOME/platform-tools/adb" install -r -g LynxExplorer.apk
 
-      - name: Install Midscene test dependencies
-        working-directory: testing/ai_e2e
-        run: |
-          for attempt in 1 2 3; do
-            npm ci --no-audit --no-fund && exit 0
-            echo "npm ci attempt $attempt failed; retrying." >&2
-            sleep 10
-          done
-          echo "::error:: npm ci failed after 3 attempts" >&2
-          latest_log="$(find "$HOME/.npm/_logs" -maxdepth 1 -type f -name '*-debug-0.log' -print 2>/dev/null | sort | tail -n 1)"
-          if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
-          exit 1
-
       - name: Forward native DevTool contract transport
         id: native-forward
         run: '"$ANDROID_HOME/platform-tools/adb" forward --no-rebind tcp:18901 tcp:8901'
@@ -243,6 +249,7 @@ jobs:
       - name: Run Android Midscene cases
         id: run-cases
         working-directory: testing/ai_e2e
+        env: *midscene-model-env
         run: |
           npm run typecheck
           node scripts/run-ci.mjs --project android-explorer
@@ -319,11 +326,6 @@ jobs:
       group: midscene-native-model-${{ github.run_id }}
       cancel-in-progress: false
     env:
-      MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
-      MIDSCENE_MODEL_NAME: ${{ secrets.MIDSCENE_MODEL_NAME }}
-      MIDSCENE_MODEL_BASE_URL: ${{ secrets.MIDSCENE_MODEL_BASE_URL }}
-      MIDSCENE_MODEL_FAMILY: ${{ secrets.MIDSCENE_MODEL_FAMILY }}
-      MIDSCENE_MODEL_REASONING_ENABLED: ${{ secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
       MIDSCENE_MODEL_RETRY_COUNT: '2'
       MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
     steps:
@@ -333,12 +335,31 @@ jobs:
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: testing/ai_e2e/package-lock.json
 
+      - name: Install Midscene test dependencies
+        working-directory: testing/ai_e2e
+        run: |
+          for attempt in 1 2 3; do
+            npm ci --no-audit --no-fund && exit 0
+            echo "npm ci attempt $attempt failed; retrying." >&2
+            sleep 10
+          done
+          echo "::error:: npm ci failed after 3 attempts" >&2
+          latest_log="$(find "$HOME/.npm/_logs" -maxdepth 1 -type f -name '*-debug-0.log' -print 2>/dev/null | sort | tail -n 1)"
+          if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
+          exit 1
+
       - name: Preflight model endpoint
+        env: *midscene-model-env
         run: bash testing/ai_e2e/scripts/preflight-model.sh
+
+      - name: Verify Midscene model compatibility
+        working-directory: testing/ai_e2e
+        env: *midscene-model-env
+        run: npm run check:model
 
       - name: Select original iOS baseline toolchain
         run: node testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
@@ -370,19 +391,6 @@ jobs:
         working-directory: testing/ai_e2e
         run: xcrun simctl install "$SIMULATOR_UDID" LynxExplorer.app
 
-      - name: Install Midscene test dependencies
-        working-directory: testing/ai_e2e
-        run: |
-          for attempt in 1 2 3; do
-            npm ci --no-audit --no-fund && exit 0
-            echo "npm ci attempt $attempt failed; retrying." >&2
-            sleep 10
-          done
-          echo "::error:: npm ci failed after 3 attempts" >&2
-          latest_log="$(find "$HOME/.npm/_logs" -maxdepth 1 -type f -name '*-debug-0.log' -print 2>/dev/null | sort | tail -n 1)"
-          if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
-          exit 1
-
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
@@ -392,6 +400,7 @@ jobs:
       - name: Run iOS Midscene cases
         id: run-cases
         working-directory: testing/ai_e2e
+        env: *midscene-model-env
         run: |
           npm run typecheck
           node scripts/run-ci.mjs --project ios-explorer

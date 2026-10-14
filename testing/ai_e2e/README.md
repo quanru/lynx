@@ -1,5 +1,26 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Rome SDK alignment (pending hosted acceptance)
+
+All Midscene packages are pinned to `1.15.3`, matching Rome's
+`codex/pr-974-e2e-reference` branch at `d1b3183`. Device jobs use Node.js 24.
+`npm run check:model` invokes the official `midscene-test model verify` checks
+for text, image understanding and AI location, filtering credential-bearing
+failure diagnostics before printing them. CI retains the independent image-only
+gate and runs official verification before starting the emulator or WDA.
+Model credentials are step-scoped to verification and case execution, with
+repository variables preferred over same-named non-key secrets. Existing
+repository-secret configuration remains supported; no new environment is required.
+
+Case-owned device sessions, deterministic source assertions and playback timing
+are unchanged. Keep the screenshot Summary, combined native HTML report,
+publication guards and model-free contract checks: Rome's single Web report does
+not replace these cross-platform requirements. Historical results below describe
+the previous SDK and are not acceptance of this upgrade. The last accepted
+native head was `a47143b`, with Android 13/13 and iOS 20/20 first-attempt passes
+in [38332110055](https://github.com/quanru/lynx/actions/runs/38332110055).
+
+
 Current local implementation collects Android 13 / iOS 20 cases and passes 213
 model-free checks on Node 22, plus typechecking and
 workflow validation.
