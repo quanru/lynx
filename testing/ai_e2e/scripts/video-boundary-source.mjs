@@ -35,7 +35,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
     { wait: { duration: 5000, unit: 'ms' } },
     { launch: '${videoUri}' },
     { wait: { duration: 2000, unit: 'ms' } },
-    ...events.map(([kind, value]) => {
+    ...events.map(([kind, value], eventIndex) => {
       if (kind === 'assert') {
         if (variableBridge && value.contains === (platform === 'ios' ? "method 'unknownVideoMethod' not found" : '"code":3')) {
           value.contains = '${videoBridgeError}';
@@ -47,6 +47,14 @@ export function originalVideoBoundary(platform, variableBridge = false) {
       assert.equal(kind, 'click');
       const label = labels.get(value);
       assert.ok(label, 'Missing original visible label for ' + value);
+      // This is still the original Clear click immediately after the canceled
+      // pause assertions. Only its visual description changes, not the event.
+      const afterCanceledPause = events[eventIndex - 1]?.[0] === 'assert'
+        && events[eventIndex - 1][1].notContains === 'pause_ok';
+      if (label === 'Clear' && afterCanceledPause) return { aiAct: {
+        prompt: 'Tap once at the CENTER of the BLUE "Clear" button body at the LEFT END of the first playback-button row. This row contains Clear, Play, Play Null, Pause, Stop and sits immediately ABOVE the Seek 0s / Seek 2s row. Do not tap blank space above the blue button, the numeric status values, or any other button. Stop after that single tap.',
+        options: { effort: 'deepThink', deepLocate, cacheable: false },
+      } };
       const seekIndex = seekRow.indexOf(label);
       if (seekIndex >= 0) {
         assert.ok(seekIndex >= 3, 'Review any new source action in the crowded seek row');

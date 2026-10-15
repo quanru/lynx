@@ -252,11 +252,11 @@ cases:
           notContains: pause_ok
           immediate: true
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Clear" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: Tap once at the CENTER of the BLUE "Clear" button body at the LEFT
+            END of the first playback-button row. This row contains Clear, Play,
+            Play Null, Pause, Stop and sits immediately ABOVE the Seek 0s / Seek
+            2s row. Do not tap blank space above the blue button, the numeric
+            status values, or any other button. Stop after that single tap.
           options:
             effort: deepThink
             deepLocate: ${videoDeepLocate}

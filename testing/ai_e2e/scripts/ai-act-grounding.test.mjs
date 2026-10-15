@@ -23,7 +23,9 @@ test('native actions independently refine video controls but retain full-frame n
         count++;
         const inlineText = project.name.startsWith('ios') && sourcePath === 'cases/native/event.yaml'
           && step.input.prompt.startsWith('Click only the inline text');
-        const deepLocate = /^cases\/native\/video-/.test(sourcePath) || inlineText;
+        const legacyRuntime = sourcePath === 'cases/ios-sparkling/homepage-routes.yaml'
+          && item.definition.name === 'sparkling/RawOpenLegacy' && step.input.prompt.startsWith('Tap once inside the center');
+        const deepLocate = /^cases\/native\/video-/.test(sourcePath) || inlineText || legacyRuntime;
         assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate, cacheable: false },
           `${project.name}/${sourcePath}/${item.definition.name}`);
       }

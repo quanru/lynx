@@ -9,8 +9,8 @@ cases:
       - wait: { duration: 10000, unit: ms }
       - native.sparkling: { contract: home }
       - aiAct:
-          prompt: Tap the "Lynx" runtime choice in the segmented selector above the Bundle URL card once. Do not tap the Open button or navigate away.
-          options: { effort: deepThink, deepLocate: false, cacheable: false }
+          prompt: Tap once inside the center of the LEFT HALF of the horizontal Lynx / Sparkling Go segmented control directly below the large Lynx Explorer title. The target says exactly "Lynx"; it is ABOVE the white Bundle URL card. Do not tap "Bundle URL", "Open with Lynx", or the URL input. Stop after that single tap.
+          options: { effort: deepThink, deepLocate: true, cacheable: false }
       - native.sparkling: { contract: runtime, runtime: lynx }
       - aiAct:
           prompt: 'Replace the entire contents of the input inside the Bundle URL card with the exact string "${rawParentUrl}". Stop after typing that URL; do not include quotation marks, submit the keyboard, or tap Open yet.'

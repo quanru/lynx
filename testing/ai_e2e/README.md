@@ -1,5 +1,40 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Two native input misses: complete hosted acceptance pending
+
+SDK 1.15.3 run [38588125497](https://github.com/quanru/lynx/actions/runs/38588125497)
+is green (Android 13/13, iOS 20/20 first attempts), but full-size screenshot and
+physical WDA review finds two iOS misses. RawOpenLegacy taps the Bundle URL
+heading rather than the already-selected Lynx runtime. VideoBoundary's
+zero-based step 49 taps blank space just above Clear. Existing state and
+callback containment assertions still allow green results; input acceptance
+is withheld. SDK decoding and WDA inputs match the model's incorrect targets.
+
+An immutable-image [remote control](https://github.com/quanru/lynx/actions/runs/38676496013)
+tests both original/explicit prompts and full-frame/refined location twice on
+each of the two exact locator-input images. All eight runtime trials hit their
+target, so that miss is not reproduced. All four Clear full-frame trials miss
+below the button; all four refined trials hit. The original refined Clear miss
+is not reproduced either. Explicit prompts with refinement hit 4/4 in this
+bounded comparison; it does not establish a reliability improvement or replace
+complete real-device case acceptance.
+
+Only these two action descriptions change. The Lynx selection now describes
+the left segment beneath the Explorer title and excludes the Bundle URL labels,
+with fresh independent refinement. The observed Clear action describes the
+center of its blue body in the playback row; it retains refinement. No stored
+coordinates, extra taps, product/fixture changes, or source assertion/timing
+changes. All other actions retain their options. Source callback replay and
+new collection regressions preserve the original following assertions.
+
+The audit also verifies every ordinary SDK Tap against actual device logs
+(57 Android, 77 iOS), all 18 ordinary Seek target regions, and each platform's
+51 ordered physical taps across 12 original timed phases. All 43 prepared
+targets and 11 simultaneous visibility groups per platform are checked, with
+no extra timed input or model call after the first timed tap. Transport proof
+alone does not establish intended-target accuracy. Complete new-head device
+validation, physical-input review and report publication remain pending.
+
 ## Rome SDK alignment (pending hosted acceptance)
 
 All Midscene packages are pinned to `1.15.3`, matching Rome's

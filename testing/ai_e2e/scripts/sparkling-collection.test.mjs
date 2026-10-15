@@ -71,7 +71,8 @@ print(json.dumps(events))`], { input: JSON.stringify({ helpers, case: source }),
     assert.match(actions.at(-1).input.prompt, /Do not tap the separate Sparkling Go runtime selector/);
     assert.match(actions.at(-1).input.prompt, /smaller lower red Open button/);
     assert.match(actions.at(-1).input.prompt, /wider upper red control/);
-    for (const action of actions) assert.deepEqual(action.input.options, { effort: 'deepThink', deepLocate: false, cacheable: false });
+    for (const [index, action] of actions.entries()) assert.deepEqual(action.input.options,
+      { effort: 'deepThink', deepLocate: name === 'RawOpenLegacy' && index === 0, cacheable: false });
     const contracts = steps.filter(s => s.node === 'native.sparkling').map(s => s.input);
     assert.deepEqual(contracts.slice(0, open[3] ? 3 : 2), open[3]
       ? [{ contract: 'home' }, { contract: 'runtime', runtime: open[3] }, { contract: 'parent' }]
