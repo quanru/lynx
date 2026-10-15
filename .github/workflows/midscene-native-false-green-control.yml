@@ -1,0 +1,40 @@
+name: Immutable native input control
+on:
+  push:
+    branches: [midscene/native-input-control-38588125497]
+permissions:
+  contents: read
+jobs:
+  locate:
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --dns-result-order=ipv4first --no-network-family-autoselection
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Install pinned SDK
+        working-directory: testing/ai_e2e
+        run: npm ci --no-audit --no-fund
+      - name: Compare original and explicit target grounding
+        working-directory: testing/ai_e2e
+        env:
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME || secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL || secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY || secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ vars.MIDSCENE_MODEL_REASONING_ENABLED || secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+        run: node scripts/native-false-green-control.mjs
+      - name: Retain all trial evidence without treating diagnostic completion as acceptance
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: immutable-native-input-control
+          path: testing/ai_e2e/midscene_run/
+          retention-days: 14
+          if-no-files-found: error
