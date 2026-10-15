@@ -28,7 +28,10 @@ export async function locateVideoButton(agent: VideoTimedAgent, label: string, s
   const ratio = uiContext.shrunkShotToLogicalRatio;
   const { width, height } = uiContext.shotSize;
   if (![ratio, width, height].every(value => Number.isFinite(value) && value > 0)) throw new Error('Invalid video location screenshot geometry.');
-  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Match its complete label, including any seek suffix. Locate the center INSIDE the actual blue button body, not its text baseline, another button, status text or blank space.', { deepLocate: true, cacheable: false, uiContext });
+  const intervalHint = label === '1s Tick'
+    ? ' The "1s Tick" button is in the SAME ROW as Fill, Invalid 0s and Fast Tick, BETWEEN Fill and Invalid 0s. Do not select "Latest" in the row below.'
+    : '';
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Match its complete label, including any seek suffix. Locate the center INSIDE the actual blue button body, not its text baseline, another button, status text or blank space.' + intervalHint, { deepLocate: true, cacheable: false, uiContext });
   // The pinned aiLocate API cannot abort an in-flight request. Never accept a
   // late result or start a subsequent physical action after cancellation.
   signal?.throwIfAborted();
