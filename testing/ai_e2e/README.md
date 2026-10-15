@@ -1,5 +1,22 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Interval target correction: device acceptance pending
+
+On candidate `daecd3a`, [run 38677828053](https://github.com/quanru/lynx/actions/runs/38677828053)
+finishes Android 13/13, but VideoAttributes requires a complete-case retry.
+Its first interval preparation returns screenshot point (625,1541) for
+`1s Tick`; the actual ADB input (625,1539) hits `Latest` in the row below.
+The unchanged source assertion correctly rejects `requestedInterval=0.5`
+instead of 1.0, and the observed state includes `mode=latest`. Coordinate
+conversion matches the SDK result; this is incorrect visual grounding.
+
+Only the `1s Tick` preparation description now identifies its same-row
+neighbors Fill and Invalid 0s and excludes Latest below. Refinement remains
+independent and uncached. No input is added, and all original source timing,
+assertions, fixtures and playback plans remain unchanged. Model-free checks
+do not establish target accuracy: immutable-image comparison and a complete
+device case must validate this correction before acceptance.
+
 ## Two native input misses: complete hosted acceptance pending
 
 SDK 1.15.3 run [38588125497](https://github.com/quanru/lynx/actions/runs/38588125497)

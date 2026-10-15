@@ -25,6 +25,24 @@ test('video preparation requires complete visible labels together before the tim
   assert.deepEqual(calls.map(call => call[2]), [{ effort: 'deepThink', deepLocate: false, cacheable: false }, { deepLocate: true, cacheable: false, uiContext }]);
 });
 
+test('interval grounding distinguishes the source button from the mode selector without adding input', async () => {
+  const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<text>Fill<\/text>[\s\S]*?<text>1s Tick<\/text>[\s\S]*?<text>Invalid 0s<\/text>[\s\S]*?<text>Fast Tick<\/text>[\s\S]*?<text>Latest<\/text>/);
+  const uiContext = { shrunkShotToLogicalRatio: 2, shotSize: { width: 1080, height: 2400 } };
+  const calls = [];
+  const agent = {
+    getUIContext: async () => uiContext,
+    aiLocate: async (prompt, options) => { calls.push({ prompt, options }); return { center: [400, 600] }; },
+  };
+  assert.deepEqual(await locateVideoButton(agent, '1s Tick'), [200, 300]);
+  await locateVideoButton(agent, 'Latest');
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].prompt, /SAME ROW as Fill, Invalid 0s and Fast Tick, BETWEEN Fill and Invalid 0s/);
+  assert.match(calls[0].prompt, /Do not select "Latest" in the row below/);
+  assert.doesNotMatch(calls[1].prompt, /SAME ROW|Do not select/);
+  for (const call of calls) assert.deepEqual(call.options, { deepLocate: true, cacheable: false, uiContext });
+});
+
 test('split phases retain the entire original ordered trace and only prepare at inactive source boundaries', () => {
   for (const name of ['VideoBasic', 'VideoAttributes']) {
     const source = originalVideoPlayback(name);
