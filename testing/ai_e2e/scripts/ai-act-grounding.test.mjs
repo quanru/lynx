@@ -39,7 +39,7 @@ test('native actions retain deep grounding except the explicitly scoped ordinary
   }
 });
 
-test('public deepThink aiAct independently grounds the full frame without planner coordinates or cropping', { timeout: 15000 }, async t => {
+async function verifyPlanningRequests(t, effort) {
   // This test must never inherit real planning/insight endpoints or credentials.
   const modelEnvironment = new Map(Object.entries(process.env).filter(([key]) => /^(MIDSCENE_|OPENAI_)/.test(key)));
   for (const key of modelEnvironment.keys()) delete process.env[key];
@@ -51,8 +51,10 @@ test('public deepThink aiAct independently grounds the full frame without planne
     width: 120, height: 240, channels: 3, background: '#ffffff',
   } }).png().toBuffer()).toString('base64');
   const requests = [];
+  const locateParameter = { prompt: 'the test button', ...(effort === 'balance' ? { point: [500, 500] } : {}) };
   const replies = [
-    '<planning>Tap the test button once.</planning><log>Tap the button</log><action-type>Tap</action-type><action-param-json>{"locate":{"prompt":"the test button"}}</action-param-json>',
+    '<planning>Tap the test button once.</planning><log>Tap the button</log><action-type>Tap</action-type><action-param-json>'
+      + JSON.stringify({ locate: locateParameter }) + '</action-param-json>',
     '<｜｜point｜｜>[[500, 500]]<｜｜/point｜｜>',
   ];
   const server = createServer(async (request, response) => {
@@ -94,23 +96,42 @@ test('public deepThink aiAct independently grounds the full frame without planne
   });
   t.after(() => agent.destroy());
   await agent.aiAct('Tap the test button once.', {
-    effort: 'deepThink', deepLocate: false, cacheable: false,
+    effort, deepLocate: false, cacheable: false,
     abortSignal: controller.signal,
   }).catch(() => { assert.equal(controller.signal.reason, stop); });
   assert.deepEqual(taps, [{ x: 20, y: 40 }]);
-  assert.equal(requests.length, 2, 'Exactly one planner request and one full-frame locator request');
+  assert.equal(requests.length, effort === 'balance' ? 1 : 2,
+    'Balance uses planner coordinates; deepThink requests independent location before the same tap');
   const textParts = request => request.messages.flatMap(message => typeof message.content === 'string'
     ? [message.content] : message.content.filter(part => part.type === 'text').map(part => part.text)).join('\n');
-  assert.doesNotMatch(textParts(requests[0]), /"point"\s*:/, 'Deep planning must not request inline action coordinates');
-  const imageParts = requests[1].messages.flatMap(message => Array.isArray(message.content)
+  if (effort === 'deepThink') {
+    assert.doesNotMatch(textParts(requests[0]), /"point"\s*:/, 'Deep planning must not request inline action coordinates');
+  } else {
+    assert.match(textParts(requests[0]), /"point"\s*:/, 'Balanced planning must request inline action coordinates');
+  }
+  const imageParts = requests.at(-1).messages.flatMap(message => Array.isArray(message.content)
     ? message.content.filter(part => part.type === 'image_url') : []);
   assert.equal(imageParts.length, 1);
   const metadata = await sharp(Buffer.from(imageParts[0].image_url.url.split(',')[1], 'base64')).metadata();
   assert.deepEqual([metadata.width, metadata.height], [120, 240], 'Locator receives the complete screenshot');
   const tasks = agent.dump.executions.flatMap(execution => execution.tasks);
   const locate = tasks.find(task => task.subType === 'Locate');
-  assert.ok(locate, 'The SDK must actually run an independent Locate task');
-  assert.equal(locate.param.locatedPixelResult, undefined);
-  assert.equal(locate.log.dump.deepLocate, false);
-  assert.equal(locate.log.dump.taskInfo.searchArea, undefined);
+  assert.ok(locate, 'The SDK must record coordinate resolution');
+  if (effort === 'deepThink') {
+    assert.equal(locate.param.locatedPixelResult, undefined);
+    assert.equal(locate.log.dump.deepLocate, false);
+    assert.equal(locate.log.dump.taskInfo.searchArea, undefined);
+  } else {
+    assert.ok(locate.param.locatedPixelResult, 'The SDK uses the planner result rather than another model request');
+  }
+}
+
+test('public deepThink aiAct independently grounds the full frame without planner coordinates or cropping', { timeout: 15000 }, async t => {
+  await verifyPlanningRequests(t, 'deepThink');
+});
+
+test('ordinary Clear balanced strategy uses one model request before the same physical tap', { timeout: 15000 }, async t => {
+  // Abort after the inert tap isolates grounding; this does not claim that the
+  // full aiAct call omits its later completion-planning request or is accurate.
+  await verifyPlanningRequests(t, 'balance');
 });
