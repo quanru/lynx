@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { collectWorkflowDocument } from '@midscene/test';
 import { loadTestProject } from '@midscene/test/config';
 
-test('native actions independently refine video controls but retain full-frame navigation', async () => {
+test('native actions retain deep grounding except the explicitly scoped ordinary Clear candidate', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const loaded = await loadTestProject(root + 'midscene.config.ts');
   for (const project of loaded.projects) {
@@ -26,7 +26,12 @@ test('native actions independently refine video controls but retain full-frame n
         const legacyRuntime = sourcePath === 'cases/ios-sparkling/homepage-routes.yaml'
           && item.definition.name === 'sparkling/RawOpenLegacy' && step.input.prompt.startsWith('Tap once inside the center');
         const deepLocate = /^cases\/native\/video-/.test(sourcePath) || inlineText || legacyRuntime;
-        assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate, cacheable: false },
+        const ordinaryClear = sourcePath === 'cases/native/video-boundary.yaml'
+          && step.input.prompt.startsWith('When scrolling, gesture within the light-gray video demo panel')
+          && step.input.prompt.includes('labeled exactly "Clear" once.');
+        assert.deepEqual(step.input.options, ordinaryClear
+          ? { effort: 'balance', deepLocate: false, cacheable: false }
+          : { effort: 'deepThink', deepLocate, cacheable: false },
           `${project.name}/${sourcePath}/${item.definition.name}`);
       }
     }

@@ -14,6 +14,20 @@ const document = text => ({ nodeId: 0, nodeName: '#document', children: [
   ] },
 ] });
 
+test('only ordinary Clear clicks combine planning and location; sensitive targets retain deep grounding', () => {
+  for (const platform of ['android', 'ios']) {
+    const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
+    const ordinaryClear = actions.filter(action => action.prompt.includes('labeled exactly "Clear"'));
+    assert.ok(ordinaryClear.length > 0);
+    for (const action of ordinaryClear) {
+      assert.deepEqual(action.options, { effort: 'balance', deepLocate: false, cacheable: false });
+    }
+    for (const action of actions.filter(action => !ordinaryClear.includes(action))) {
+      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
+    }
+  }
+});
+
 test('boundary seek actions preserve source order and match full labels on both platforms', () => {
   const fixture = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
   const row = fixture.slice(fixture.indexOf('lynx-test-tag="btn-seek-start"'), fixture.indexOf('lynx-test-tag="btn-src-primary"'));

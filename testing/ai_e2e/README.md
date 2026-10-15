@@ -1,5 +1,23 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Boundary Clear planning candidate: hosted acceptance pending
+
+In [run 38677828053](https://github.com/quanru/lynx/actions/runs/38677828053),
+iOS VideoBoundary step 104 exhausted its 180-second action budget after the
+Clear tap had already completed. Its SDK trace records approximately 35 seconds
+in initial model planning, 97 seconds in independent model location and 1.5
+seconds in the tap task; the final planning request was still running at timeout.
+This identifies the blocking stage, not the provider-side cause of latency.
+
+Only the 12 ordinary Clear actions now use `effort: balance` with
+`deepLocate: false` and caching disabled. With the current default model slot,
+SDK 1.15.3 can include location in planning instead of requesting it separately.
+The previously ambiguous post-cancellation Clear, all Seek controls and other
+actions retain their reviewed deep grounding. No assertion, original wait,
+fixture, retry limit or timeout changes. Full device execution and screenshot
+input review are required before accepting this candidate; model-free tests
+alone cannot establish accuracy or a latency improvement.
+
 ## Interval target correction: device acceptance pending
 
 On candidate `daecd3a`, [run 38677828053](https://github.com/quanru/lynx/actions/runs/38677828053)

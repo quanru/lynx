@@ -67,7 +67,11 @@ export function originalVideoBoundary(platform, variableBridge = false) {
       }
       return { aiAct: {
         prompt: `When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
-        options: { effort: 'deepThink', deepLocate, cacheable: false },
+        // Ordinary Clear actions can plan and locate together. Keep the
+        // previously ambiguous post-cancellation Clear on its reviewed path.
+        options: label === 'Clear'
+          ? { effort: 'balance', deepLocate: false, cacheable: false }
+          : { effort: 'deepThink', deepLocate, cacheable: false },
       } };
     }),
   ];

@@ -89,8 +89,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -139,8 +139,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -300,8 +300,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -370,8 +370,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekBad}
@@ -406,8 +406,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekMissing}
@@ -442,8 +442,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekNull}
@@ -478,8 +478,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekText}
@@ -514,8 +514,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekNaN}
@@ -550,8 +550,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekInf}
@@ -586,8 +586,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekHuge}
@@ -622,8 +622,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - native.videoPhase:
           phase: stop-play-null
@@ -650,8 +650,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: deepThink
-            deepLocate: ${videoDeepLocate}
+            effort: balance
+            deepLocate: false
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
