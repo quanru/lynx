@@ -37,6 +37,8 @@ import {
   testRunDump,
   validateSupplementalEvidence,
   loadExpectedCaseEvidence,
+  writeSummaryWithinLimit,
+  SUMMARY_BYTE_LIMIT,
 } from './render-ci-summary.mjs';
 
 const run = {
@@ -156,7 +158,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   );
   assert.match(
     summary,
-    /<a href="[^\"]+runner-step=case%3Asteps%3A0"><img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Open the Showcase page" width="160"><\/a>/,
+    /<a href="[^\"]+runner-step=case%3Asteps%3A0"><img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Screenshot" width="160"><\/a>/,
   );
   assert.match(summary, /runner-step=case%3Asteps%3A0/);
 });
@@ -481,7 +483,7 @@ test('escapes report-provided Markdown in failure rows', () => {
   });
   assert.match(summary, /Broken \\| \\\[case\\\]/);
   assert.match(summary, /&lt;unsafe&gt; \\| reason/);
-  assert.match(summary, /alt="Broken &#124; \[case\]"/);
+  assert.match(summary, /alt="Screenshot"/);
 });
 
 test('extracts a node screenshot and publishes a linked HTML report', async (context) => {
@@ -805,7 +807,7 @@ test('setup failure shows all twenty expected native cases as not-run without fa
     20,
   );
   assert.match(summary, /Native case 20 \| Unavailable \| ⏭️ Not run/);
-  assert.doesNotMatch(summary, /<img|Open report|runner-step|✅ Passed/);
+  assert.doesNotMatch(summary, /<img|\[Open report\]\(|runner-step|✅ Passed/);
   const output = path.join(directory, 'summary.md');
   execFileSync(process.execPath, [
     new URL('./render-ci-summary.mjs', import.meta.url).pathname,
@@ -1107,6 +1109,76 @@ test('evidence policy exemptions reject contradictory statuses, screenshots and 
       supplementalEvidence: evidence,
     }),
     /1 need attention/,
+  );
+});
+
+test('source returns require exclusive status and real HTML without counting as passed', () => {
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'source-return',
+    status: 'not-applicable',
+    reason: 'Original browser guard returned',
+    previewPath: null,
+  });
+  const options = {
+    title: 'Returns',
+    runUrl: 'https://example.com/run',
+    pagesUrl: 'https://example.com/site/',
+    entries: [],
+    supplementalEvidence: evidence,
+  };
+  const summary = renderSummary(options);
+  assert.match(summary, /0 need attention · 2 passed · 1 source-returned/);
+  assert.match(summary, /Not applicable \(source return\)/);
+  assert.ok(
+    summary.indexOf('↩️ Not applicable') > summary.indexOf('<details>'),
+  );
+  evidence.cases[0].previewPath = 'real.png';
+  assert.match(
+    renderSummary(options),
+    /src="https:\/\/example.com\/site\/real.png"/,
+  );
+  evidence.cases[0].reportPath = null;
+  assert.match(renderSummary(options), /1 need attention · 2 passed/);
+  evidence.cases[0].status = 'success';
+  assert.throws(() => validateSupplementalEvidence(evidence), /not-applicable/);
+});
+
+test('Summary byte guard preserves every row outside upload and emits an explicit diagnostic on overflow', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'summary-bytes-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const output = path.join(root, 'summary.md');
+  const markdown = '界'.repeat(Math.ceil(SUMMARY_BYTE_LIMIT / 3));
+  await assert.rejects(
+    writeSummaryWithinLimit(output, markdown, 'https://example.com/run', root),
+    /safety limit/,
+  );
+  assert.equal(
+    await readFile(path.join(root, 'summary-overflow.md'), 'utf8'),
+    markdown,
+  );
+  const marker = JSON.parse(
+    await readFile(path.join(root, 'summary-overflow.json'), 'utf8'),
+  );
+  assert.equal(marker.status, 'summary-overflow');
+  assert.equal(marker.bytes, Buffer.byteLength(markdown));
+  assert.match(await readFile(output, 'utf8'), /Summary publication failed/);
+  assert.match(await readFile(output, 'utf8'), /run#artifacts/);
+  const boundary = path.join(root, 'boundary.md');
+  await writeSummaryWithinLimit(
+    boundary,
+    'a'.repeat(SUMMARY_BYTE_LIMIT),
+    'https://example.com/run',
+    root,
+  );
+  assert.equal((await readFile(boundary)).length, SUMMARY_BYTE_LIMIT);
+  await assert.rejects(
+    writeSummaryWithinLimit(boundary, 'b', 'https://example.com/run', root),
+    /safety limit/,
+  );
+  assert.equal(
+    (await readFile(path.join(root, 'summary-overflow.md'))).length,
+    SUMMARY_BYTE_LIMIT + 1,
   );
 });
 

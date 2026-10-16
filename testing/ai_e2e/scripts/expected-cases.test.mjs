@@ -65,3 +65,15 @@ test('selected artifact attempt is proven by directory and marker, not inventory
   await writeFile(path.join(directory, 'selected-attempt.txt'), '2\n');
   await assert.rejects(selectedArtifactAttempt(directory, '2', true), /does not match/);
 });
+
+test('native Summary overflow diagnostics upload independently of renderer success without publishing a partial site', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  for (const label of ['Android', 'iOS', 'report']) {
+    const step = workflow.split(`- name: Upload ${label} Summary overflow diagnostics`)[1].split(/\n      - name:/)[0];
+    assert.match(step, /if: always\(\)/);
+    assert.match(step, /summary-overflow\.md/);
+    assert.match(step, /summary-overflow\.json/);
+    assert.match(step, /if-no-files-found: ignore/);
+    assert.doesNotMatch(step, /upload-pages-artifact|deploy-pages/);
+  }
+});

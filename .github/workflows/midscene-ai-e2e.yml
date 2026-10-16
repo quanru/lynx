@@ -316,6 +316,17 @@ jobs:
             --job-summary-only true \
             --output "$GITHUB_STEP_SUMMARY"
 
+      - name: Upload Android Summary overflow diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-summary-overflow-android-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/midscene-job-summary/summary-overflow.md
+            ${{ runner.temp }}/midscene-job-summary/summary-overflow.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload emulator log
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -470,6 +481,17 @@ jobs:
             --site-dir "$RUNNER_TEMP/midscene-job-summary" \
             --job-summary-only true \
             --output "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload iOS Summary overflow diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-summary-overflow-ios-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/midscene-job-summary/summary-overflow.md
+            ${{ runner.temp }}/midscene-job-summary/summary-overflow.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload WDA log
         # A successful job may contain a failed first case attempt.
@@ -743,3 +765,15 @@ jobs:
             cat "$RUNNER_TEMP/unpublished-summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+      - name: Upload report Summary overflow diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midscene-summary-overflow-report-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/pages-site/summary-overflow.md
+            ${{ runner.temp }}/pages-site/summary-overflow.json
+            ${{ runner.temp }}/unpublished-report-site/summary-overflow.md
+            ${{ runner.temp }}/unpublished-report-site/summary-overflow.json
+          if-no-files-found: ignore
+          retention-days: 14

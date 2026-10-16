@@ -456,6 +456,9 @@ function caseUrl(baseUrl, entry, testCase) {
 
 function caseScreenshot(pagesUrl, entry, testCase) {
   if (testCase.expectedInventory) return 'Unavailable';
+  if (testCase.evidencePolicy === 'source-return' && !testCase.previewPath) {
+    return 'Not applicable (source return)';
+  }
   if (testCase.evidencePolicy === 'non-ui') return 'Not applicable (non-UI)';
   if (testCase.evidencePolicy === 'source-skip') {
     return 'Not applicable (source-skipped)';
@@ -464,23 +467,17 @@ function caseScreenshot(pagesUrl, entry, testCase) {
   if (!testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
   const image = escapeHtml(pageUrl(pagesUrl, testCase.previewPath));
-  const name = escapeHtml(testCase.name)
-    .replaceAll('|', '&#124;')
-    .replaceAll(/[\r\n]+/g, ' ');
-  return `<a href="${target}"><img src="${image}" alt="${name}" width="160"></a>`;
+  return `<a href="${target}"><img src="${image}" alt="Screenshot" width="160"></a>`;
 }
 
-function caseName(pagesUrl, entry, testCase) {
-  const name = inlineCell(testCase.name);
-  return pagesUrl && entry.reportPath
-    ? `[${name}](${caseUrl(pagesUrl, entry, testCase)})`
-    : name;
+function caseName(testCase) {
+  return inlineCell(testCase.name);
 }
 
 function caseRow(pagesUrl, entry, testCase, detail, runUrl) {
-  return `| ${inlineCell(entry.label)} | ${
-    caseName(pagesUrl, entry, testCase)
-  } | ${caseScreenshot(pagesUrl, entry, testCase)} | ${inlineCell(detail)} | ${
+  return `| ${inlineCell(entry.label)} | ${caseName(testCase)} | ${
+    caseScreenshot(pagesUrl, entry, testCase)
+  } | ${inlineCell(detail)} | ${
     formatDuration(testCase.attempts?.at(-1)?.durationMs)
   } | ${
     pagesUrl && entry.reportPath
@@ -543,20 +540,23 @@ export function validateSupplementalEvidence(value) {
     if (identities.has(identity)) fail(`duplicate case ${identity}`);
     identities.add(identity);
     if (
-      !['success', 'failed', 'not-run', 'flaky', 'skipped'].includes(
-        item.status,
-      )
+      !['success', 'failed', 'not-run', 'flaky', 'skipped', 'not-applicable']
+        .includes(
+          item.status,
+        )
     ) {
       fail('unknown case status');
     }
     const policy = item.evidencePolicy ?? 'ui';
-    if (!['ui', 'non-ui', 'source-skip'].includes(policy)) {
+    if (!['ui', 'non-ui', 'source-skip', 'source-return'].includes(policy)) {
       fail('unknown evidencePolicy');
     }
     if ((policy === 'source-skip') !== (item.status === 'skipped')) {
       fail('source-skip requires skipped status exclusively');
     }
-    if (policy !== 'ui' && item.previewPath != null) {
+    if (
+      ['non-ui', 'source-skip'].includes(policy) && item.previewPath != null
+    ) {
       fail('exempt cases cannot claim screenshots');
     }
     if (
@@ -564,6 +564,12 @@ export function validateSupplementalEvidence(value) {
       && (!text(item.reason) || item.durationMs != null)
     ) {
       fail('source-skipped cases require a reason and no execution duration');
+    }
+    if ((policy === 'source-return') !== (item.status === 'not-applicable')) {
+      fail('source-return requires not-applicable status exclusively');
+    }
+    if (policy === 'source-return' && !text(item.reason)) {
+      fail('source-return requires a reason');
     }
     for (const field of ['reason', 'artifact']) {
       if (item[field] != null && !text(item[field])) {
@@ -728,6 +734,7 @@ function supplementalStatus(item) {
     failed: '❌ Failed',
     'not-run': '⏭️ Not run',
     flaky: '⚠️ Flaky',
+    'not-applicable': '⚠️ Source return; evidence missing',
   }[item.status];
   const reasons = [item.reason];
   if ((item.evidencePolicy ?? 'ui') === 'ui' && !item.previewPath) {
@@ -737,6 +744,48 @@ function supplementalStatus(item) {
   return `${status}: ${
     reasons.filter(Boolean).join('; ') || 'No failure detail was recorded.'
   }`;
+}
+
+export const SUMMARY_BYTE_LIMIT = 950 * 1024;
+
+/** Preserve every row on disk, but never silently exceed GitHub's per-step upload limit. */
+export async function writeSummaryWithinLimit(
+  output,
+  markdown,
+  runUrl,
+  siteDirectory,
+) {
+  let existing = '';
+  try {
+    existing = await readFile(output, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const bytes = Buffer.byteLength(existing + markdown);
+  if (bytes > SUMMARY_BYTE_LIMIT) {
+    const fullPath = path.join(siteDirectory, 'summary-overflow.md');
+    await mkdir(siteDirectory, { recursive: true });
+    await writeFile(fullPath, existing + markdown);
+    await writeFile(
+      path.join(siteDirectory, 'summary-overflow.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        status: 'summary-overflow',
+        bytes,
+        limit: SUMMARY_BYTE_LIMIT,
+        runUrl,
+      }),
+    );
+    const diagnostic =
+      `\n## Summary publication failed\n\nThe complete case table exceeds the ${SUMMARY_BYTE_LIMIT}-byte safety limit (${bytes} bytes). No case rows were truncated. Complete Markdown was saved as summary-overflow.md for diagnostic upload. [Inspect run artifacts and logs](${runUrl}#artifacts) for source reports and any successfully uploaded overflow diagnostics.\n`;
+    if (Buffer.byteLength(existing + diagnostic) <= SUMMARY_BYTE_LIMIT) {
+      await appendFile(output, diagnostic);
+    }
+    throw new Error(
+      `Summary exceeds ${SUMMARY_BYTE_LIMIT}-byte safety limit: ${bytes} bytes; complete Markdown saved to ${fullPath}`,
+    );
+  }
+  await appendFile(output, markdown);
 }
 
 export function renderSummary(
@@ -778,7 +827,7 @@ export function renderSummary(
   const allCases = [...midsceneCases, ...supplementalCases];
   const attentionCases = allCases.filter(
     ({ testCase }) =>
-      !['success', 'skipped'].includes(testCase.status)
+      !['success', 'skipped', 'not-applicable'].includes(testCase.status)
       || testCase.missingEvidence,
   );
   const passedCases = allCases.filter(
@@ -789,6 +838,10 @@ export function renderSummary(
     testCase.status === 'skipped'
   );
   const skippedCount = sourceSkippedCases.length;
+  const sourceReturnCases = supplementalCases.filter(({ testCase }) =>
+    testCase.status === 'not-applicable' && !testCase.missingEvidence
+  );
+  const returnedCount = sourceReturnCases.length;
   const infrastructureFailures = entries.filter((entry) =>
     (entry.result !== 'success' || entry.run?.status !== 'success')
     && !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
@@ -796,9 +849,9 @@ export function renderSummary(
   const needsAttention = attentionCases.length + infrastructureFailures.length
     + (supplemental?.errors.length ?? 0);
   const allPassed = needsAttention === 0
-    && (passedCases.length > 0 || skippedCount > 0);
-  const successMessage = skippedCount
-    ? `✅ ${passedCases.length} cases passed; ${skippedCount} cases were skipped in the original source.`
+    && (passedCases.length > 0 || skippedCount > 0 || returnedCount > 0);
+  const successMessage = skippedCount || returnedCount
+    ? `✅ ${passedCases.length} cases passed; ${skippedCount} source-skipped; ${returnedCount} source-returned (not applicable).`
     : `🎉 All ${passedCases.length} cases passed.`;
   const sections = [
     `## ${title}`,
@@ -807,7 +860,7 @@ export function renderSummary(
       allPassed ? '✅ ' : ''
     }${needsAttention} need attention · ${passedCases.length} passed${
       skippedCount ? ` · ${skippedCount} source-skipped` : ''
-    }**`,
+    }${returnedCount ? ` · ${returnedCount} source-returned` : ''}**`,
     '',
   ];
   if (supplemental) {
@@ -912,8 +965,8 @@ export function renderSummary(
   }
   sections.push(
     '<details>',
-    skippedCount
-      ? `<summary>Appendix: passed cases (${passedCases.length}) and source-skipped cases (${skippedCount})</summary>`
+    skippedCount || returnedCount
+      ? `<summary>Appendix: passed cases (${passedCases.length}) and source exclusions (${skippedCount} skipped, ${returnedCount} returned)</summary>`
       : `<summary>Appendix: passed cases (${passedCases.length})</summary>`,
     '',
     '| Platform | Case | Screenshot | Status | Duration | Report |',
@@ -930,14 +983,23 @@ export function renderSummary(
         runUrl,
       )
     ),
+    ...sourceReturnCases.map(({ entry, testCase }) =>
+      caseRow(
+        pagesUrl,
+        entry,
+        testCase,
+        `↩️ Not applicable (original source return): ${testCase.reason}`,
+        runUrl,
+      )
+    ),
     '',
     '</details>',
     '',
     ...(pagesUrl
       ? [
         supplemental
-          ? 'Click a screenshot, case name or Open report link for its HTML evidence. Midscene links select the exact step; original source-contract links open their browser report.'
-          : 'Click a screenshot or case name to open the complete HTML report at that exact step.',
+          ? 'Click a screenshot or Open report link for its HTML evidence. Midscene links select the exact step; original source-contract links open their browser report.'
+          : 'Click a screenshot or Open report link to open the complete HTML report at that exact step.',
       ]
       : []),
     '',
@@ -1003,7 +1065,12 @@ async function main() {
     jobSummaryOnly: options['job-summary-only'] === 'true',
     supplementalEvidence,
   });
-  await appendFile(required(options, 'output'), markdown);
+  await writeSummaryWithinLimit(
+    required(options, 'output'),
+    markdown,
+    required(options, 'run-url'),
+    required(options, 'site-dir'),
+  );
   const missingReports = entries
     .filter(({ result, run }) => result === 'success' && !run)
     .map(({ label }) => label);
