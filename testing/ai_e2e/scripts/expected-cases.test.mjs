@@ -57,6 +57,8 @@ test('selected artifact attempt is proven by directory and marker, not inventory
   await assert.rejects(selectedArtifactAttempt(directory, '2'), /does not match/);
   await writeFile(path.join(directory, 'attempt.txt'), '1\n');
   await assert.rejects(selectedArtifactAttempt(directory, '0'), /does not match/);
+  assert.equal(await selectedArtifactAttempt(directory, '2', true), '1');
+  await writeFile(path.join(directory, 'expected-cases.json'), '{}');
   await assert.rejects(selectedArtifactAttempt(directory, '2', true), /ENOENT/);
   await writeFile(path.join(directory, 'selected-attempt.txt'), '1\n');
   assert.equal(await selectedArtifactAttempt(directory, '2', true), '1');

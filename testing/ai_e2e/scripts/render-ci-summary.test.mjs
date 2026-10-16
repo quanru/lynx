@@ -1012,6 +1012,104 @@ const sourceEvidence = () => ({
   })),
 });
 
+test('catalog evidence policies keep non-UI passes and source skips distinct without fake screenshots', () => {
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'non-ui',
+    previewPath: null,
+  });
+  for (const item of evidence.cases.slice(1)) {
+    Object.assign(item, {
+      evidencePolicy: 'source-skip',
+      status: 'skipped',
+      reason: 'Disabled in original source',
+      previewPath: null,
+      durationMs: null,
+    });
+  }
+  evidence.cases[2].reportPath = null;
+  const options = {
+    title: 'Policies',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [],
+    supplementalEvidence: evidence,
+  };
+  for (const pagesUrl of [undefined, 'https://example.github.io/project/']) {
+    const summary = renderSummary({ ...options, pagesUrl });
+    assert.match(summary, /0 need attention · 1 passed · 2 source-skipped/);
+    assert.match(summary, /1 non-UI · 2 source-skipped/);
+    assert.doesNotMatch(summary, /All 3 cases passed|### Needs attention|<img/);
+    assert.match(summary, /Not applicable \(non-UI\)/);
+    assert.match(summary, /Not generated \(source-skipped\)/);
+    assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+    assert.match(
+      summary,
+      /Skipped in original source: Disabled in original source/,
+    );
+    if (pagesUrl) {
+      assert.match(summary, /Open report.*original\/firefox\/index.html/);
+    } else assert.match(summary, /Find artifact: original-input-contracts-1/);
+  }
+  evidence.cases[0].reportPath = null;
+  assert.match(
+    renderSummary(options),
+    /1 need attention · 0 passed · 2 source-skipped/,
+  );
+});
+
+test('evidence policy exemptions reject contradictory statuses, screenshots and invented skip timing', () => {
+  for (
+    const change of [
+      { status: 'skipped' },
+      { evidencePolicy: 'source-skip' },
+      { evidencePolicy: 'unknown' },
+      { evidencePolicy: 'non-ui' },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'skipped',
+        previewPath: null,
+        reason: 'Disabled',
+      },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'skipped',
+        previewPath: null,
+        durationMs: null,
+      },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'not-run',
+        previewPath: null,
+        durationMs: null,
+        reason: 'Job not started',
+      },
+    ]
+  ) {
+    const evidence = sourceEvidence();
+    Object.assign(evidence.cases[0], change);
+    assert.throws(
+      () => validateSupplementalEvidence(evidence),
+      /Invalid supplemental evidence/,
+    );
+  }
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'non-ui',
+    status: 'not-run',
+    previewPath: null,
+    reportPath: null,
+  });
+  assert.match(
+    renderSummary({
+      title: 'Not started',
+      runUrl: 'https://example.com/run',
+      entries: [],
+      supplementalEvidence: evidence,
+    }),
+    /1 need attention/,
+  );
+});
+
 test('supplemental rows share the two sections without inflating YAML counts or runner links', () => {
   const evidence = sourceEvidence();
   evidence.cases[1].status = 'flaky';

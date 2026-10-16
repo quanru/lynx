@@ -456,6 +456,10 @@ function caseUrl(baseUrl, entry, testCase) {
 
 function caseScreenshot(pagesUrl, entry, testCase) {
   if (testCase.expectedInventory) return 'Unavailable';
+  if (testCase.evidencePolicy === 'non-ui') return 'Not applicable (non-UI)';
+  if (testCase.evidencePolicy === 'source-skip') {
+    return 'Not applicable (source-skipped)';
+  }
   if (!pagesUrl) return 'Not published';
   if (!testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
@@ -483,6 +487,8 @@ function caseRow(pagesUrl, entry, testCase, detail, runUrl) {
       ? `[Open report](${caseUrl(pagesUrl, entry, testCase)})`
       : entry.reportPath && entry.artifact && runUrl
       ? `[Find artifact: ${inlineCell(entry.artifact)}](${runUrl}#artifacts)`
+      : testCase.evidencePolicy === 'source-skip' && !entry.reportPath
+      ? 'Not generated (source-skipped)'
       : 'Unavailable'
   } |`;
 }
@@ -528,6 +534,7 @@ export function validateSupplementalEvidence(value) {
       'previewPath',
       'reportPath',
       'artifact',
+      'evidencePolicy',
     ]);
     if (!text(item.platform) || !text(item.name)) {
       fail('case platform and name are required');
@@ -535,8 +542,28 @@ export function validateSupplementalEvidence(value) {
     const identity = JSON.stringify([item.platform, item.name]);
     if (identities.has(identity)) fail(`duplicate case ${identity}`);
     identities.add(identity);
-    if (!['success', 'failed', 'not-run', 'flaky'].includes(item.status)) {
+    if (
+      !['success', 'failed', 'not-run', 'flaky', 'skipped'].includes(
+        item.status,
+      )
+    ) {
       fail('unknown case status');
+    }
+    const policy = item.evidencePolicy ?? 'ui';
+    if (!['ui', 'non-ui', 'source-skip'].includes(policy)) {
+      fail('unknown evidencePolicy');
+    }
+    if ((policy === 'source-skip') !== (item.status === 'skipped')) {
+      fail('source-skip requires skipped status exclusively');
+    }
+    if (policy !== 'ui' && item.previewPath != null) {
+      fail('exempt cases cannot claim screenshots');
+    }
+    if (
+      policy === 'source-skip'
+      && (!text(item.reason) || item.durationMs != null)
+    ) {
+      fail('source-skipped cases require a reason and no execution duration');
     }
     for (const field of ['reason', 'artifact']) {
       if (item[field] != null && !text(item[field])) {
@@ -703,7 +730,9 @@ function supplementalStatus(item) {
     flaky: '⚠️ Flaky',
   }[item.status];
   const reasons = [item.reason];
-  if (!item.previewPath) reasons.push('Screenshot unavailable');
+  if ((item.evidencePolicy ?? 'ui') === 'ui' && !item.previewPath) {
+    reasons.push('Screenshot unavailable');
+  }
   if (!item.reportPath) reasons.push('HTML report unavailable');
   return `${status}: ${
     reasons.filter(Boolean).join('; ') || 'No failure detail was recorded.'
@@ -740,30 +769,45 @@ export function renderSummary(
       ...item,
       supplemental: true,
       attempts: [{ durationMs: item.durationMs }],
-      missingEvidence: !item.previewPath || !item.reportPath,
+      missingEvidence: item.evidencePolicy === 'source-skip'
+        ? false
+        : !item.reportPath
+          || ((item.evidencePolicy ?? 'ui') === 'ui' && !item.previewPath),
     },
   }));
   const allCases = [...midsceneCases, ...supplementalCases];
   const attentionCases = allCases.filter(
-    ({ testCase }) => testCase.status !== 'success' || testCase.missingEvidence,
+    ({ testCase }) =>
+      !['success', 'skipped'].includes(testCase.status)
+      || testCase.missingEvidence,
   );
   const passedCases = allCases.filter(
     ({ testCase }) =>
       testCase.status === 'success' && !testCase.missingEvidence,
   );
+  const sourceSkippedCases = supplementalCases.filter(({ testCase }) =>
+    testCase.status === 'skipped'
+  );
+  const skippedCount = sourceSkippedCases.length;
   const infrastructureFailures = entries.filter((entry) =>
     (entry.result !== 'success' || entry.run?.status !== 'success')
     && !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
   );
   const needsAttention = attentionCases.length + infrastructureFailures.length
     + (supplemental?.errors.length ?? 0);
-  const allPassed = needsAttention === 0 && passedCases.length > 0;
+  const allPassed = needsAttention === 0
+    && (passedCases.length > 0 || skippedCount > 0);
+  const successMessage = skippedCount
+    ? `✅ ${passedCases.length} cases passed; ${skippedCount} cases were skipped in the original source.`
+    : `🎉 All ${passedCases.length} cases passed.`;
   const sections = [
     `## ${title}`,
     '',
     `**${
       allPassed ? '✅ ' : ''
-    }${needsAttention} need attention · ${passedCases.length} passed**`,
+    }${needsAttention} need attention · ${passedCases.length} passed${
+      skippedCount ? ` · ${skippedCount} source-skipped` : ''
+    }**`,
     '',
   ];
   if (supplemental) {
@@ -773,6 +817,15 @@ export function renderSummary(
       }: ${supplemental.sourceCount} source cases / ${supplemental.expectedCount} browser cases.`,
       '',
     );
+    const nonUiCount = supplemental.cases.filter(item =>
+      item.evidencePolicy === 'non-ui'
+    ).length;
+    if (nonUiCount || skippedCount) {
+      sections.push(
+        `Original evidence policies: ${nonUiCount} non-UI · ${skippedCount} source-skipped.`,
+        '',
+      );
+    }
   }
   const attempts = entries.filter(entry => entry.inventoryAttempt).map(entry =>
     `${inlineCell(entry.label)}: attempt ${entry.inventoryAttempt}${
@@ -786,7 +839,7 @@ export function renderSummary(
     if (jobSummaryOnly) {
       sections.push(
         allPassed
-          ? `🎉 All ${passedCases.length} cases passed.`
+          ? successMessage
           : needsAttention
           ? '⚠️ Tests or infrastructure need attention. See the job logs and artifacts for details.'
           : 'No cases were reported.',
@@ -853,18 +906,29 @@ export function renderSummary(
       '',
     );
   } else if (allPassed) {
-    sections.push(`🎉 All ${passedCases.length} cases passed.`, '');
+    sections.push(successMessage, '');
   } else {
     sections.push('No cases were reported.', '');
   }
   sections.push(
     '<details>',
-    `<summary>Appendix: passed cases (${passedCases.length})</summary>`,
+    skippedCount
+      ? `<summary>Appendix: passed cases (${passedCases.length}) and source-skipped cases (${skippedCount})</summary>`
+      : `<summary>Appendix: passed cases (${passedCases.length})</summary>`,
     '',
     '| Platform | Case | Screenshot | Status | Duration | Report |',
     '|:--|:--|:--|:--|--:|:--|',
     ...passedCases.map(({ entry, testCase }) =>
       caseRow(pagesUrl, entry, testCase, '✅ Passed', runUrl)
+    ),
+    ...sourceSkippedCases.map(({ entry, testCase }) =>
+      caseRow(
+        pagesUrl,
+        entry,
+        testCase,
+        `⏭️ Skipped in original source: ${testCase.reason}`,
+        runUrl,
+      )
     ),
     '',
     '</details>',

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -48,7 +48,12 @@ export function executionStatus(projectName, outcome, env = process.env) {
 /** Validate producer-owned attempt metadata against the selected artifact directory. */
 export async function selectedArtifactAttempt(directory, currentAttempt, platformBundle = false) {
   const marker = (await readFile(path.join(directory, 'attempt.txt'), 'utf8')).trim();
-  const selected = platformBundle
+  const inventoryFiles = await Promise.all(['expected-cases.json', 'execution-status.json'].map(async name => {
+    try { await access(path.join(directory, name)); return true; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  }));
+  const legacy = platformBundle && inventoryFiles.every(exists => !exists);
+  const selected = legacy ? marker : platformBundle
     ? (await readFile(path.join(directory, 'selected-attempt.txt'), 'utf8')).trim()
     : /^attempt-([1-9][0-9]*)$/.exec(path.basename(directory))?.[1];
   if (!/^[1-9][0-9]*$/.test(currentAttempt ?? '') || !/^[1-9][0-9]*$/.test(marker)
