@@ -16,7 +16,8 @@ test('WDA evidence survives a successful job after a failed case attempt', () =>
   assert.ok(upload);
   assert.match(upload, /if: always\(\)/);
   assert.match(upload, /name: midscene-ai-e2e-log-ios-wda-\$\{\{ github.run_attempt \}\}/);
-  assert.match(upload, /path: \$\{\{ runner.temp \}\}\/wda-build\/wda.log/);
+  assert.match(upload, /path: \|\s+\$\{\{ runner.temp \}\}\/wda-build\/wda.log/);
+  assert.match(upload, /\$\{\{ runner.temp \}\}\/wda-build\/wda-startup\.\*/);
   assert.match(upload, /if-no-files-found: ignore/);
   assert.match(upload, /retention-days: 14/);
 });

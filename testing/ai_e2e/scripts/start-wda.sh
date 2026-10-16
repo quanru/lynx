@@ -62,6 +62,7 @@ xcrun simctl install "$SIMULATOR_UDID" \
   "$PWD/Build/Products/Release-iphonesimulator/WebDriverAgentRunner-Runner.app"
 
 # 6) Keep WDA running in the background with test-without-building.
+WDA_DIAGNOSTICS_DIR="$(mktemp -d "$PWD/wda-startup.XXXXXX")"
 xcodebuild test-without-building \
   -project ./WebDriverAgent/WebDriverAgent.xcodeproj \
   -scheme WebDriverAgentRunner \
@@ -69,6 +70,7 @@ xcodebuild test-without-building \
   -sdk "iphonesimulator${SDK_VERSION}" \
   -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}" \
   -derivedDataPath ./WebDriverAgent/DerivedData \
+  -resultBundlePath "$WDA_DIAGNOSTICS_DIR/startup.xcresult" \
   SYMROOT="$PWD/Build/Products" \
   > wda.log 2>&1 &
 WDA_PID=$!
@@ -80,11 +82,13 @@ until curl -fsS "http://localhost:${WDA_PORT}/status" >/dev/null 2>&1; do
   if ! kill -0 "$WDA_PID" 2>/dev/null; then
     echo "::error:: WDA process exited before becoming ready" >&2
     tail -100 wda.log >&2 || true
+    node "$SCRIPT_DIR/wda-startup-diagnostics.mjs" "$WDA_DIAGNOSTICS_DIR" "$WDA_PID" "$SIMULATOR_UDID" || true
     exit 1
   fi
   if [ "$(date +%s)" -gt "$DEADLINE" ]; then
     echo "::error:: timed out waiting for WDA on port ${WDA_PORT}" >&2
     tail -100 wda.log >&2 || true
+    node "$SCRIPT_DIR/wda-startup-diagnostics.mjs" "$WDA_DIAGNOSTICS_DIR" "$WDA_PID" "$SIMULATOR_UDID" || true
     exit 1
   fi
   echo "waiting for WDA..."
