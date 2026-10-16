@@ -443,7 +443,8 @@ function caseUrl(baseUrl, entry, testCase) {
 }
 
 function caseScreenshot(pagesUrl, entry, testCase) {
-  if (!pagesUrl || !testCase.previewPath || !entry.reportPath) return '—';
+  if (!pagesUrl) return 'Not published';
+  if (!testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
   const image = escapeHtml(pageUrl(pagesUrl, testCase.previewPath));
   const name = escapeHtml(testCase.name)
@@ -459,7 +460,7 @@ function caseName(pagesUrl, entry, testCase) {
     : name;
 }
 
-function caseRow(pagesUrl, entry, testCase, detail) {
+function caseRow(pagesUrl, entry, testCase, detail, runUrl) {
   return `| ${inlineCell(entry.label)} | ${
     caseName(pagesUrl, entry, testCase)
   } | ${caseScreenshot(pagesUrl, entry, testCase)} | ${inlineCell(detail)} | ${
@@ -467,12 +468,21 @@ function caseRow(pagesUrl, entry, testCase, detail) {
   } | ${
     pagesUrl && entry.reportPath
       ? `[Open report](${caseUrl(pagesUrl, entry, testCase)})`
-      : '—'
+      : entry.reportPath && entry.artifact && runUrl
+      ? `[Find artifact: ${inlineCell(entry.artifact)}](${runUrl}#artifacts)`
+      : 'Unavailable'
   } |`;
 }
 
 export function renderSummary(
-  { title, runUrl, pagesUrl, entries, nativeReportPath },
+  {
+    title,
+    runUrl,
+    pagesUrl,
+    entries,
+    nativeReportPath,
+    jobSummaryOnly = false,
+  },
 ) {
   const allCases = entries.flatMap((entry) =>
     (entry.cases ?? rawCases(entry.run)).map((testCase) => ({
@@ -501,21 +511,25 @@ export function renderSummary(
     '',
   ];
   if (!pagesUrl) {
+    if (jobSummaryOnly) {
+      sections.push(
+        allPassed
+          ? `🎉 All ${passedCases.length} cases passed.`
+          : needsAttention
+          ? '⚠️ Tests or infrastructure need attention. See the job logs and artifacts for details.'
+          : 'No cases were reported.',
+        '',
+      );
+    }
     sections.push(
-      allPassed
-        ? `🎉 All ${passedCases.length} cases passed.`
-        : needsAttention
-        ? '⚠️ Tests or infrastructure need attention. See the job logs and artifacts for details.'
-        : 'No cases were reported.',
-      '',
       `[Download HTML reports and screenshots from the run artifacts](${runUrl}#artifacts).`,
       '',
-      'The published report Summary contains the case table with clickable screenshots after Pages deployment succeeds. If publication is skipped or fails, use the artifacts above.',
+      'Screenshots and direct HTML links are not published. If publication is skipped or fails, download the named artifact from the run artifacts above and open its HTML report locally.',
       '',
     );
-    return sections.join('\n');
+    if (jobSummaryOnly) return sections.join('\n');
   }
-  if (nativeReportPath) {
+  if (pagesUrl && nativeReportPath) {
     sections.push(
       `[Open the published HTML report](${
         pageUrl(pagesUrl, nativeReportPath)
@@ -550,6 +564,7 @@ export function renderSummary(
             `${testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'}: ${
               failedReason(testCase)
             }`,
+            runUrl,
           )
         ),
       '',
@@ -566,12 +581,16 @@ export function renderSummary(
     '| Platform | Case | Screenshot | Status | Duration | Report |',
     '|:--|:--|:--|:--|--:|:--|',
     ...passedCases.map(({ entry, testCase }) =>
-      caseRow(pagesUrl, entry, testCase, '✅ Passed')
+      caseRow(pagesUrl, entry, testCase, '✅ Passed', runUrl)
     ),
     '',
     '</details>',
     '',
-    'Click a screenshot or case name to open the complete HTML report at that exact step.',
+    ...(pagesUrl
+      ? [
+        'Click a screenshot or case name to open the complete HTML report at that exact step.',
+      ]
+      : []),
     '',
   );
   return sections.join('\n');
@@ -613,6 +632,7 @@ async function main() {
       : required(options, 'pages-url'),
     entries,
     nativeReportPath,
+    jobSummaryOnly: options['job-summary-only'] === 'true',
   });
   await appendFile(required(options, 'output'), markdown);
   const missingReports = entries

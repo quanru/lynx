@@ -644,6 +644,10 @@ is wanted. Repository rules must allow the workflow to update
 `midscene-pages-archive`. The workflow declares `contents: write`, `pages: write`,
 and `id-token: write` for publication and reports a setup warning when Pages is
 not configured. No extra variable is needed to publish after merging to `develop`.
+When publication is unavailable, the publication job still lists individual
+cases, with failures first and passed cases in a collapsed appendix. Screenshots
+are marked `Not published`; artifact links lead to the run's download list,
+not to an online HTML report. This fallback does not establish Pages acceptance.
 
 The model-free build matrix synchronizes pinned public dependencies and builds
 an x86_64 Android debug APK and an iOS simulator app. Both include the original

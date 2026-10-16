@@ -75,6 +75,20 @@ test('publication defaults to the default branch and only exposes deployed links
   assert.doesNotMatch(publication, /--output "\$GITHUB_STEP_SUMMARY"/);
 });
 
+test('unavailable publication retains an honest per-case artifact fallback', async () => {
+  const workflow = await readFile(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
+  const fallback = workflow.split('name: Show case results when publication is unavailable')[1];
+  assert.ok(fallback);
+  assert.match(fallback, /if: always\(\) && !cancelled\(\) && steps\.report-input\.outcome == 'success' && steps\.deployment\.outcome != 'success'/);
+  assert.match(fallback, /--links-published false/);
+  assert.match(fallback, /--job-summary-only false/);
+  assert.doesNotMatch(fallback, /--pages-url/);
+  for (const platform of ['Android', 'iOS']) {
+    assert.ok(fallback.includes('--artifact "' + platform + '=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT"'));
+  }
+  assert.ok(fallback.includes('cat "$RUNNER_TEMP/unpublished-summary.md" >> "$GITHUB_STEP_SUMMARY"'));
+});
+
 test('DevTool probes are bounded read-only prerequisites, not false migrated cases', async () => {
   const workflow = await readFile(
     new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');

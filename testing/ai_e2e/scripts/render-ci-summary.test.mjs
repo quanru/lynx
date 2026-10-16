@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-test('unpublished summaries retain results and artifact access without broken Pages links', () => {
+test('unpublished job summaries retain counts-only results and artifact access', () => {
   const summary = renderSummary({
     title: 'Unpublished report',
+    jobSummaryOnly: true,
     runUrl: 'https://github.com/example/project/actions/runs/123',
     entries: [{
       label: 'Web',
@@ -158,7 +159,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.match(summary, /runner-step=case%3Asteps%3A0/);
 });
 
-test('keeps results and downloads without advertising unpublished reports', () => {
+test('keeps every case in an unpublished report without advertising nonexistent links', () => {
   const summary = renderSummary({
     title: 'Midscene',
     runUrl: 'https://github.com/example/project/actions/runs/123',
@@ -179,13 +180,18 @@ test('keeps results and downloads without advertising unpublished reports', () =
   assert.match(summary, /1 passed/);
   assert.match(summary, /run artifacts/);
   assert.match(summary, /actions\/runs\/123#artifacts/);
+  assert.match(summary, /<summary>Appendix: passed cases \(1\)<\/summary>/);
+  assert.match(
+    summary,
+    /\| Web \| Open the Showcase page \| Not published \| ✅ Passed \| 52s \| Unavailable \|/,
+  );
   assert.doesNotMatch(
     summary,
-    /<img|runner-step=|Open the published HTML report|\| Platform \||<details>|Appendix:/,
+    /<img|runner-step=|Open the published HTML report|Click a screenshot/,
   );
 });
 
-test('unpublished failed and empty runs keep status and downloads without case tables', () => {
+test('unpublished failed and empty runs retain status without inventing screenshots', () => {
   for (
     const entries of [
       [{ label: 'iOS', result: 'failure', run: undefined }],
@@ -209,8 +215,51 @@ test('unpublished failed and empty runs keep status and downloads without case t
       summary,
       entries.length ? /1 need attention/ : /No cases were reported/,
     );
-    assert.doesNotMatch(summary, /\| Platform \||<details>|<img|Appendix:|✅/);
+    assert.match(summary, /\| Platform \|/);
+    if (entries[0]?.cases) {
+      assert.match(summary, /Failed case \| Not published/);
+    }
+    assert.doesNotMatch(summary, /<img|✅/);
   }
+});
+
+test('unpublished tables put failures first and identify the report artifact without a fake direct link', () => {
+  const passed = structuredClone(run.projects[0].documents[0].cases[0]);
+  passed.name = 'Passed case';
+  const failed = { ...passed, name: 'Failed case', status: 'failed' };
+  const notRun = {
+    name: 'Not-run case',
+    status: 'not-run',
+    notRunReason: 'Setup failed',
+  };
+  const summary = renderSummary({
+    title: 'Unpublished report',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [{
+      label: 'iOS',
+      result: 'failure',
+      run: { ...run, status: 'failed' },
+      reportPath: 'ios/report/index.html',
+      artifact: 'combined-report-2',
+      cases: [passed, notRun, failed],
+    }],
+  });
+  const appendix = summary.indexOf('<details>');
+  assert.ok(summary.indexOf('Failed case') < summary.indexOf('Not-run case'));
+  assert.ok(summary.indexOf('Not-run case') < appendix);
+  assert.ok(summary.indexOf('Passed case') > appendix);
+  const rows = summary.split('\n').filter(line => line.startsWith('| iOS |'));
+  assert.equal(rows.length, 3);
+  for (const row of rows) {
+    assert.match(row, /\| Not published \|/);
+    assert.match(
+      row,
+      /\[Find artifact: combined-report-2\]\(https:\/\/github.com\/example\/project\/actions\/runs\/123#artifacts\)/,
+    );
+  }
+  assert.match(rows[0], /\| 52s \|/);
+  assert.match(rows[1], /\| — \|/);
+  assert.doesNotMatch(summary, /<img|Open report|runner-step=|github\.io/);
 });
 
 test('shows abnormal cases with screenshots before passed-only appendix', () => {
@@ -519,6 +568,59 @@ test('extracts a node screenshot and publishes a linked HTML report', async (con
     await readFile(jobSummary, 'utf8'),
     /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/android\/report\/test-run\.html\)/,
   );
+});
+
+test('CLI distinguishes an unpublished full fallback from a counts-only test job', async context => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-fallback-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source');
+  await mkdir(source);
+  await writeFile(
+    path.join(source, 'report.html'),
+    `<script type="midscene_test_run_dump">${JSON.stringify(run)}</script>`,
+  );
+  for (const jobSummaryOnly of ['true', 'false']) {
+    const output = path.join(root, jobSummaryOnly + '.md');
+    execFileSync(process.execPath, [
+      new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+      '--title',
+      'Unpublished report',
+      '--run-url',
+      'https://github.com/example/project/actions/runs/123',
+      '--links-published',
+      'false',
+      '--entry',
+      `Android=${source}`,
+      '--result',
+      'Android=success',
+      '--artifact',
+      'Android=combined-report-2',
+      '--site-prefix',
+      'runs/123-2',
+      '--site-dir',
+      path.join(root, 'site-' + jobSummaryOnly),
+      '--job-summary-only',
+      jobSummaryOnly,
+      '--output',
+      output,
+    ]);
+    const summary = await readFile(output, 'utf8');
+    assert.match(summary, /1 passed/);
+    assert.doesNotMatch(
+      summary,
+      /<img|Open report|runner-step=|undefined|github\.io/,
+    );
+    if (jobSummaryOnly === 'true') {
+      assert.doesNotMatch(summary, /Appendix:|Open the Showcase page/);
+    } else {
+      assert.match(summary, /Appendix: passed cases/);
+      assert.match(
+        summary,
+        /Open the Showcase page \| Not published \| ✅ Passed \| 52s/,
+      );
+      assert.match(summary, /Find artifact: combined-report-2/);
+    }
+  }
 });
 
 test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {

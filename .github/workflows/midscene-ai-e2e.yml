@@ -575,6 +575,7 @@ jobs:
           merge-multiple: true
 
       - name: Select latest combined report bundle
+        id: report-input
         run: |
           latest="$(find "$RUNNER_TEMP/midscene-bundles" \
             -mindepth 1 -maxdepth 1 -type d \
@@ -679,3 +680,29 @@ jobs:
         if: failure()
         run: |
           echo '❌ Pages publication failed. Download the combined report artifact from this run. Check Pages setup and the github-pages environment deployment rules.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show case results when publication is unavailable
+        if: always() && !cancelled() && steps.report-input.outcome == 'success' && steps.deployment.outcome != 'success'
+        env:
+          ANDROID_RESULT: ${{ needs.android-ai-e2e.result }}
+          IOS_RESULT: ${{ needs.ios-ai-e2e.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          status=0
+          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+            --title "Lynx Explorer × Midscene" \
+            --run-url "$RUN_URL" \
+            --links-published false \
+            --job-summary-only false \
+            --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
+            --result "Android=$ANDROID_RESULT" \
+            --artifact "Android=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
+            --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
+            --result "iOS=$IOS_RESULT" \
+            --artifact "iOS=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
+            --site-dir "$RUNNER_TEMP/unpublished-report-site" \
+            --output "$RUNNER_TEMP/unpublished-summary.md" || status=$?
+          if [ -f "$RUNNER_TEMP/unpublished-summary.md" ]; then
+            cat "$RUNNER_TEMP/unpublished-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
