@@ -666,8 +666,14 @@ Appium or executing the original runner.
 ```bash
 cd testing/ai_e2e
 npm ci
-cp .env.example .env       # Add model credentials; do not commit this file.
-set -a && source .env && set +a
+# Run this block in Bash. Keep credentials in this process environment only.
+set +x
+read -r -p "Model base URL: " MIDSCENE_MODEL_BASE_URL
+read -r -p "Model name: " MIDSCENE_MODEL_NAME
+read -r -p "Model family: " MIDSCENE_MODEL_FAMILY
+read -r -s -p "Model API key (hidden): " MIDSCENE_MODEL_API_KEY
+printf '\n'
+export MIDSCENE_MODEL_BASE_URL MIDSCENE_MODEL_NAME MIDSCENE_MODEL_FAMILY MIDSCENE_MODEL_API_KEY
 
 # Android: start an emulator and install Explorer first.
 adb install -r LynxExplorer.apk
@@ -684,6 +690,11 @@ npm run smoke:ios
 npm test -- --project ios-explorer
 ```
 
+Never write API keys to `.env` files, shell startup files, command arguments or
+logs. A credential manager may instead inject the key directly into the process
+environment. Keep shell tracing disabled; when finished, run
+`unset MIDSCENE_MODEL_API_KEY` and close the credential-bearing shell.
+
 HTML reports are written to `midscene_run/report/`. CI uploads the native
 reports as platform-specific artifacts and as a combined bundle. The final
 report job publishes the HTML reports and per-case node screenshots to GitHub
@@ -691,12 +702,23 @@ Pages. Android and iOS write only result counts and artifact access to Summary,
 without duplicate case tables or empty screenshot columns.
 After deployment succeeds, the publishing job adds a Summary with
 platform totals, durations, failure details, and linked screenshots. Each
-screenshot and case name opens the exact step in its platform report. The
+screenshot and explicit Report link opens the corresponding case report or
+report step; the Case column is plain text. Setup failures use the expected-case
+inventory to emit failure rows and diagnostic report links even when no test
+case started. If no screenshot was captured, the row explains its absence
+instead of presenting a fabricated image. The
 publishing summary's HTML link opens Midscene Test's merged report index for
 both platforms. Published reports use
 `runs/<run-id>-<attempt>/` paths and are retained on the
-`midscene-pages-archive` branch so later Pages deployments do not replace old
-Summary targets. Pages publication is allowed for same-repository pull
+`midscene-pages-archive` branch as a full archive. The online Pages deployment
+is a separate, bounded copy with a 900 MB (900,000,000-byte) budget, including
+conservative archive-upload overhead. It must retain the current run, then
+prefers the newest complete prior run and newer whole runs that fit. If the
+current run alone exceeds the budget, staging fails without changing the
+archive. Old Summary URLs are therefore not guaranteed to remain online.
+The deployed `history-manifest.json` records retained and omitted runs and links
+to their recovery paths on the archive branch; omitted runs are not deleted
+from that full archive. Pages publication is allowed for same-repository pull
 requests. External-fork pull requests run a model-free type and report-contract
 check, but the credentialed Android/iOS jobs remain excluded. Maintainers
 should run the device jobs from a trusted same-repository branch before relying
