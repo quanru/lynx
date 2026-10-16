@@ -21,7 +21,12 @@ function splitAssignment(value, optionName) {
 }
 
 function parseArguments(argv) {
-  const options = { entries: [], results: new Map(), artifacts: new Map() };
+  const options = {
+    entries: [],
+    results: new Map(),
+    artifacts: new Map(),
+    artifactAttempts: new Map(),
+  };
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
@@ -36,6 +41,12 @@ function parseArguments(argv) {
     } else if (name === 'artifact') {
       const [label, artifact] = splitAssignment(value, name);
       options.artifacts.set(label, artifact);
+    } else if (name === 'artifact-attempt') {
+      const [label, attempt] = splitAssignment(value, name);
+      if (options.artifactAttempts.has(label)) {
+        throw new Error('Duplicate artifact attempt label');
+      }
+      options.artifactAttempts.set(label, attempt);
     } else options[name] = value;
   }
   return options;
@@ -444,6 +455,7 @@ function caseUrl(baseUrl, entry, testCase) {
 }
 
 function caseScreenshot(pagesUrl, entry, testCase) {
+  if (testCase.expectedInventory) return 'Unavailable';
   if (!pagesUrl) return 'Not published';
   if (!testCase.previewPath || !entry.reportPath) return '—';
   const target = escapeHtml(caseUrl(pagesUrl, entry, testCase));
@@ -552,7 +564,7 @@ export function validateSupplementalEvidence(value) {
   return value;
 }
 
-async function readSupplementalEvidence(file) {
+async function readEvidenceJson(file) {
   const limit = 1024 * 1024;
   const handle = await open(file, 'r');
   try {
@@ -568,13 +580,119 @@ async function readSupplementalEvidence(file) {
       if (!bytesRead) break;
       length += bytesRead;
     }
-    if (length > limit) throw new Error('Supplemental evidence exceeds 1 MiB');
-    return validateSupplementalEvidence(
-      JSON.parse(buffer.subarray(0, length).toString('utf8')),
-    );
+    if (length > limit) throw new Error('Evidence JSON exceeds 1 MiB');
+    return JSON.parse(buffer.subarray(0, length).toString('utf8'));
   } finally {
     await handle.close();
   }
+}
+
+/** Use source-collected cases only when matching workflow evidence proves their execution state. */
+export async function loadExpectedCaseEvidence(directory, identity, report) {
+  const optional = async name => {
+    try {
+      return await readEvidenceJson(path.join(directory, name));
+    } catch (error) {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    }
+  };
+  const inventory = await optional('expected-cases.json');
+  const execution = await optional('execution-status.json');
+  if (inventory === undefined && execution === undefined) return {};
+  const fail = message => {
+    throw new Error(`Invalid expected-case evidence: ${message}`);
+  };
+  const object = value =>
+    value && typeof value === 'object' && !Array.isArray(value);
+  if (!object(inventory) || !object(execution)) {
+    fail('inventory and execution status must both exist');
+  }
+  if (
+    !/^[a-f0-9]{40}$/.test(identity.sha ?? '')
+    || !/^[1-9][0-9]*$/.test(identity.runId ?? '')
+    || !/^[1-9][0-9]*$/.test(identity.attempt ?? '')
+  ) fail('current CI identity is required');
+  const currentAttempt = identity.currentAttempt ?? identity.attempt;
+  if (
+    !/^[1-9][0-9]*$/.test(currentAttempt)
+    || BigInt(identity.attempt) > BigInt(currentAttempt)
+  ) fail('artifact attempt exceeds current attempt');
+  for (const value of [inventory, execution]) {
+    if (value.schemaVersion !== 1) fail('unsupported schemaVersion');
+    for (const field of ['sha', 'runId', 'attempt', 'label']) {
+      if (value[field] !== identity[field]) {
+        fail(`${field} does not match the current artifact consumer`);
+      }
+    }
+    if (typeof value.projectName !== 'string' || !value.projectName.trim()) {
+      fail('projectName is required');
+    }
+  }
+  if (inventory.projectName !== execution.projectName) {
+    fail('project identity mismatch');
+  }
+  if (
+    !['success', 'failure', 'cancelled', 'skipped'].includes(execution.outcome)
+  ) fail('unknown execution outcome');
+  if (
+    !Number.isSafeInteger(inventory.expectedCount)
+    || inventory.expectedCount < 1
+    || !Array.isArray(inventory.cases)
+    || inventory.cases.length !== inventory.expectedCount
+  ) fail('empty or inconsistent case count');
+  const ids = new Set();
+  const names = new Set();
+  for (const item of inventory.cases) {
+    if (
+      !object(item) || typeof item.name !== 'string' || !item.name.trim()
+      || typeof item.caseId !== 'string' || !/^[a-f0-9]{64}$/.test(item.caseId)
+    ) fail('invalid case identity');
+    if (
+      typeof item.sourcePath !== 'string'
+      || !/^[A-Za-z0-9_-][A-Za-z0-9._/-]*\.ya?ml$/.test(item.sourcePath)
+      || item.sourcePath.split('/').some(part =>
+        !part || part === '.' || part === '..'
+      )
+    ) fail('unsafe source path');
+    const key = JSON.stringify([item.sourcePath, item.name]);
+    if (ids.has(item.caseId) || names.has(key)) fail('duplicate expected case');
+    ids.add(item.caseId);
+    names.add(key);
+  }
+  if (report) {
+    const actual = rawCases(report.dump);
+    if (execution.outcome === 'skipped') {
+      fail('report contradicts skipped execution');
+    }
+    if (
+      actual.length !== inventory.cases.length
+      || actual.some(item =>
+        !inventory.cases.some(expected =>
+          expected.caseId === item.caseId && expected.name === item.name
+        )
+      )
+      || new Set(actual.map(item => item.caseId)).size !== actual.length
+    ) fail('HTML case identities differ from collected inventory');
+    return {
+      inventoryAttempt: inventory.attempt,
+      reusedInventory: inventory.attempt !== currentAttempt,
+    }; // Actual results remain authoritative.
+  }
+  const skipped = execution.outcome === 'skipped';
+  return {
+    inventoryAttempt: inventory.attempt,
+    reusedInventory: inventory.attempt !== currentAttempt,
+    cases: inventory.cases.map(item => ({
+      ...item,
+      expectedInventory: true,
+      status: skipped ? 'not-run' : 'failed',
+      notRunReason: skipped
+        ? 'Device setup or prerequisites prevented the workflow test step from running. No screenshot or HTML report exists.'
+        : `Result unavailable: workflow test step ended as ${execution.outcome}, but no readable HTML report exists; individual case execution is unknown.`,
+      attempts: [],
+    })),
+  };
 }
 
 function supplementalStatus(item) {
@@ -655,6 +773,14 @@ export function renderSummary(
       }: ${supplemental.sourceCount} source cases / ${supplemental.expectedCount} browser cases.`,
       '',
     );
+  }
+  const attempts = entries.filter(entry => entry.inventoryAttempt).map(entry =>
+    `${inlineCell(entry.label)}: attempt ${entry.inventoryAttempt}${
+      entry.reusedInventory ? ' (reused)' : ''
+    }`
+  );
+  if (attempts.length) {
+    sections.push(`Evidence provenance — ${attempts.join(' · ')}.`, '');
   }
   if (!pagesUrl) {
     if (jobSummaryOnly) {
@@ -758,18 +884,34 @@ export function renderSummary(
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const supplementalEvidence = options['supplemental-evidence']
-    ? await readSupplementalEvidence(options['supplemental-evidence'])
+    ? validateSupplementalEvidence(
+      await readEvidenceJson(options['supplemental-evidence']),
+    )
     : undefined;
   if (!options.entries.length) {
     throw new Error('At least one --entry is required');
   }
   const loaded = await Promise.all(
-    options.entries.map(async ([label, directory]) => ({
-      label,
-      result: options.results.get(label) ?? 'unknown',
-      artifact: options.artifacts.get(label),
-      report: await latestRun(directory),
-    })),
+    options.entries.map(async ([label, directory]) => {
+      const report = await latestRun(directory);
+      const runIdentity = /^runs\/([1-9][0-9]*)-([1-9][0-9]*)$/.exec(
+        options['site-prefix'] ?? '',
+      );
+      const expected = await loadExpectedCaseEvidence(directory, {
+        label,
+        sha: options['expected-sha'] ?? process.env.GITHUB_SHA,
+        runId: runIdentity?.[1],
+        attempt: options.artifactAttempts.get(label) ?? runIdentity?.[2],
+        currentAttempt: runIdentity?.[2],
+      }, report);
+      return {
+        label,
+        result: options.results.get(label) ?? 'unknown',
+        artifact: options.artifacts.get(label),
+        report,
+        ...expected,
+      };
+    }),
   );
   const entries = await preparePagesSite({
     entries: loaded,

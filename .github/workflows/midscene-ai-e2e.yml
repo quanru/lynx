@@ -207,6 +207,10 @@ jobs:
           if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
           exit 1
 
+      - name: Collect expected Android cases before device setup
+        working-directory: testing/ai_e2e
+        run: node scripts/expected-cases.mjs collect android-explorer
+
       - name: Preflight model endpoint
         env: &midscene-model-env
           MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
@@ -271,7 +275,12 @@ jobs:
 
       - name: Stage Android report for this attempt
         if: always()
+        env:
+          EXECUTION_OUTCOME: ${{ steps.run-cases.outcome }}
         run: |
+          if [ -f testing/ai_e2e/midscene_run/expected-cases.json ]; then
+            node testing/ai_e2e/scripts/expected-cases.mjs status android-explorer "$EXECUTION_OUTCOME"
+          fi
           target="$RUNNER_TEMP/midscene-upload/android/attempt-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$target"
           printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
@@ -352,6 +361,10 @@ jobs:
           if [ -n "$latest_log" ]; then tail -n 80 "$latest_log"; fi
           exit 1
 
+      - name: Collect expected iOS cases before device setup
+        working-directory: testing/ai_e2e
+        run: node scripts/expected-cases.mjs collect ios-explorer
+
       - name: Preflight model endpoint
         env: *midscene-model-env
         run: bash testing/ai_e2e/scripts/preflight-model.sh
@@ -417,7 +430,12 @@ jobs:
 
       - name: Stage iOS report for this attempt
         if: always()
+        env:
+          EXECUTION_OUTCOME: ${{ steps.run-cases.outcome }}
         run: |
+          if [ -f testing/ai_e2e/midscene_run/expected-cases.json ]; then
+            node testing/ai_e2e/scripts/expected-cases.mjs status ios-explorer "$EXECUTION_OUTCOME"
+          fi
           target="$RUNNER_TEMP/midscene-upload/ios/attempt-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$target"
           printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
@@ -506,8 +524,11 @@ jobs:
                 -name 'attempt-*' -print | sort -V | tail -n 1)"
             fi
             if [ -n "$latest" ]; then
+              local attempt
+              attempt="$(node testing/ai_e2e/scripts/expected-cases.mjs selected-directory "$latest")"
               mkdir -p "$target"
               cp -R "$latest"/. "$target"/
+              printf '%s\n' "$attempt" > "$target/selected-attempt.txt"
             fi
           }
           select_latest android
@@ -583,8 +604,17 @@ jobs:
             -mindepth 1 -maxdepth 1 -type d \
             -name 'attempt-*' -print | sort -V | tail -n 1)"
           test -n "$latest"
+          node testing/ai_e2e/scripts/expected-cases.mjs selected-directory "$latest"
           mkdir -p "$RUNNER_TEMP/midscene-reports"
           cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
+          for platform in android ios; do
+            directory="$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-$platform"
+            attempt="$GITHUB_RUN_ATTEMPT"
+            if [ -d "$directory" ]; then
+              attempt="$(node testing/ai_e2e/scripts/expected-cases.mjs selected-platform "$directory")"
+            fi
+            echo "${platform}_report_attempt=$attempt" >> "$GITHUB_ENV"
+          done
 
       - id: pages
         continue-on-error: true
@@ -640,10 +670,12 @@ jobs:
             --pages-url "$PAGES_URL" \
             --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
             --result "Android=$ANDROID_RESULT" \
-            --artifact "Android=midscene-ai-e2e-android-$GITHUB_RUN_ATTEMPT" \
+            --artifact "Android=midscene-ai-e2e-android-$android_report_attempt" \
+            --artifact-attempt "Android=$android_report_attempt" \
             --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
             --result "iOS=$IOS_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-ios-$GITHUB_RUN_ATTEMPT" \
+            --artifact "iOS=midscene-ai-e2e-ios-$ios_report_attempt" \
+            --artifact-attempt "iOS=$ios_report_attempt" \
             --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/pages-site" \
             --output "$RUNNER_TEMP/published-summary.md"
@@ -699,9 +731,12 @@ jobs:
             --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
             --result "Android=$ANDROID_RESULT" \
             --artifact "Android=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
+            --artifact-attempt "Android=$android_report_attempt" \
             --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
             --result "iOS=$IOS_RESULT" \
             --artifact "iOS=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
+            --artifact-attempt "iOS=$ios_report_attempt" \
+            --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/unpublished-report-site" \
             --output "$RUNNER_TEMP/unpublished-summary.md" || status=$?
           if [ -f "$RUNNER_TEMP/unpublished-summary.md" ]; then

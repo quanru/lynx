@@ -36,6 +36,7 @@ import {
   renderSummary,
   testRunDump,
   validateSupplementalEvidence,
+  loadExpectedCaseEvidence,
 } from './render-ci-summary.mjs';
 
 const run = {
@@ -744,6 +745,254 @@ test('keeps prior run reports at immutable URLs', async (context) => {
   assert.equal(
     await readFile(path.join(site, second.reportPath), 'utf8'),
     '<html>second</html>',
+  );
+});
+
+const inventoryIdentity = {
+  schemaVersion: 1,
+  label: 'iOS',
+  projectName: 'ios-explorer',
+  sha: 'a'.repeat(40),
+  runId: '123',
+  attempt: '2',
+};
+const expectedInventory = () => ({
+  ...inventoryIdentity,
+  expectedCount: 20,
+  cases: Array.from(
+    { length: 20 },
+    (_, index) => ({
+      caseId: index.toString(16).padStart(64, '0'),
+      name: `Native case ${index + 1}`,
+      sourcePath: 'cases/native/example.yaml',
+    }),
+  ),
+});
+
+async function writeInventory(
+  directory,
+  outcome,
+  inventory = expectedInventory(),
+) {
+  await writeFile(
+    path.join(directory, 'expected-cases.json'),
+    JSON.stringify(inventory),
+  );
+  await writeFile(
+    path.join(directory, 'execution-status.json'),
+    JSON.stringify({ ...inventoryIdentity, outcome }),
+  );
+}
+
+test('setup failure shows all twenty expected native cases as not-run without fake evidence', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  await writeInventory(directory, 'skipped');
+  const fallback = await loadExpectedCaseEvidence(directory, inventoryIdentity);
+  assert.equal(fallback.cases.length, 20);
+  assert.ok(fallback.cases.every(item => item.status === 'not-run'));
+  const summary = renderSummary({
+    title: 'Setup failed',
+    entries: [{ label: 'iOS', result: 'failure', ...fallback }],
+    pagesUrl: 'https://example.github.io/project/',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+  });
+  assert.match(summary, /20 need attention · 0 passed/);
+  assert.equal(
+    summary.split('\n').filter(line => line.startsWith('| iOS |')).length,
+    20,
+  );
+  assert.match(summary, /Native case 20 \| Unavailable \| ⏭️ Not run/);
+  assert.doesNotMatch(summary, /<img|Open report|runner-step|✅ Passed/);
+  const output = path.join(directory, 'summary.md');
+  execFileSync(process.execPath, [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Setup failed',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--links-published',
+    'false',
+    '--entry',
+    `iOS=${directory}`,
+    '--result',
+    'iOS=failure',
+    '--site-prefix',
+    'runs/123-2',
+    '--expected-sha',
+    inventoryIdentity.sha,
+    '--site-dir',
+    path.join(directory, 'site'),
+    '--output',
+    output,
+  ]);
+  assert.match(await readFile(output, 'utf8'), /20 need attention · 0 passed/);
+});
+
+test('started execution without HTML is an unknown result, never an invented not-run or pass', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  for (const outcome of ['failure', 'success', 'cancelled']) {
+    await writeInventory(directory, outcome);
+    const fallback = await loadExpectedCaseEvidence(
+      directory,
+      inventoryIdentity,
+    );
+    assert.ok(fallback.cases.every(item => item.status === 'failed'));
+    assert.match(
+      fallback.cases[0].notRunReason,
+      /individual case execution is unknown/,
+    );
+  }
+});
+
+test('actual HTML remains authoritative but cannot silently disagree with expected identities', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const inventory = expectedInventory();
+  const report = {
+    dump: {
+      projects: [{
+        documents: [{
+          cases: inventory.cases.map(item => ({ ...item, status: 'success' })),
+        }],
+      }],
+    },
+  };
+  await writeInventory(directory, 'success', inventory);
+  assert.deepEqual(
+    await loadExpectedCaseEvidence(directory, inventoryIdentity, report),
+    { inventoryAttempt: '2', reusedInventory: false },
+  );
+  const mismatched = structuredClone(report);
+  mismatched.dump.projects[0].documents[0].cases[0].name = 'Different source';
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity, mismatched),
+    /HTML case identities/,
+  );
+  await writeInventory(directory, 'skipped', inventory);
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity, report),
+    /contradicts skipped/,
+  );
+});
+
+test('failed-job rerun accepts a trusted prior Android attempt and current iOS attempt at the same commit', async context => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-rerun-inventory-'),
+  );
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const entries = [];
+  for (const [label, attempt] of [['Android', '1'], ['iOS', '2']]) {
+    const directory = path.join(root, label);
+    await mkdir(directory);
+    const identity = {
+      ...inventoryIdentity,
+      label,
+      projectName: label === 'Android' ? 'android-explorer' : 'ios-explorer',
+      attempt,
+    };
+    const inventory = { ...expectedInventory(), ...identity };
+    await writeFile(
+      path.join(directory, 'expected-cases.json'),
+      JSON.stringify(inventory),
+    );
+    await writeFile(
+      path.join(directory, 'execution-status.json'),
+      JSON.stringify({ ...identity, outcome: 'failure' }),
+    );
+    const evidence = await loadExpectedCaseEvidence(directory, {
+      ...identity,
+      currentAttempt: '2',
+    });
+    entries.push({ label, result: 'failure', ...evidence });
+    assert.equal(evidence.reusedInventory, attempt === '1');
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...identity,
+        attempt: attempt === '1' ? '2' : '1',
+        currentAttempt: '2',
+      }),
+      /attempt does not match/,
+    );
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...identity,
+        sha: 'b'.repeat(40),
+        currentAttempt: '2',
+      }),
+      /sha does not match/,
+    );
+  }
+  const summary = renderSummary({
+    title: 'Rerun',
+    entries,
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+  });
+  assert.match(summary, /Android: attempt 1 \(reused\) · iOS: attempt 2/);
+});
+
+test('inventory rejects stale attempts, unsafe paths, duplicates and inconsistent manifests', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  assert.deepEqual(await loadExpectedCaseEvidence(directory, {}), {});
+  await writeInventory(directory, 'skipped');
+  for (const field of ['sha', 'runId', 'attempt', 'label']) {
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...inventoryIdentity,
+        [field]: field === 'sha' ? 'b'.repeat(40) : '999',
+      }),
+      /expected-case evidence/,
+    );
+  }
+  for (
+    const mutate of [
+      value => {
+        value.cases[1] = value.cases[0];
+      },
+      value => {
+        value.expectedCount = 21;
+      },
+      value => {
+        value.cases[0].sourcePath = '../escape.yaml';
+      },
+      value => {
+        value.cases[0].sourcePath = '/absolute.yaml';
+      },
+      value => {
+        value.cases[0].caseId = 'wrong';
+      },
+      value => {
+        value.projectName = 'other-project';
+      },
+    ]
+  ) {
+    const inventory = expectedInventory();
+    mutate(inventory);
+    await writeInventory(directory, 'skipped', inventory);
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, inventoryIdentity),
+      /expected-case evidence/,
+    );
+  }
+  await writeInventory(directory, 'unrecognized');
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity),
+    /unknown execution/,
+  );
+  await rm(path.join(directory, 'execution-status.json'));
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity),
+    /must both exist/,
   );
 });
 
