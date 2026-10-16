@@ -34,7 +34,10 @@ export async function locateVideoButton(agent: VideoTimedAgent, label: string, s
   const playHint = label === 'Play'
     ? ' Select the standalone "Play" button BETWEEN "Clear" and "Play Null" in the FIRST playback row, which also contains "Pause" and "Stop". Return the CENTER of its BLUE FILLED BODY, vertically level with the word "Play", NOT the lower edge or the white gap above the Seek row. Do not select Play Null, Play Empty, Play Stop or any other compound label.'
     : '';
-  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Match its complete label, including any seek suffix. Locate the center INSIDE the actual blue button body, not its text baseline, another button, status text or blank space.' + intervalHint + playHint, { deepLocate: true, cacheable: false, uiContext });
+  const playNullHint = label === 'Play Null'
+    ? ' The "Play Null" button is BETWEEN "Play" and "Pause" in the FIRST playback row containing Clear, Play, Play Null, Pause and Stop. Locate the CENTER of that BLUE button body, vertically level with the words "Play Null". Do not select "Near End" directly below it in the Seek row, "Seek Null", or "Play Empty" farther below.'
+    : '';
+  const result = await agent.aiLocate('The single visible button labeled exactly ' + JSON.stringify(label) + ' in the video demo panel. Match its complete label, including any seek suffix. Locate the center INSIDE the actual blue button body, not its text baseline, another button, status text or blank space.' + intervalHint + playHint + playNullHint, { deepLocate: true, cacheable: false, uiContext });
   // The pinned aiLocate API cannot abort an in-flight request. Never accept a
   // late result or start a subsequent physical action after cancellation.
   signal?.throwIfAborted();

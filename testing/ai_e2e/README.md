@@ -1,5 +1,21 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Play Null grounding correction: hosted acceptance pending
+
+Run [38849324914](https://github.com/quanru/lynx/actions/runs/38849324914)
+passes VideoAttributes on its first iOS attempt after the standalone Play
+description change. VideoBoundary instead fails at step 119: its Play Null
+location (603.5,1723.5) lies on Near End in the next row. WDA records the matching
+logical tap (201,575), and the original playing assertion rejects `ready`.
+The subsequent whole-case retry is interrupted by the overall execution budget.
+
+The Play Null description now identifies its first-row Play/Pause neighbours
+and excludes Near End below. It does not correct coordinates programmatically,
+change the fixture, add input, or relax any assertion/time budget. Device input
+acceptance remains pending. A separate source-inventory check now parses the
+original module configuration and checks collected YAML on each platform,
+classifying ListBase as disabled and the three Explorer smoke cases as additive.
+
 ## Standalone Play target correction: hosted acceptance pending
 
 [Run 38758226681](https://github.com/quanru/lynx/actions/runs/38758226681)

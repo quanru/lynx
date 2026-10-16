@@ -56,7 +56,24 @@ test('standalone Play grounding targets the blue body rather than its lower edge
   await locateVideoButton(agent, 'Play Null');
   assert.match(calls[0].prompt, /BETWEEN "Clear" and "Play Null"/);
   assert.match(calls[0].prompt, /NOT the lower edge or the white gap above the Seek row/);
-  assert.doesNotMatch(calls[1].prompt, /FIRST playback row|white gap/);
+  assert.doesNotMatch(calls[1].prompt, /standalone "Play"|white gap/);
+  for (const call of calls) assert.deepEqual(call.options, { deepLocate: true, cacheable: false, uiContext });
+});
+
+test('Play Null grounding excludes the observed Near End row confusion without substituting input', async () => {
+  const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<text>Play<\/text>[\s\S]*?<text>Play Null<\/text>[\s\S]*?<text>Pause<\/text>[\s\S]*?<text>Stop<\/text>[\s\S]*?<text>Near End<\/text>/);
+  const uiContext = { shrunkShotToLogicalRatio: 3, shotSize: { width: 1206, height: 2622 } };
+  const calls = [];
+  const agent = {
+    getUIContext: async () => uiContext,
+    aiLocate: async (prompt, options) => { calls.push({ prompt, options }); return { center: [603.5, 1723.5] }; },
+  };
+  assert.deepEqual(await locateVideoButton(agent, 'Play Null'), [201, 575]);
+  await locateVideoButton(agent, 'Near End');
+  assert.match(calls[0].prompt, /BETWEEN "Play" and "Pause"/);
+  assert.match(calls[0].prompt, /Do not select "Near End" directly below/);
+  assert.doesNotMatch(calls[1].prompt, /FIRST playback row/);
   for (const call of calls) assert.deepEqual(call.options, { deepLocate: true, cacheable: false, uiContext });
 });
 
