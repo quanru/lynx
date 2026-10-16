@@ -464,6 +464,10 @@ function caseRow(pagesUrl, entry, testCase, detail) {
     caseName(pagesUrl, entry, testCase)
   } | ${caseScreenshot(pagesUrl, entry, testCase)} | ${inlineCell(detail)} | ${
     formatDuration(testCase.attempts?.at(-1)?.durationMs)
+  } | ${
+    pagesUrl && entry.reportPath
+      ? `[Open report](${caseUrl(pagesUrl, entry, testCase)})`
+      : '—'
   } |`;
 }
 
@@ -523,15 +527,15 @@ export function renderSummary(
     sections.push(
       '### Needs attention',
       '',
-      '| Platform | Case | Screenshot | Status / reason | Duration |',
-      '|:--|:--|:--|:--|--:|',
+      '| Platform | Case | Screenshot | Status / reason | Duration | Report |',
+      '|:--|:--|:--|:--|--:|:--|',
       ...infrastructureFailures.map(({ label, result, artifact, run }) => {
         const evidence = artifact
           ? `[Artifact](${runUrl}#artifacts)`
           : `[Workflow run](${runUrl})`;
         return `| ${inlineCell(label)} | — | — | ${
           statusLabel(result, run)
-        } · ${evidence} | ${formatDuration(run?.durationMs)} |`;
+        } · ${evidence} | ${formatDuration(run?.durationMs)} | ${evidence} |`;
       }),
       ...attentionCases
         .sort((a, b) =>
@@ -559,8 +563,8 @@ export function renderSummary(
     '<details>',
     `<summary>Appendix: passed cases (${passedCases.length})</summary>`,
     '',
-    '| Platform | Case | Screenshot | Status | Duration |',
-    '|:--|:--|:--|:--|--:|',
+    '| Platform | Case | Screenshot | Status | Duration | Report |',
+    '|:--|:--|:--|:--|--:|:--|',
     ...passedCases.map(({ entry, testCase }) =>
       caseRow(pagesUrl, entry, testCase, '✅ Passed')
     ),

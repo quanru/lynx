@@ -139,6 +139,10 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.doesNotMatch(summary, /### Needs attention/);
   assert.match(summary, /\*\*✅ 0 need attention · 1 passed\*\*/);
   assert.match(summary, /🎉 All 1 cases passed/);
+  assert.match(summary, /\| Screenshot \| Status \| Duration \| Report \|/);
+  const row = summary.split('\n').find(line => line.startsWith('| Android |'));
+  assert.match(row, /<img src=/);
+  assert.match(row, /\[Open report\]\([^\n]+runner-step=case%3Asteps%3A0\)/);
   assert.match(
     summary,
     /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/,
