@@ -4,6 +4,7 @@ import {
   appendFile,
   cp,
   mkdir,
+  open,
   readFile,
   readdir,
   writeFile,
@@ -435,7 +436,7 @@ function pageUrl(baseUrl, relativePath) {
 
 function caseUrl(baseUrl, entry, testCase) {
   const url = new URL(entry.reportPath, normalizedBaseUrl(baseUrl));
-  if (testCase.stepId) {
+  if (!testCase.supplemental && testCase.stepId) {
     url.hash = new URLSearchParams({ 'runner-step': testCase.stepId })
       .toString();
   }
@@ -474,6 +475,123 @@ function caseRow(pagesUrl, entry, testCase, detail, runUrl) {
   } |`;
 }
 
+/** Validate external source-contract evidence without counting it as YAML. */
+export function validateSupplementalEvidence(value) {
+  const fail = message => {
+    throw new Error(`Invalid supplemental evidence: ${message}`);
+  };
+  const object = (item, fields) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      fail('expected object');
+    }
+    if (Object.keys(item).some(key => !fields.includes(key))) {
+      fail('unknown field');
+    }
+  };
+  const text = item => typeof item === 'string' && item.trim().length > 0;
+  object(value, ['label', 'sourceCount', 'expectedCount', 'errors', 'cases']);
+  if (!text(value.label)) fail('label is required');
+  for (const field of ['sourceCount', 'expectedCount']) {
+    if (!Number.isSafeInteger(value[field]) || value[field] < 0) {
+      fail(`${field} must be a nonnegative integer`);
+    }
+  }
+  if (value.sourceCount > value.expectedCount) {
+    fail('sourceCount exceeds expectedCount');
+  }
+  if (!Array.isArray(value.errors) || !value.errors.every(text)) {
+    fail('errors must be nonempty strings');
+  }
+  if (
+    !Array.isArray(value.cases) || value.cases.length !== value.expectedCount
+  ) fail('case count must equal expectedCount');
+  const identities = new Set();
+  for (const item of value.cases) {
+    object(item, [
+      'platform',
+      'name',
+      'status',
+      'reason',
+      'durationMs',
+      'previewPath',
+      'reportPath',
+      'artifact',
+    ]);
+    if (!text(item.platform) || !text(item.name)) {
+      fail('case platform and name are required');
+    }
+    const identity = JSON.stringify([item.platform, item.name]);
+    if (identities.has(identity)) fail(`duplicate case ${identity}`);
+    identities.add(identity);
+    if (!['success', 'failed', 'not-run', 'flaky'].includes(item.status)) {
+      fail('unknown case status');
+    }
+    for (const field of ['reason', 'artifact']) {
+      if (item[field] != null && !text(item[field])) {
+        fail(`${field} must be a nonempty string`);
+      }
+    }
+    if (
+      item.durationMs != null
+      && (!Number.isFinite(item.durationMs) || item.durationMs < 0)
+    ) fail('invalid durationMs');
+    for (const field of ['previewPath', 'reportPath']) {
+      const file = item[field];
+      if (file == null) continue;
+      if (
+        typeof file !== 'string'
+        || !/^[A-Za-z0-9_-][A-Za-z0-9._/-]*$/.test(file)
+        || file.split('/').some(segment =>
+          !segment || segment === '.' || segment === '..'
+        )
+      ) {
+        fail(`${field} must be a safe site-relative file path`);
+      }
+    }
+  }
+  return value;
+}
+
+async function readSupplementalEvidence(file) {
+  const limit = 1024 * 1024;
+  const handle = await open(file, 'r');
+  try {
+    const buffer = Buffer.alloc(limit + 1);
+    let length = 0;
+    while (length < buffer.length) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        length,
+        buffer.length - length,
+        null,
+      );
+      if (!bytesRead) break;
+      length += bytesRead;
+    }
+    if (length > limit) throw new Error('Supplemental evidence exceeds 1 MiB');
+    return validateSupplementalEvidence(
+      JSON.parse(buffer.subarray(0, length).toString('utf8')),
+    );
+  } finally {
+    await handle.close();
+  }
+}
+
+function supplementalStatus(item) {
+  const status = {
+    success: '⚠️ Passed; evidence missing',
+    failed: '❌ Failed',
+    'not-run': '⏭️ Not run',
+    flaky: '⚠️ Flaky',
+  }[item.status];
+  const reasons = [item.reason];
+  if (!item.previewPath) reasons.push('Screenshot unavailable');
+  if (!item.reportPath) reasons.push('HTML report unavailable');
+  return `${status}: ${
+    reasons.filter(Boolean).join('; ') || 'No failure detail was recorded.'
+  }`;
+}
+
 export function renderSummary(
   {
     title,
@@ -482,25 +600,45 @@ export function renderSummary(
     entries,
     nativeReportPath,
     jobSummaryOnly = false,
+    supplementalEvidence,
   },
 ) {
-  const allCases = entries.flatMap((entry) =>
+  const midsceneCases = entries.flatMap((entry) =>
     (entry.cases ?? rawCases(entry.run)).map((testCase) => ({
       entry,
       testCase,
     }))
   );
+  const supplemental = supplementalEvidence === undefined
+    ? undefined
+    : validateSupplementalEvidence(supplementalEvidence);
+  const supplementalCases = (supplemental?.cases ?? []).map(item => ({
+    entry: {
+      label: item.platform,
+      reportPath: item.reportPath,
+      artifact: item.artifact,
+    },
+    testCase: {
+      ...item,
+      supplemental: true,
+      attempts: [{ durationMs: item.durationMs }],
+      missingEvidence: !item.previewPath || !item.reportPath,
+    },
+  }));
+  const allCases = [...midsceneCases, ...supplementalCases];
   const attentionCases = allCases.filter(
-    ({ testCase }) => testCase.status !== 'success',
+    ({ testCase }) => testCase.status !== 'success' || testCase.missingEvidence,
   );
   const passedCases = allCases.filter(
-    ({ testCase }) => testCase.status === 'success',
+    ({ testCase }) =>
+      testCase.status === 'success' && !testCase.missingEvidence,
   );
   const infrastructureFailures = entries.filter((entry) =>
     (entry.result !== 'success' || entry.run?.status !== 'success')
     && !attentionCases.some(({ entry: caseEntry }) => caseEntry === entry)
   );
-  const needsAttention = attentionCases.length + infrastructureFailures.length;
+  const needsAttention = attentionCases.length + infrastructureFailures.length
+    + (supplemental?.errors.length ?? 0);
   const allPassed = needsAttention === 0 && passedCases.length > 0;
   const sections = [
     `## ${title}`,
@@ -510,6 +648,14 @@ export function renderSummary(
     }${needsAttention} need attention · ${passedCases.length} passed**`,
     '',
   ];
+  if (supplemental) {
+    sections.push(
+      `Midscene YAML: ${midsceneCases.length} cases · ${
+        inlineCell(supplemental.label)
+      }: ${supplemental.sourceCount} source cases / ${supplemental.expectedCount} browser cases.`,
+      '',
+    );
+  }
   if (!pagesUrl) {
     if (jobSummaryOnly) {
       sections.push(
@@ -551,6 +697,15 @@ export function renderSummary(
           statusLabel(result, run)
         } · ${evidence} | ${formatDuration(run?.durationMs)} | ${evidence} |`;
       }),
+      ...(supplemental?.errors ?? []).map(reason =>
+        caseRow(
+          pagesUrl,
+          { label: supplemental.label },
+          { name: 'Evidence validation', supplemental: true },
+          `❌ Failed: ${reason}`,
+          runUrl,
+        )
+      ),
       ...attentionCases
         .sort((a, b) =>
           Number(a.testCase.status === 'not-run')
@@ -561,9 +716,11 @@ export function renderSummary(
             pagesUrl,
             entry,
             testCase,
-            `${testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'}: ${
-              failedReason(testCase)
-            }`,
+            testCase.supplemental
+              ? supplementalStatus(testCase)
+              : `${
+                testCase.status === 'not-run' ? '⏭️ Not run' : '❌ Failed'
+              }: ${failedReason(testCase)}`,
             runUrl,
           )
         ),
@@ -588,7 +745,9 @@ export function renderSummary(
     '',
     ...(pagesUrl
       ? [
-        'Click a screenshot or case name to open the complete HTML report at that exact step.',
+        supplemental
+          ? 'Click a screenshot, case name or Open report link for its HTML evidence. Midscene links select the exact step; original source-contract links open their browser report.'
+          : 'Click a screenshot or case name to open the complete HTML report at that exact step.',
       ]
       : []),
     '',
@@ -598,6 +757,9 @@ export function renderSummary(
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
+  const supplementalEvidence = options['supplemental-evidence']
+    ? await readSupplementalEvidence(options['supplemental-evidence'])
+    : undefined;
   if (!options.entries.length) {
     throw new Error('At least one --entry is required');
   }
@@ -633,6 +795,7 @@ async function main() {
     entries,
     nativeReportPath,
     jobSummaryOnly: options['job-summary-only'] === 'true',
+    supplementalEvidence,
   });
   await appendFile(required(options, 'output'), markdown);
   const missingReports = entries

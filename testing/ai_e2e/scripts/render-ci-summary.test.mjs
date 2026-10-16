@@ -35,6 +35,7 @@ import {
   preparePagesSite,
   renderSummary,
   testRunDump,
+  validateSupplementalEvidence,
 } from './render-ci-summary.mjs';
 
 const run = {
@@ -744,6 +745,243 @@ test('keeps prior run reports at immutable URLs', async (context) => {
     await readFile(path.join(site, second.reportPath), 'utf8'),
     '<html>second</html>',
   );
+});
+
+const sourceEvidence = () => ({
+  label: 'Original input contracts',
+  sourceCount: 1,
+  expectedCount: 3,
+  errors: [],
+  cases: ['chromium', 'firefox', 'webkit'].map(platform => ({
+    platform,
+    name: 'Original input',
+    status: 'success',
+    durationMs: 1234,
+    previewPath: `original/${platform}.png`,
+    reportPath: `original/${platform}/index.html`,
+    artifact: 'original-input-contracts-1',
+  })),
+});
+
+test('supplemental rows share the two sections without inflating YAML counts or runner links', () => {
+  const evidence = sourceEvidence();
+  evidence.cases[1].status = 'flaky';
+  evidence.cases[1].reason = 'Passed after retry';
+  evidence.cases[2].previewPath = null;
+  evidence.errors.push('Missing source checksum');
+  const summary = renderSummary({
+    title: 'Unified report',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [{ label: 'Web', result: 'success', run }],
+    supplementalEvidence: evidence,
+  });
+  assert.match(summary, /3 need attention · 2 passed/);
+  assert.match(
+    summary,
+    /Midscene YAML: 1 cases · Original input contracts: 1 source cases \/ 3 browser cases/,
+  );
+  assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+  assert.equal((summary.match(/### Needs attention/g) ?? []).length, 1);
+  const appendix = summary.indexOf('<details>');
+  assert.ok(summary.indexOf('| firefox |') < appendix);
+  assert.ok(summary.indexOf('| webkit |') < appendix);
+  assert.ok(summary.indexOf('| chromium |') > appendix);
+  assert.match(summary, /⚠️ Flaky: Passed after retry/);
+  assert.match(summary, /Passed; evidence missing: Screenshot unavailable/);
+  assert.match(summary, /Missing source checksum/);
+  const row = summary.split('\n').find(line => line.startsWith('| chromium |'));
+  assert.match(
+    row,
+    /<img src="https:\/\/example.github.io\/project\/original\/chromium.png"/,
+  );
+  assert.match(
+    row,
+    /\[Open report\]\(https:\/\/example.github.io\/project\/original\/chromium\/index.html\)/,
+  );
+  assert.doesNotMatch(row, /runner-step/);
+  assert.equal(evidence.cases[2].status, 'success');
+});
+
+test('supplemental failed and not-run cases remain visible without Pages or invented evidence links', () => {
+  const evidence = sourceEvidence();
+  evidence.cases[0].status = 'failed';
+  evidence.cases[0].reason = 'Mismatch | <unsafe>';
+  evidence.cases[1].status = 'not-run';
+  evidence.cases[1].reportPath = null;
+  evidence.cases[1].durationMs = null;
+  const summary = renderSummary({
+    title: 'Fallback',
+    entries: [],
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    supplementalEvidence: evidence,
+  });
+  assert.match(summary, /2 need attention · 1 passed/);
+  assert.match(summary, /Mismatch \\\| &lt;unsafe&gt;/);
+  assert.match(summary, /\| Not published \|/);
+  assert.match(summary, /Find artifact: original-input-contracts-1/);
+  const row = summary.split('\n').find(line => line.startsWith('| firefox |'));
+  assert.match(row, /Not run/);
+  assert.match(row, /\| — \| Unavailable \|$/);
+  assert.doesNotMatch(summary, /<img|runner-step|Open report/);
+});
+
+test('fourteen original sources across three browsers remain separate from YAML inventory', () => {
+  const evidence = sourceEvidence();
+  evidence.sourceCount = 14;
+  evidence.expectedCount = 42;
+  evidence.cases = Array.from(
+    { length: 14 },
+    (_, index) =>
+      sourceEvidence().cases.map(item => ({
+        ...item,
+        name: `source-${index}`,
+      })),
+  ).flat();
+  const summary = renderSummary({
+    title: 'Combined',
+    entries: [{ label: 'Web', result: 'success', run }],
+    supplementalEvidence: evidence,
+    pagesUrl: 'https://example.github.io/project/',
+  });
+  assert.match(summary, /0 need attention · 43 passed/);
+  assert.match(
+    summary,
+    /Midscene YAML: 1 cases · Original input contracts: 14 source cases \/ 42 browser cases/,
+  );
+  assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+  assert.match(summary, /Appendix: passed cases \(43\)/);
+});
+
+test('supplemental schema rejects ambiguous totals, duplicate identities and unsafe evidence paths', () => {
+  assert.equal(validateSupplementalEvidence(sourceEvidence()).cases.length, 3);
+  const mutations = [
+    value => {
+      value.expectedCount = 2;
+    },
+    value => {
+      value.sourceCount = 4;
+    },
+    value => {
+      value.sourceCount = -1;
+    },
+    value => {
+      value.expectedCount = 3.5;
+    },
+    value => {
+      value.cases[1] = value.cases[0];
+    },
+    value => {
+      value.errors = [7];
+    },
+    value => {
+      value.cases[0].status = 'passed';
+    },
+    value => {
+      value.cases[0].durationMs = Infinity;
+    },
+    value => {
+      value.cases[0].durationMs = -1;
+    },
+    value => {
+      value.cases[0].platform = '';
+    },
+    value => {
+      value.cases[0].stepId = 'forged';
+    },
+    value => {
+      value.label = null;
+    },
+    value => {
+      value.errors = undefined;
+    },
+  ];
+  for (const mutate of mutations) {
+    const evidence = sourceEvidence();
+    mutate(evidence);
+    assert.throws(
+      () => validateSupplementalEvidence(evidence),
+      /Invalid supplemental evidence/,
+    );
+  }
+  for (
+    const file of [
+      '/absolute.png',
+      '../escape.png',
+      'x/../escape',
+      'x/./file',
+      '//host/file',
+      'https://host/file',
+      'x\\file',
+      'x/%2e%2e/file',
+      'x/file?query',
+      'x/file#fragment',
+      'C:/file',
+      'x//file',
+    ]
+  ) {
+    for (const field of ['previewPath', 'reportPath']) {
+      const evidence = sourceEvidence();
+      evidence.cases[0][field] = file;
+      assert.throws(
+        () => validateSupplementalEvidence(evidence),
+        /site-relative/,
+      );
+    }
+  }
+  const evidence = sourceEvidence();
+  evidence.cases[0].platform = 'a:b';
+  evidence.cases[0].name = 'c';
+  evidence.cases[1].platform = 'a';
+  evidence.cases[1].name = 'b:c';
+  assert.doesNotThrow(() => validateSupplementalEvidence(evidence));
+});
+
+test('supplemental CLI bounds input and rejects malformed evidence before appending Summary', async context => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-supplemental-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, 'evidence.json');
+  const output = path.join(root, 'summary.md');
+  const args = [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Combined',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--entry',
+    `Web=${path.join(root, 'absent')}`,
+    '--result',
+    'Web=failure',
+    '--links-published',
+    'false',
+    '--site-dir',
+    path.join(root, 'site'),
+    '--output',
+    output,
+    '--supplemental-evidence',
+    file,
+  ];
+  await writeFile(file, JSON.stringify(sourceEvidence()));
+  execFileSync(process.execPath, args);
+  const initial = await readFile(output, 'utf8');
+  assert.match(
+    initial,
+    /Original input contracts: 1 source cases \/ 3 browser cases/,
+  );
+  assert.match(initial, /\| chromium \|/);
+  for (
+    const invalid of [
+      '{broken',
+      JSON.stringify({ ...sourceEvidence(), expectedCount: 4 }),
+      ' '.repeat(1024 * 1024 + 1),
+    ]
+  ) {
+    await writeFile(file, invalid);
+    assert.throws(() =>
+      execFileSync(process.execPath, args, { stdio: 'pipe' })
+    );
+    assert.equal(await readFile(output, 'utf8'), initial);
+  }
 });
 
 test('rejects a run prefix that escapes the Pages site', async () => {
