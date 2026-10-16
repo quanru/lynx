@@ -1,5 +1,23 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Standalone Play target correction: hosted acceptance pending
+
+[Run 38758226681](https://github.com/quanru/lynx/actions/runs/38758226681)
+passes Android and 19/20 iOS cases. Both VideoAttributes attempts fail after
+preparing Play below its blue button body: screenshot points (344,1673.5) and
+(366,1666.5) land at the lower edge/gap instead of the visible button center.
+For the second attempt, WDA confirms the SDK-converted physical tap (122,556);
+the original assertion correctly rejects the unchanged stopped state.
+
+The standalone Play description now identifies the first playback row, Clear
+and Play Null neighbors, and the blue body center rather than its lower edge.
+Independent uncached location and coordinate conversion are unchanged; there
+is no hard-coded correction, additional input, widened assertion or fixture
+change. The correction remains a candidate until remote device execution and
+input evidence confirm accuracy. VideoBoundary passes after retry in that run;
+the earlier 180-second model timeout does not recur, but this is not a stability
+claim.
+
 ## Boundary Clear planning candidate: hosted acceptance pending
 
 In [run 38677828053](https://github.com/quanru/lynx/actions/runs/38677828053),

@@ -43,6 +43,23 @@ test('interval grounding distinguishes the source button from the mode selector 
   for (const call of calls) assert.deepEqual(call.options, { deepLocate: true, cacheable: false, uiContext });
 });
 
+test('standalone Play grounding targets the blue body rather than its lower edge without moving the returned point', async () => {
+  const source = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<text>Clear<\/text>[\s\S]*?<text>Play<\/text>[\s\S]*?<text>Play Null<\/text>[\s\S]*?<text>Pause<\/text>[\s\S]*?<text>Stop<\/text>/);
+  const uiContext = { shrunkShotToLogicalRatio: 3, shotSize: { width: 1206, height: 2622 } };
+  const calls = [];
+  const agent = {
+    getUIContext: async () => uiContext,
+    aiLocate: async (prompt, options) => { calls.push({ prompt, options }); return { center: [366, 1666.5] }; },
+  };
+  assert.deepEqual(await locateVideoButton(agent, 'Play'), [122, 556]);
+  await locateVideoButton(agent, 'Play Null');
+  assert.match(calls[0].prompt, /BETWEEN "Clear" and "Play Null"/);
+  assert.match(calls[0].prompt, /NOT the lower edge or the white gap above the Seek row/);
+  assert.doesNotMatch(calls[1].prompt, /FIRST playback row|white gap/);
+  for (const call of calls) assert.deepEqual(call.options, { deepLocate: true, cacheable: false, uiContext });
+});
+
 test('split phases retain the entire original ordered trace and only prepare at inactive source boundaries', () => {
   for (const name of ['VideoBasic', 'VideoAttributes']) {
     const source = originalVideoPlayback(name);

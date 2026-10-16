@@ -127,7 +127,8 @@ function fixture() {
     aiLocate: async (prompt, options) => {
       trace.push(['locate', prompt, options]);
       assert.equal(taps, 0, 'No model call may follow playback start');
-      return { center: prompt.includes('"Src B"') || prompt.includes('"Stop"') ? [200, 100] : [100, 100] };
+      const label = JSON.parse(prompt.match(/^The single visible button labeled exactly ("[^"]+")/)[1]);
+      return { center: label === 'Src B' || label === 'Stop' ? [200, 100] : [100, 100] };
     },
     interface: { inputPrimitives: { pointer: { tap: async point => {
       trace.push(['tap', point]);
