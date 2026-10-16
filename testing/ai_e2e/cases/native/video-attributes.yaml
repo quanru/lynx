@@ -1,0 +1,160 @@
+afterEach:
+  - recordToReport: VideoAttributes final evidence, including failures
+cases:
+  - name: xelement/VideoAttributes
+    steps:
+      - recordToReport: Start isolated Explorer for VideoAttributes
+      - wait:
+          duration: 5000
+          unit: ms
+      - launch: ${videoUri}
+      - wait:
+          duration: 2000
+          unit: ms
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Vol 0.3" once. Do not click another button or perform another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: volume=0.3
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Mute" once. Do not click another button or perform another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: muted=true
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Unmute" once. Do not click another button or perform another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: muted=false
+          timeoutMs: 20000
+      - aiAct:
+          prompt: Scroll inside the actual light-gray video demo panel if needed and click the single visible button labeled exactly "Vol 1" once. Do not click another button or perform another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: volume=1.0
+          timeoutMs: 20000
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: visibility
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: 0
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: 1
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: 2
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: 3
+      - native.videoPhase:
+          phase: attributes-fit
+          prepare: 4
+      - native.videoPhase:
+          phase: attributes-fit
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: visibility
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 0
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 1
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 2
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 3
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 4
+      - native.videoPhase:
+          phase: attributes-speed
+          prepare: 5
+      - native.videoPhase:
+          phase: attributes-speed
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: visibility
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 0
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 1
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 2
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 3
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 4
+      - native.videoPhase:
+          phase: attributes-interval
+          prepare: 5
+      - native.videoPhase:
+          phase: attributes-interval
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: visibility
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: 0
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: 1
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: 2
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: 3
+      - native.videoPhase:
+          phase: attributes-invalid
+          prepare: 4
+      - native.videoPhase:
+          phase: attributes-invalid
+      - native.videoPhase:
+          phase: attributes-tiny
+          prepare: visibility
+      - native.videoPhase:
+          phase: attributes-tiny
+          prepare: 0
+      - native.videoPhase:
+          phase: attributes-tiny
+          prepare: 1
+      - native.videoPhase:
+          phase: attributes-tiny
+          prepare: 2
+      - native.videoPhase:
+          phase: attributes-tiny
+          prepare: 3
+      - native.videoPhase:
+          phase: attributes-tiny

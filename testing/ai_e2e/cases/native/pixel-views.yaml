@@ -1,0 +1,16 @@
+# Preserve full LynxView crops, original baselines and original runner readiness.
+cases:
+  - name: core/Image
+    steps:
+      - launch: "${imageUri}"
+      - wait: { duration: 2000, unit: ms }
+      - recordToReport: Before original Image LynxView pixel baseline
+      - native.pixels: { fixture: image, baseline: image }
+      - recordToReport: Original Image pixel baseline passed
+  - name: core/LayoutLinear
+    steps:
+      - launch: "${layoutLinearUri}"
+      - wait: { duration: 2000, unit: ms }
+      - recordToReport: Before original LayoutLinear LynxView pixel baseline
+      - native.pixels: { fixture: layoutLinear, baseline: layout_linear }
+      - recordToReport: Original LayoutLinear pixel baseline passed

@@ -391,7 +391,7 @@ struct ExplorerSparklingAssetResolver {
       // the linked local source pods. Only Explorer's custom element is
       // page-config-specific.
       builder.config?.registerUI(LynxExplorerInput.self, withName: "explorer-input")
-      builder.config?.registerModule(ExplorerLynxTestModule.self)
+      builder.config?.register(ExplorerLynxTestModule.self)
       builder.screenSize = frame.size
       builder.fontScale = 1
       let preference = UserDefaults.standard.string(forKey: "preferredTheme")?.lowercased()

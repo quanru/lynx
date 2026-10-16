@@ -434,7 +434,7 @@ export function VideoDemo() {
         </view>
       </view>
 
-      <view className="controls">
+      <view className="controls seek-controls">
         <view
           lynx-test-tag="btn-seek-start"
           className="button"
@@ -470,6 +470,9 @@ export function VideoDemo() {
         >
           <text>Seek Missing</text>
         </view>
+      </view>
+
+      <view className="controls seek-controls">
         <view
           lynx-test-tag="btn-seek-null-params"
           className="button"

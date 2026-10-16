@@ -1,0 +1,1445 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+test('unpublished job summaries retain counts-only results and artifact access', () => {
+  const summary = renderSummary({
+    title: 'Unpublished report',
+    jobSummaryOnly: true,
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [{
+      label: 'Web',
+      result: 'success',
+      run,
+      reportPath: 'runs/123-1/web/report.html',
+      cases: [{
+        ...run.projects[0].documents[0].cases[0],
+        previewPath: 'runs/123-1/web/image.png',
+      }],
+    }],
+    nativeReportPath: 'runs/123-1/report.html',
+  });
+  assert.match(summary, /All 1 cases passed/);
+  assert.match(summary, /actions\/runs\/123#artifacts/);
+  assert.doesNotMatch(
+    summary,
+    /<img|Open the published|github\.io|\| Platform \||<details>|Appendix:/,
+  );
+});
+
+import {
+  mergeNativeReports,
+  preparePagesSite,
+  renderSummary,
+  testRunDump,
+  validateSupplementalEvidence,
+  loadExpectedCaseEvidence,
+  writeSummaryWithinLimit,
+  SUMMARY_BYTE_LIMIT,
+  compactSummaryReportLinks,
+} from './render-ci-summary.mjs';
+
+const run = {
+  schemaVersion: 1,
+  kind: 'test-runner',
+  runId: 'fixture-run',
+  status: 'success',
+  startedAt: '2026-09-23T12:13:38.780Z',
+  endedAt: '2026-09-23T12:14:43.150Z',
+  durationMs: 73_000,
+  summary: {
+    total: 1,
+    passed: 1,
+    failed: 0,
+    notRun: 0,
+    filtered: 0,
+    collectionErrors: 0,
+    documentFailures: 0,
+    projectFailures: 0,
+  },
+  metrics: {
+    modelCallCount: 0,
+    modelTimeMs: 0,
+    promptTokens: 0,
+    cachedInputTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    collection: {
+      status: 'unknown',
+      reasons: ['Synthetic report fixture has no model usage.'],
+    },
+  },
+  projects: [
+    {
+      projectId: 'project-1',
+      name: 'android-explorer',
+      collectionErrors: [],
+      documents: [
+        {
+          documentId: 'document-1',
+          beforeAll: [],
+          afterAll: [],
+          cases: [
+            {
+              caseId: 'showcase',
+              name: 'Open the Showcase page',
+              status: 'success',
+              attempts: [
+                {
+                  attemptId: 'attempt-1',
+                  durationMs: 52_000,
+                  beforeEach: [],
+                  afterEach: [],
+                  steps: [
+                    {
+                      id: 'case:steps:0',
+                      status: 'success',
+                      agentDetails: [
+                        { reportId: 'report-1', executionId: 'execution-1' },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+test('extracts the runner dump from a Midscene HTML report', () => {
+  const html = `<script type="midscene_test_run_dump">${
+    JSON.stringify(run)
+  }</script>`;
+  assert.deepEqual(testRunDump(html), run);
+});
+
+test('puts passed cases and linked screenshots in the collapsed appendix', () => {
+  const summary = renderSummary({
+    title: 'Lynx Explorer × Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    nativeReportPath: 'runs/123-1/native-report/index.html',
+    entries: [
+      {
+        label: 'Android',
+        result: 'success',
+        artifact: 'midscene-ai-e2e-android',
+        run,
+        reportPath: 'android/report/test-run.html',
+        cases: [
+          {
+            ...run.projects[0].documents[0].cases[0],
+            previewPath: 'android/previews/showcase.jpg',
+            stepId: 'case:steps:0',
+          },
+        ],
+      },
+    ],
+  });
+  assert.doesNotMatch(summary, /### Needs attention/);
+  assert.match(summary, /\*\*✅ 0 need attention · 1 passed\*\*/);
+  assert.match(summary, /🎉 All 1 cases passed/);
+  assert.match(summary, /\| Screenshot \| Status \| Duration \| Report \|/);
+  const row = summary.split('\n').find(line => line.startsWith('| Android |'));
+  assert.match(row, /<img src=/);
+  assert.match(row, /\[Open report\]\[m0\]/);
+  assert.match(
+    summary,
+    /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/,
+  );
+  assert.match(
+    summary,
+    /<details>\n<summary>Appendix: passed cases \(1\)<\/summary>/,
+  );
+  assert.match(
+    summary,
+    /\[<img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Screenshot" width="160">\]\[m0\]/,
+  );
+  assert.match(summary, /runner-step=case%3Asteps%3A0/);
+});
+
+test('keeps every case in an unpublished report without advertising nonexistent links', () => {
+  const summary = renderSummary({
+    title: 'Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: '',
+    nativeReportPath: 'native-report/index.html',
+    entries: [{
+      label: 'Web',
+      result: 'success',
+      run,
+      reportPath: 'web/report/index.html',
+      cases: [{
+        ...run.projects[0].documents[0].cases[0],
+        previewPath: 'web/preview.jpg',
+        stepId: 'case:steps:0',
+      }],
+    }],
+  });
+  assert.match(summary, /1 passed/);
+  assert.match(summary, /run artifacts/);
+  assert.match(summary, /actions\/runs\/123#artifacts/);
+  assert.match(summary, /<summary>Appendix: passed cases \(1\)<\/summary>/);
+  assert.match(
+    summary,
+    /\| Web \| Open the Showcase page \| Not published \| ✅ Passed \| 52s \| Unavailable \|/,
+  );
+  assert.doesNotMatch(
+    summary,
+    /<img|runner-step=|Open the published HTML report|Click a screenshot/,
+  );
+});
+
+test('unpublished failed and empty runs retain status without inventing screenshots', () => {
+  for (
+    const entries of [
+      [{ label: 'iOS', result: 'failure', run: undefined }],
+      [{
+        label: 'Web',
+        result: 'failure',
+        run: { status: 'failure' },
+        cases: [{ name: 'Failed case', status: 'failure' }],
+      }],
+      [],
+    ]
+  ) {
+    const summary = renderSummary({
+      title: 'Unpublished report',
+      runUrl: 'https://github.com/example/project/actions/runs/123',
+      entries,
+    });
+    assert.match(summary, /run artifacts/);
+    assert.match(summary, /publication is skipped or fails/);
+    assert.match(
+      summary,
+      entries.length ? /1 need attention/ : /No cases were reported/,
+    );
+    assert.match(summary, /\| Platform \|/);
+    if (entries[0]?.cases) {
+      assert.match(summary, /Failed case \| Not published/);
+    }
+    assert.doesNotMatch(summary, /<img|✅/);
+  }
+});
+
+test('unpublished tables put failures first and identify the report artifact without a fake direct link', () => {
+  const passed = structuredClone(run.projects[0].documents[0].cases[0]);
+  passed.name = 'Passed case';
+  const failed = { ...passed, name: 'Failed case', status: 'failed' };
+  const notRun = {
+    name: 'Not-run case',
+    status: 'not-run',
+    notRunReason: 'Setup failed',
+  };
+  const summary = renderSummary({
+    title: 'Unpublished report',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [{
+      label: 'iOS',
+      result: 'failure',
+      run: { ...run, status: 'failed' },
+      reportPath: 'ios/report/index.html',
+      artifact: 'combined-report-2',
+      cases: [passed, notRun, failed],
+    }],
+  });
+  const appendix = summary.indexOf('<details>');
+  assert.ok(summary.indexOf('Failed case') < summary.indexOf('Not-run case'));
+  assert.ok(summary.indexOf('Not-run case') < appendix);
+  assert.ok(summary.indexOf('Passed case') > appendix);
+  const rows = summary.split('\n').filter(line => line.startsWith('| iOS |'));
+  assert.equal(rows.length, 3);
+  for (const row of rows) {
+    assert.match(row, /\| Not published \|/);
+    assert.match(
+      row,
+      /\[Find artifact: combined-report-2\]\(https:\/\/github.com\/example\/project\/actions\/runs\/123#artifacts\)/,
+    );
+  }
+  assert.match(rows[0], /\| 52s \|/);
+  assert.match(rows[1], /\| — \|/);
+  assert.doesNotMatch(summary, /<img|Open report|runner-step=|github\.io/);
+});
+
+test('shows abnormal cases with screenshots before passed-only appendix', () => {
+  const failed = structuredClone(run.projects[0].documents[0].cases[0]);
+  failed.name = 'Failed case';
+  failed.status = 'failed';
+  failed.attempts[0].steps = [{
+    status: 'failed',
+    error: { message: 'Assertion failed' },
+  }];
+  const notRun = structuredClone(run.projects[0].documents[0].cases[0]);
+  notRun.name = 'Not-run case';
+  notRun.status = 'not-run';
+  notRun.notRunReason = 'Blocked by setup';
+  const passed = structuredClone(run.projects[0].documents[0].cases[0]);
+  passed.name = 'Passed case';
+  const summary = renderSummary({
+    title: 'Lynx Explorer × Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [{
+      label: 'Android',
+      result: 'failure',
+      run: { ...run, status: 'failed' },
+      reportPath: 'android/report/test-run.html',
+      cases: [
+        { ...passed, previewPath: 'android/previews/passed.jpg' },
+        notRun,
+        {
+          ...failed,
+          previewPath: 'android/previews/failed.jpg',
+          stepId: 'case:steps:0',
+        },
+      ],
+    }],
+  });
+  const appendix = summary.indexOf('<details>');
+  assert.doesNotMatch(summary, /✅ 2 need attention/);
+  assert.doesNotMatch(summary, /🎉 All/);
+  assert.ok(summary.indexOf('Failed case') < appendix);
+  assert.ok(summary.indexOf('Failed case') < summary.indexOf('Not-run case'));
+  assert.ok(summary.indexOf('Not-run case') < appendix);
+  assert.ok(summary.indexOf('Passed case') > appendix);
+  assert.match(summary.slice(0, appendix), /failed\.jpg[^\n]+Assertion failed/);
+  assert.doesNotMatch(summary.slice(0, appendix), /passed\.jpg/);
+  assert.match(summary.slice(appendix), /passed\.jpg/);
+  assert.doesNotMatch(summary.slice(appendix), /failed\.jpg/);
+});
+
+test('reports infrastructure failures when no Midscene report exists', () => {
+  const summary = renderSummary({
+    title: 'Lynx Explorer × Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [
+      { label: 'iOS', result: 'failure', artifact: 'ios', run: undefined },
+    ],
+  });
+  assert.match(summary, /iOS.*Failed before report/);
+});
+
+test('standard report captures survive a later exact assertion failure without moving its report link', async t => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-capture-preview-'),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dump = structuredClone(run);
+  const item = dump.projects[0].documents[0].cases[0];
+  item.status = 'failed';
+  item.attempts[0].steps.push({
+    id: 'case:steps:1',
+    status: 'failed',
+    error: { message: 'Exact value mismatch' },
+  });
+  const html = `<script type="midscene_web_dump" data-report-id="report-1">${
+    JSON.stringify({
+      executions: [{
+        id: 'execution-1',
+        tasks: [{
+          recorder: [{ type: 'screenshot', screenshot: { id: 'capture' } }],
+        }],
+      }],
+    })
+  }</script><script type="midscene-image" data-id="capture">data:image/png;base64,AQID</script>`;
+  await mkdir(path.join(root, 'source'));
+  const file = path.join(root, 'source', 'report.html');
+  await writeFile(file, html);
+  const [entry] = await preparePagesSite({
+    entries: [{
+      label: 'Web',
+      result: 'failure',
+      report: { dump, file, html },
+    }],
+    siteDirectory: path.join(root, 'site'),
+    sitePrefix: 'runs/123-1',
+  });
+  assert.equal(entry.cases[0].stepId, 'case:steps:1');
+  assert.ok(entry.cases[0].previewPath);
+  assert.deepEqual(
+    await readFile(path.join(root, 'site', entry.cases[0].previewPath)),
+    Buffer.from([1, 2, 3]),
+  );
+});
+
+test('immediate failures use only a direct final-attempt cleanup capture, not later actions or older attempts', async t => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-aftereach-preview-'),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, 'source'));
+  const file = path.join(root, 'source', 'report.html');
+  const html = `<script type="midscene_web_dump" data-report-id="report-1">${
+    JSON.stringify({
+      executions: [
+        {
+          id: 'execution-1',
+          tasks: [{
+            recorder: [{ type: 'screenshot', screenshot: { id: 'old' } }],
+          }],
+        },
+        {
+          id: 'cleanup-execution',
+          tasks: [{
+            recorder: [{ type: 'screenshot', screenshot: { id: 'current' } }],
+          }],
+        },
+      ],
+    })
+  }</script><script type="midscene-image" data-id="old">data:image/png;base64,AQID</script><script type="midscene-image" data-id="current">data:image/png;base64,BAUG</script>`;
+  await writeFile(file, html);
+  for (
+    const mode of [
+      'direct',
+      'prior-cleanup-action',
+      'continued-case-action',
+      'older-attempt-only',
+    ]
+  ) {
+    const dump = structuredClone(run);
+    const item = dump.projects[0].documents[0].cases[0];
+    item.status = 'failed';
+    const cleanup = {
+      id: 'final:afterEach:0',
+      node: 'recordToReport',
+      status: 'success',
+      agentDetails: [{
+        reportId: 'report-1',
+        executionId: 'cleanup-execution',
+      }],
+    };
+    const final = {
+      attemptId: 'final',
+      beforeEach: [],
+      steps: [{ id: 'final:steps:0', node: 'web.expect', status: 'failed' }],
+      afterEach: [cleanup],
+    };
+    if (mode === 'prior-cleanup-action') {
+      final.afterEach.unshift({
+        id: 'cleanup-action',
+        node: 'gotoUrl',
+        status: 'success',
+      });
+    }
+    if (mode === 'continued-case-action') {
+      final.steps.push({ id: 'continued', node: 'aiAct', status: 'success' });
+    }
+    if (mode === 'older-attempt-only') final.afterEach = [];
+    item.attempts.push(final);
+    const site = path.join(root, mode);
+    const [entry] = await preparePagesSite({
+      entries: [{
+        label: 'Web',
+        result: 'failure',
+        report: { dump, file, html },
+      }],
+      siteDirectory: site,
+    });
+    assert.equal(entry.cases[0].stepId, 'final:steps:0');
+    if (mode === 'direct') {
+      assert.deepEqual(
+        await readFile(path.join(site, entry.cases[0].previewPath)),
+        Buffer.from([4, 5, 6]),
+      );
+      assert.match(
+        renderSummary({
+          title: 'Failure',
+          pagesUrl: 'https://example.invalid',
+          entries: [entry],
+        }),
+        /\[m0\]: <[^\n]+runner-step=final%3Asteps%3A0>/,
+      );
+    } else assert.equal(entry.cases[0].previewPath, undefined, mode);
+  }
+});
+
+test('escapes report-provided Markdown in failure rows', () => {
+  const failedRun = structuredClone(run);
+  failedRun.status = 'failed';
+  failedRun.summary = { total: 1, passed: 0, failed: 1, notRun: 0 };
+  const testCase = failedRun.projects[0].documents[0].cases[0];
+  testCase.name = 'Broken | [case]';
+  testCase.status = 'failed';
+  testCase.attempts[0].steps = [
+    { status: 'failed', error: { message: '<unsafe> | reason' } },
+  ];
+  const summary = renderSummary({
+    title: 'Lynx Explorer × Midscene',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [{
+      label: 'iOS',
+      result: 'failure',
+      run: failedRun,
+      reportPath: 'ios/report/test-run.html',
+      cases: [{ ...testCase, previewPath: 'ios/previews/broken.jpg' }],
+    }],
+  });
+  assert.match(summary, /Broken \\| \\\[case\\\]/);
+  assert.match(summary, /&lt;unsafe&gt; \\| reason/);
+  assert.match(summary, /alt="Screenshot"/);
+});
+
+test('extracts a node screenshot and publishes a linked HTML report', async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source', 'report');
+  const site = path.join(root, 'site');
+  await mkdir(source, { recursive: true });
+  const html = [
+    '<!doctype html><html><body>',
+    `<script type="midscene_web_dump" data-report-id="report-1">${
+      JSON.stringify({
+        executions: [
+          {
+            id: 'execution-1',
+            tasks: [
+              { uiContext: { screenshot: { id: 'screenshot-1' } } },
+            ],
+          },
+        ],
+      })
+    }</script>`,
+    '<script type="midscene-image" data-id="screenshot-1">data:image/jpeg;base64,/9j/2Q==</script>',
+    `<script type="midscene_test_run_dump">${JSON.stringify(run)}</script>`,
+    '</body></html>',
+  ].join('');
+  const reportFile = path.join(source, 'test-run.html');
+  await writeFile(reportFile, html);
+
+  const [entry] = await preparePagesSite({
+    entries: [
+      {
+        label: 'Android',
+        result: 'success',
+        report: { dump: run, file: reportFile, html },
+      },
+    ],
+    siteDirectory: site,
+  });
+
+  assert.equal(entry.reportPath, 'android/report/test-run.html');
+  assert.equal(entry.cases[0].previewPath, 'android/previews/showcase.jpg');
+  assert.equal(entry.cases[0].stepId, 'case:steps:0');
+  assert.deepEqual(
+    await readFile(path.join(site, entry.cases[0].previewPath)),
+    Buffer.from('/9j/2Q==', 'base64'),
+  );
+  assert.match(
+    await readFile(path.join(site, entry.reportPath), 'utf8'),
+    /midscene_test_run_dump/,
+  );
+  const nativeReportPath = await mergeNativeReports([entry], site, '');
+  assert.equal(nativeReportPath, 'native-report.html');
+  assert.match(
+    await readFile(path.join(site, nativeReportPath), 'utf8'),
+    /midscene_test_run_dump/,
+  );
+  assert.match(
+    await readFile(path.join(site, 'index.html'), 'utf8'),
+    /native-report\.html/,
+  );
+
+  const jobSummary = path.join(root, 'job-summary.md');
+  execFileSync(process.execPath, [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Lynx Explorer × Midscene',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--pages-url',
+    'https://example.github.io/project/',
+    '--entry',
+    `Android=${path.join(root, 'source')}`,
+    '--result',
+    'Android=success',
+    '--site-prefix',
+    'runs/123-1',
+    '--site-dir',
+    path.join(root, 'job-site'),
+    '--job-summary-only',
+    'true',
+    '--output',
+    jobSummary,
+  ]);
+  assert.match(
+    await readFile(jobSummary, 'utf8'),
+    /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/android\/report\/test-run\.html\)/,
+  );
+});
+
+test('CLI distinguishes an unpublished full fallback from a counts-only test job', async context => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-fallback-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source');
+  await mkdir(source);
+  await writeFile(
+    path.join(source, 'report.html'),
+    `<script type="midscene_test_run_dump">${JSON.stringify(run)}</script>`,
+  );
+  for (const jobSummaryOnly of ['true', 'false']) {
+    const output = path.join(root, jobSummaryOnly + '.md');
+    execFileSync(process.execPath, [
+      new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+      '--title',
+      'Unpublished report',
+      '--run-url',
+      'https://github.com/example/project/actions/runs/123',
+      '--links-published',
+      'false',
+      '--entry',
+      `Android=${source}`,
+      '--result',
+      'Android=success',
+      '--artifact',
+      'Android=combined-report-2',
+      '--site-prefix',
+      'runs/123-2',
+      '--site-dir',
+      path.join(root, 'site-' + jobSummaryOnly),
+      '--job-summary-only',
+      jobSummaryOnly,
+      '--output',
+      output,
+    ]);
+    const summary = await readFile(output, 'utf8');
+    assert.match(summary, /1 passed/);
+    assert.doesNotMatch(
+      summary,
+      /<img|Open report|runner-step=|undefined|github\.io/,
+    );
+    if (jobSummaryOnly === 'true') {
+      assert.doesNotMatch(summary, /Appendix:|Open the Showcase page/);
+    } else {
+      assert.match(summary, /Appendix: passed cases/);
+      assert.match(
+        summary,
+        /Open the Showcase page \| Not published \| ✅ Passed \| 52s/,
+      );
+      assert.match(summary, /Find artifact: combined-report-2/);
+    }
+  }
+});
+
+test('extracts a file-backed Midscene 1.13 screenshot', async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source', 'report');
+  const screenshots = path.join(source, 'screenshots');
+  const site = path.join(root, 'site');
+  await mkdir(screenshots, { recursive: true });
+  const screenshotBytes = Buffer.from('/9j/2Q==', 'base64');
+  await writeFile(path.join(screenshots, 'screenshot-1.jpeg'), screenshotBytes);
+  const html = [
+    '<!doctype html><html><body>',
+    `<script type="midscene_web_dump" data-report-id="report-1">${
+      JSON.stringify({
+        executions: [
+          {
+            id: 'execution-1',
+            tasks: [
+              {
+                uiContext: {
+                  screenshot: {
+                    type: 'midscene_screenshot_ref',
+                    id: 'screenshot-1',
+                    mimeType: 'image/jpeg',
+                    storage: 'file',
+                    path: './screenshots/screenshot-1.jpeg',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      })
+    }</script>`,
+    `<script type="midscene_test_run_dump">${JSON.stringify(run)}</script>`,
+    '</body></html>',
+  ].join('');
+  const reportFile = path.join(source, 'test-run.html');
+  await writeFile(reportFile, html);
+
+  const [entry] = await preparePagesSite({
+    entries: [
+      {
+        label: 'Android',
+        result: 'success',
+        report: { dump: run, file: reportFile, html },
+      },
+    ],
+    siteDirectory: site,
+  });
+
+  assert.equal(entry.cases[0].previewPath, 'android/previews/showcase.jpg');
+  assert.deepEqual(
+    await readFile(path.join(site, entry.cases[0].previewPath)),
+    screenshotBytes,
+  );
+});
+
+test('missing platform reports replace the stale site index without claiming a merged run', async (context) => {
+  const site = await mkdtemp(path.join(os.tmpdir(), 'midscene-incomplete-'));
+  context.after(() => rm(site, { recursive: true, force: true }));
+  for (const available of [true, false]) {
+    await writeFile(
+      path.join(site, 'index.html'),
+      '<meta http-equiv="refresh" content="0;url=runs/122-1/native-report.html">',
+    );
+    const reportPath = 'runs/123-1/ios/report/index.html';
+    const merged = await mergeNativeReports(
+      [
+        { label: 'Android <build>', result: 'failure' },
+        {
+          label: 'iOS',
+          result: 'failure',
+          ...(available ? { reportPath } : {}),
+        },
+      ],
+      site,
+      'runs/123-1',
+    );
+    assert.equal(merged, null);
+    const index = await readFile(path.join(site, 'index.html'), 'utf8');
+    assert.match(index, /Incomplete Midscene reports/);
+    assert.match(index, /runs\/123-1/);
+    assert.match(index, /Android &lt;build&gt;: failure/);
+    assert.match(index, /No report was produced/);
+    assert.doesNotMatch(index, /runs\/122-1|http-equiv|native-report|<build>/);
+    assert.equal(index.includes(`href="${reportPath}"`), available);
+  }
+});
+
+test('keeps prior run reports at immutable URLs', async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-summary-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'source');
+  const site = path.join(root, 'site');
+  await mkdir(source, { recursive: true });
+  const file = path.join(source, 'test-run.html');
+  const makeEntry = async (marker) => {
+    const html = `<html>${marker}</html>`;
+    await writeFile(file, html);
+    return { label: 'Web', report: { file, html, dump: run } };
+  };
+  const [first] = await preparePagesSite({
+    entries: [await makeEntry('first')],
+    siteDirectory: site,
+    sitePrefix: 'runs/123-1',
+  });
+  const [second] = await preparePagesSite({
+    entries: [await makeEntry('second')],
+    siteDirectory: site,
+    sitePrefix: 'runs/124-1',
+  });
+  assert.equal(first.reportPath, 'runs/123-1/web/report/test-run.html');
+  assert.equal(second.reportPath, 'runs/124-1/web/report/test-run.html');
+  assert.equal(
+    await readFile(path.join(site, first.reportPath), 'utf8'),
+    '<html>first</html>',
+  );
+  assert.equal(
+    await readFile(path.join(site, second.reportPath), 'utf8'),
+    '<html>second</html>',
+  );
+});
+
+const inventoryIdentity = {
+  schemaVersion: 1,
+  label: 'iOS',
+  projectName: 'ios-explorer',
+  sha: 'a'.repeat(40),
+  runId: '123',
+  attempt: '2',
+};
+const expectedInventory = () => ({
+  ...inventoryIdentity,
+  expectedCount: 20,
+  cases: Array.from(
+    { length: 20 },
+    (_, index) => ({
+      caseId: index.toString(16).padStart(64, '0'),
+      name: `Native case ${index + 1}`,
+      sourcePath: 'cases/native/example.yaml',
+    }),
+  ),
+});
+
+async function writeInventory(
+  directory,
+  outcome,
+  inventory = expectedInventory(),
+) {
+  await writeFile(
+    path.join(directory, 'expected-cases.json'),
+    JSON.stringify(inventory),
+  );
+  await writeFile(
+    path.join(directory, 'execution-status.json'),
+    JSON.stringify({ ...inventoryIdentity, outcome }),
+  );
+}
+
+test('setup failure shows all twenty expected native cases as not-run without fake evidence', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  await writeInventory(directory, 'skipped');
+  const fallback = await loadExpectedCaseEvidence(directory, inventoryIdentity);
+  assert.equal(fallback.cases.length, 20);
+  assert.ok(fallback.cases.every(item => item.status === 'not-run'));
+  const summary = renderSummary({
+    title: 'Setup failed',
+    entries: [{ label: 'iOS', result: 'failure', ...fallback }],
+    pagesUrl: 'https://example.github.io/project/',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+  });
+  assert.match(summary, /20 need attention · 0 passed/);
+  assert.equal(
+    summary.split('\n').filter(line => line.startsWith('| iOS |')).length,
+    20,
+  );
+  assert.match(summary, /Native case 20 \| Unavailable \| ⏭️ Not run/);
+  assert.doesNotMatch(summary, /<img|\[Open report\]\(|runner-step|✅ Passed/);
+  const output = path.join(directory, 'summary.md');
+  execFileSync(process.execPath, [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Setup failed',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--links-published',
+    'false',
+    '--entry',
+    `iOS=${directory}`,
+    '--result',
+    'iOS=failure',
+    '--site-prefix',
+    'runs/123-2',
+    '--expected-sha',
+    inventoryIdentity.sha,
+    '--site-dir',
+    path.join(directory, 'site'),
+    '--output',
+    output,
+  ]);
+  assert.match(await readFile(output, 'utf8'), /20 need attention · 0 passed/);
+});
+
+test('started execution without HTML is an unknown result, never an invented not-run or pass', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  for (const outcome of ['failure', 'success', 'cancelled']) {
+    await writeInventory(directory, outcome);
+    const fallback = await loadExpectedCaseEvidence(
+      directory,
+      inventoryIdentity,
+    );
+    assert.ok(fallback.cases.every(item => item.status === 'failed'));
+    assert.match(
+      fallback.cases[0].notRunReason,
+      /individual case execution is unknown/,
+    );
+  }
+});
+
+test('actual HTML remains authoritative but cannot silently disagree with expected identities', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const inventory = expectedInventory();
+  const report = {
+    dump: {
+      projects: [{
+        documents: [{
+          cases: inventory.cases.map(item => ({ ...item, status: 'success' })),
+        }],
+      }],
+    },
+  };
+  await writeInventory(directory, 'success', inventory);
+  assert.deepEqual(
+    await loadExpectedCaseEvidence(directory, inventoryIdentity, report),
+    { inventoryAttempt: '2', reusedInventory: false },
+  );
+  const mismatched = structuredClone(report);
+  mismatched.dump.projects[0].documents[0].cases[0].name = 'Different source';
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity, mismatched),
+    /HTML case identities/,
+  );
+  await writeInventory(directory, 'skipped', inventory);
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity, report),
+    /contradicts skipped/,
+  );
+});
+
+test('failed-job rerun accepts a trusted prior Android attempt and current iOS attempt at the same commit', async context => {
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-rerun-inventory-'),
+  );
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const entries = [];
+  for (const [label, attempt] of [['Android', '1'], ['iOS', '2']]) {
+    const directory = path.join(root, label);
+    await mkdir(directory);
+    const identity = {
+      ...inventoryIdentity,
+      label,
+      projectName: label === 'Android' ? 'android-explorer' : 'ios-explorer',
+      attempt,
+    };
+    const inventory = { ...expectedInventory(), ...identity };
+    await writeFile(
+      path.join(directory, 'expected-cases.json'),
+      JSON.stringify(inventory),
+    );
+    await writeFile(
+      path.join(directory, 'execution-status.json'),
+      JSON.stringify({ ...identity, outcome: 'failure' }),
+    );
+    const evidence = await loadExpectedCaseEvidence(directory, {
+      ...identity,
+      currentAttempt: '2',
+    });
+    entries.push({ label, result: 'failure', ...evidence });
+    assert.equal(evidence.reusedInventory, attempt === '1');
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...identity,
+        attempt: attempt === '1' ? '2' : '1',
+        currentAttempt: '2',
+      }),
+      /attempt does not match/,
+    );
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...identity,
+        sha: 'b'.repeat(40),
+        currentAttempt: '2',
+      }),
+      /sha does not match/,
+    );
+  }
+  const summary = renderSummary({
+    title: 'Rerun',
+    entries,
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+  });
+  assert.match(summary, /Android: attempt 1 \(reused\) · iOS: attempt 2/);
+});
+
+test('inventory rejects stale attempts, unsafe paths, duplicates and inconsistent manifests', async context => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), 'midscene-inventory-'),
+  );
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  assert.deepEqual(await loadExpectedCaseEvidence(directory, {}), {});
+  await writeInventory(directory, 'skipped');
+  for (const field of ['sha', 'runId', 'attempt', 'label']) {
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, {
+        ...inventoryIdentity,
+        [field]: field === 'sha' ? 'b'.repeat(40) : '999',
+      }),
+      /expected-case evidence/,
+    );
+  }
+  for (
+    const mutate of [
+      value => {
+        value.cases[1] = value.cases[0];
+      },
+      value => {
+        value.expectedCount = 21;
+      },
+      value => {
+        value.cases[0].sourcePath = '../escape.yaml';
+      },
+      value => {
+        value.cases[0].sourcePath = '/absolute.yaml';
+      },
+      value => {
+        value.cases[0].caseId = 'wrong';
+      },
+      value => {
+        value.projectName = 'other-project';
+      },
+    ]
+  ) {
+    const inventory = expectedInventory();
+    mutate(inventory);
+    await writeInventory(directory, 'skipped', inventory);
+    await assert.rejects(
+      loadExpectedCaseEvidence(directory, inventoryIdentity),
+      /expected-case evidence/,
+    );
+  }
+  await writeInventory(directory, 'unrecognized');
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity),
+    /unknown execution/,
+  );
+  await rm(path.join(directory, 'execution-status.json'));
+  await assert.rejects(
+    loadExpectedCaseEvidence(directory, inventoryIdentity),
+    /must both exist/,
+  );
+});
+
+const sourceEvidence = () => ({
+  label: 'Original input contracts',
+  sourceCount: 1,
+  expectedCount: 3,
+  errors: [],
+  cases: ['chromium', 'firefox', 'webkit'].map(platform => ({
+    platform,
+    name: 'Original input',
+    status: 'success',
+    durationMs: 1234,
+    previewPath: `original/${platform}.png`,
+    reportPath: `original/${platform}/index.html`,
+    artifact: 'original-input-contracts-1',
+  })),
+});
+
+test('catalog evidence policies keep non-UI passes and source skips distinct without fake screenshots', () => {
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'non-ui',
+    previewPath: null,
+  });
+  for (const item of evidence.cases.slice(1)) {
+    Object.assign(item, {
+      evidencePolicy: 'source-skip',
+      status: 'skipped',
+      reason: 'Disabled in original source',
+      previewPath: null,
+      durationMs: null,
+    });
+  }
+  evidence.cases[2].reportPath = null;
+  const options = {
+    title: 'Policies',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    entries: [],
+    supplementalEvidence: evidence,
+  };
+  for (const pagesUrl of [undefined, 'https://example.github.io/project/']) {
+    const summary = renderSummary({ ...options, pagesUrl });
+    assert.match(summary, /0 need attention · 1 passed · 2 source-skipped/);
+    assert.match(summary, /1 non-UI · 2 source-skipped/);
+    assert.doesNotMatch(summary, /All 3 cases passed|### Needs attention|<img/);
+    assert.match(summary, /Not applicable \(non-UI\)/);
+    assert.match(summary, /Not generated \(source-skipped\)/);
+    assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+    assert.match(
+      summary,
+      /Skipped in original source: Disabled in original source/,
+    );
+    if (pagesUrl) {
+      assert.match(
+        summary,
+        /\[m[0-9a-z]+\]: <[^\n]+original\/firefox\/index.html>/,
+      );
+    } else assert.match(summary, /Find artifact: original-input-contracts-1/);
+  }
+  evidence.cases[0].reportPath = null;
+  assert.match(
+    renderSummary(options),
+    /1 need attention · 0 passed · 2 source-skipped/,
+  );
+});
+
+test('evidence policy exemptions reject contradictory statuses, screenshots and invented skip timing', () => {
+  for (
+    const change of [
+      { status: 'skipped' },
+      { evidencePolicy: 'source-skip' },
+      { evidencePolicy: 'unknown' },
+      { evidencePolicy: 'non-ui' },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'skipped',
+        previewPath: null,
+        reason: 'Disabled',
+      },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'skipped',
+        previewPath: null,
+        durationMs: null,
+      },
+      {
+        evidencePolicy: 'source-skip',
+        status: 'not-run',
+        previewPath: null,
+        durationMs: null,
+        reason: 'Job not started',
+      },
+    ]
+  ) {
+    const evidence = sourceEvidence();
+    Object.assign(evidence.cases[0], change);
+    assert.throws(
+      () => validateSupplementalEvidence(evidence),
+      /Invalid supplemental evidence/,
+    );
+  }
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'non-ui',
+    status: 'not-run',
+    previewPath: null,
+    reportPath: null,
+  });
+  assert.match(
+    renderSummary({
+      title: 'Not started',
+      runUrl: 'https://example.com/run',
+      entries: [],
+      supplementalEvidence: evidence,
+    }),
+    /1 need attention/,
+  );
+});
+
+test('source returns require exclusive status and real HTML without counting as passed', () => {
+  const evidence = sourceEvidence();
+  Object.assign(evidence.cases[0], {
+    evidencePolicy: 'source-return',
+    status: 'not-applicable',
+    reason: 'Original browser guard returned',
+    previewPath: null,
+  });
+  const options = {
+    title: 'Returns',
+    runUrl: 'https://example.com/run',
+    pagesUrl: 'https://example.com/site/',
+    entries: [],
+    supplementalEvidence: evidence,
+  };
+  const summary = renderSummary(options);
+  assert.match(summary, /0 need attention · 2 passed · 1 source-returned/);
+  assert.match(summary, /Not applicable \(source return\)/);
+  assert.ok(
+    summary.indexOf('↩️ Not applicable') > summary.indexOf('<details>'),
+  );
+  evidence.cases[0].previewPath = 'real.png';
+  assert.match(
+    renderSummary(options),
+    /src="https:\/\/example.com\/site\/real.png"/,
+  );
+  evidence.cases[0].reportPath = null;
+  assert.match(renderSummary(options), /1 need attention · 2 passed/);
+  evidence.cases[0].status = 'success';
+  assert.throws(() => validateSupplementalEvidence(evidence), /not-applicable/);
+});
+
+test('reference compaction retains every thumbnail and Report link with shared immutable targets', () => {
+  const target =
+    'https://example.com/runs/123-1/report.html?x=1&y=2#runner-step=case%3A0';
+  const row = `| case | <a href="${
+    target.replace('&', '&amp;')
+  }"><img src="https://example.com/original-long-image.png" alt="Screenshot" width="160"></a> | [Open report](${target}) |`;
+  const raw = `<details>\n<summary>Appendix</summary>\n\n${
+    Array(2424).fill(row).join('\n')
+  }\n\n</details>\n`;
+  const result = compactSummaryReportLinks(raw);
+  assert.equal((result.match(/^\| case/gm) ?? []).length, 2424);
+  assert.equal((result.match(/\[Open report\]\[m0\]/g) ?? []).length, 2424);
+  assert.equal(
+    (result.match(
+      /\[<img src="https:\/\/example.com\/original-long-image.png" alt="Screenshot" width="160">\]\[m0\]/g,
+    ) ?? []).length,
+    2424,
+  );
+  assert.equal((result.match(/^\[m0\]: /gm) ?? []).length, 1);
+  assert.ok(result.indexOf('[m0]: ') > result.indexOf('</details>'));
+  assert.ok(result.endsWith(`[m0]: <${target}>\n`));
+  assert.ok(Buffer.byteLength(result) < Buffer.byteLength(raw));
+  assert.equal(compactSummaryReportLinks(result), result);
+  assert.equal(compactSummaryReportLinks('Not published'), 'Not published');
+});
+
+test('Summary byte guard preserves every row outside upload and emits an explicit diagnostic on overflow', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'summary-bytes-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const output = path.join(root, 'summary.md');
+  const markdown = '界'.repeat(Math.ceil(SUMMARY_BYTE_LIMIT / 3));
+  await assert.rejects(
+    writeSummaryWithinLimit(output, markdown, 'https://example.com/run', root),
+    /safety limit/,
+  );
+  assert.equal(
+    await readFile(path.join(root, 'summary-overflow.md'), 'utf8'),
+    markdown,
+  );
+  const marker = JSON.parse(
+    await readFile(path.join(root, 'summary-overflow.json'), 'utf8'),
+  );
+  assert.equal(marker.status, 'summary-overflow');
+  assert.equal(marker.bytes, Buffer.byteLength(markdown));
+  assert.match(await readFile(output, 'utf8'), /Summary publication failed/);
+  assert.match(await readFile(output, 'utf8'), /run#artifacts/);
+  const boundary = path.join(root, 'boundary.md');
+  await writeSummaryWithinLimit(
+    boundary,
+    'a'.repeat(SUMMARY_BYTE_LIMIT),
+    'https://example.com/run',
+    root,
+  );
+  assert.equal((await readFile(boundary)).length, SUMMARY_BYTE_LIMIT);
+  await assert.rejects(
+    writeSummaryWithinLimit(boundary, 'b', 'https://example.com/run', root),
+    /safety limit/,
+  );
+  assert.equal(
+    (await readFile(path.join(root, 'summary-overflow.md'))).length,
+    SUMMARY_BYTE_LIMIT + 1,
+  );
+});
+
+test('supplemental rows share the two sections without inflating YAML counts or runner links', () => {
+  const evidence = sourceEvidence();
+  evidence.cases[1].status = 'flaky';
+  evidence.cases[1].reason = 'Passed after retry';
+  evidence.cases[2].previewPath = null;
+  evidence.errors.push('Missing source checksum');
+  const summary = renderSummary({
+    title: 'Unified report',
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    pagesUrl: 'https://example.github.io/project/',
+    entries: [{ label: 'Web', result: 'success', run }],
+    supplementalEvidence: evidence,
+  });
+  assert.match(summary, /3 need attention · 2 passed/);
+  assert.match(
+    summary,
+    /Midscene YAML: 1 cases · Original input contracts: 1 source cases \/ 3 browser cases/,
+  );
+  assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+  assert.equal((summary.match(/### Needs attention/g) ?? []).length, 1);
+  const appendix = summary.indexOf('<details>');
+  assert.ok(summary.indexOf('| firefox |') < appendix);
+  assert.ok(summary.indexOf('| webkit |') < appendix);
+  assert.ok(summary.indexOf('| chromium |') > appendix);
+  assert.match(summary, /⚠️ Flaky: Passed after retry/);
+  assert.match(summary, /Passed; evidence missing: Screenshot unavailable/);
+  assert.match(summary, /Missing source checksum/);
+  const row = summary.split('\n').find(line => line.startsWith('| chromium |'));
+  assert.match(
+    row,
+    /<img src="https:\/\/example.github.io\/project\/original\/chromium.png"/,
+  );
+  assert.match(
+    row,
+    /\[Open report\]\[m[0-9a-z]+\]/,
+  );
+  assert.doesNotMatch(row, /runner-step/);
+  assert.equal(evidence.cases[2].status, 'success');
+});
+
+test('supplemental failed and not-run cases remain visible without Pages or invented evidence links', () => {
+  const evidence = sourceEvidence();
+  evidence.cases[0].status = 'failed';
+  evidence.cases[0].reason = 'Mismatch | <unsafe>';
+  evidence.cases[1].status = 'not-run';
+  evidence.cases[1].reportPath = null;
+  evidence.cases[1].durationMs = null;
+  const summary = renderSummary({
+    title: 'Fallback',
+    entries: [],
+    runUrl: 'https://github.com/example/project/actions/runs/123',
+    supplementalEvidence: evidence,
+  });
+  assert.match(summary, /2 need attention · 1 passed/);
+  assert.match(summary, /Mismatch \\\| &lt;unsafe&gt;/);
+  assert.match(summary, /\| Not published \|/);
+  assert.match(summary, /Find artifact: original-input-contracts-1/);
+  const row = summary.split('\n').find(line => line.startsWith('| firefox |'));
+  assert.match(row, /Not run/);
+  assert.match(row, /\| — \| Unavailable \|$/);
+  assert.doesNotMatch(summary, /<img|runner-step|Open report/);
+});
+
+test('fourteen original sources across three browsers remain separate from YAML inventory', () => {
+  const evidence = sourceEvidence();
+  evidence.sourceCount = 14;
+  evidence.expectedCount = 42;
+  evidence.cases = Array.from(
+    { length: 14 },
+    (_, index) =>
+      sourceEvidence().cases.map(item => ({
+        ...item,
+        name: `source-${index}`,
+      })),
+  ).flat();
+  const summary = renderSummary({
+    title: 'Combined',
+    entries: [{ label: 'Web', result: 'success', run }],
+    supplementalEvidence: evidence,
+    pagesUrl: 'https://example.github.io/project/',
+  });
+  assert.match(summary, /0 need attention · 43 passed/);
+  assert.match(
+    summary,
+    /Midscene YAML: 1 cases · Original input contracts: 14 source cases \/ 42 browser cases/,
+  );
+  assert.equal((summary.match(/<details>/g) ?? []).length, 1);
+  assert.match(summary, /Appendix: passed cases \(43\)/);
+});
+
+test('supplemental schema rejects ambiguous totals, duplicate identities and unsafe evidence paths', () => {
+  assert.equal(validateSupplementalEvidence(sourceEvidence()).cases.length, 3);
+  const mutations = [
+    value => {
+      value.expectedCount = 2;
+    },
+    value => {
+      value.sourceCount = 4;
+    },
+    value => {
+      value.sourceCount = -1;
+    },
+    value => {
+      value.expectedCount = 3.5;
+    },
+    value => {
+      value.cases[1] = value.cases[0];
+    },
+    value => {
+      value.errors = [7];
+    },
+    value => {
+      value.cases[0].status = 'passed';
+    },
+    value => {
+      value.cases[0].durationMs = Infinity;
+    },
+    value => {
+      value.cases[0].durationMs = -1;
+    },
+    value => {
+      value.cases[0].platform = '';
+    },
+    value => {
+      value.cases[0].stepId = 'forged';
+    },
+    value => {
+      value.label = null;
+    },
+    value => {
+      value.errors = undefined;
+    },
+  ];
+  for (const mutate of mutations) {
+    const evidence = sourceEvidence();
+    mutate(evidence);
+    assert.throws(
+      () => validateSupplementalEvidence(evidence),
+      /Invalid supplemental evidence/,
+    );
+  }
+  for (
+    const file of [
+      '/absolute.png',
+      '../escape.png',
+      'x/../escape',
+      'x/./file',
+      '//host/file',
+      'https://host/file',
+      'x\\file',
+      'x/%2e%2e/file',
+      'x/file?query',
+      'x/file#fragment',
+      'C:/file',
+      'x//file',
+    ]
+  ) {
+    for (const field of ['previewPath', 'reportPath']) {
+      const evidence = sourceEvidence();
+      evidence.cases[0][field] = file;
+      assert.throws(
+        () => validateSupplementalEvidence(evidence),
+        /site-relative/,
+      );
+    }
+  }
+  const evidence = sourceEvidence();
+  evidence.cases[0].platform = 'a:b';
+  evidence.cases[0].name = 'c';
+  evidence.cases[1].platform = 'a';
+  evidence.cases[1].name = 'b:c';
+  assert.doesNotThrow(() => validateSupplementalEvidence(evidence));
+});
+
+test('supplemental CLI bounds input and rejects malformed evidence before appending Summary', async context => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'midscene-supplemental-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, 'evidence.json');
+  const output = path.join(root, 'summary.md');
+  const args = [
+    new URL('./render-ci-summary.mjs', import.meta.url).pathname,
+    '--title',
+    'Combined',
+    '--run-url',
+    'https://github.com/example/project/actions/runs/123',
+    '--entry',
+    `Web=${path.join(root, 'absent')}`,
+    '--result',
+    'Web=failure',
+    '--links-published',
+    'false',
+    '--site-dir',
+    path.join(root, 'site'),
+    '--output',
+    output,
+    '--supplemental-evidence',
+    file,
+  ];
+  await writeFile(file, JSON.stringify(sourceEvidence()));
+  execFileSync(process.execPath, args);
+  const initial = await readFile(output, 'utf8');
+  assert.match(
+    initial,
+    /Original input contracts: 1 source cases \/ 3 browser cases/,
+  );
+  assert.match(initial, /\| chromium \|/);
+  for (
+    const invalid of [
+      '{broken',
+      JSON.stringify({ ...sourceEvidence(), expectedCount: 4 }),
+      ' '.repeat(1024 * 1024 + 1),
+    ]
+  ) {
+    await writeFile(file, invalid);
+    assert.throws(() =>
+      execFileSync(process.execPath, args, { stdio: 'pipe' })
+    );
+    assert.equal(await readFile(output, 'utf8'), initial);
+  }
+});
+
+test('rejects a run prefix that escapes the Pages site', async () => {
+  await assert.rejects(
+    preparePagesSite({
+      entries: [],
+      siteDirectory: '/tmp/unused',
+      sitePrefix: '../bad',
+    }),
+    /sitePrefix must be/,
+  );
+});
