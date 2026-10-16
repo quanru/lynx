@@ -39,6 +39,7 @@ import {
   loadExpectedCaseEvidence,
   writeSummaryWithinLimit,
   SUMMARY_BYTE_LIMIT,
+  compactSummaryReportLinks,
 } from './render-ci-summary.mjs';
 
 const run = {
@@ -147,7 +148,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   assert.match(summary, /\| Screenshot \| Status \| Duration \| Report \|/);
   const row = summary.split('\n').find(line => line.startsWith('| Android |'));
   assert.match(row, /<img src=/);
-  assert.match(row, /\[Open report\]\([^\n]+runner-step=case%3Asteps%3A0\)/);
+  assert.match(row, /\[Open report\]\[m0\]/);
   assert.match(
     summary,
     /Open the published HTML report\]\(https:\/\/example\.github\.io\/project\/runs\/123-1\/native-report\/index\.html\)/,
@@ -158,7 +159,7 @@ test('puts passed cases and linked screenshots in the collapsed appendix', () =>
   );
   assert.match(
     summary,
-    /<a href="[^\"]+runner-step=case%3Asteps%3A0"><img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Screenshot" width="160"><\/a>/,
+    /\[<img src="https:\/\/example\.github\.io\/project\/android\/previews\/showcase\.jpg" alt="Screenshot" width="160">\]\[m0\]/,
   );
   assert.match(summary, /runner-step=case%3Asteps%3A0/);
 });
@@ -453,7 +454,7 @@ test('immediate failures use only a direct final-attempt cleanup capture, not la
           pagesUrl: 'https://example.invalid',
           entries: [entry],
         }),
-        /runner-step=final%3Asteps%3A0"><img/,
+        /\[m0\]: <[^\n]+runner-step=final%3Asteps%3A0>/,
       );
     } else assert.equal(entry.cases[0].previewPath, undefined, mode);
   }
@@ -1049,7 +1050,10 @@ test('catalog evidence policies keep non-UI passes and source skips distinct wit
       /Skipped in original source: Disabled in original source/,
     );
     if (pagesUrl) {
-      assert.match(summary, /Open report.*original\/firefox\/index.html/);
+      assert.match(
+        summary,
+        /\[m[0-9a-z]+\]: <[^\n]+original\/firefox\/index.html>/,
+      );
     } else assert.match(summary, /Find artifact: original-input-contracts-1/);
   }
   evidence.cases[0].reportPath = null;
@@ -1144,6 +1148,32 @@ test('source returns require exclusive status and real HTML without counting as 
   assert.throws(() => validateSupplementalEvidence(evidence), /not-applicable/);
 });
 
+test('reference compaction retains every thumbnail and Report link with shared immutable targets', () => {
+  const target =
+    'https://example.com/runs/123-1/report.html?x=1&y=2#runner-step=case%3A0';
+  const row = `| case | <a href="${
+    target.replace('&', '&amp;')
+  }"><img src="https://example.com/original-long-image.png" alt="Screenshot" width="160"></a> | [Open report](${target}) |`;
+  const raw = `<details>\n<summary>Appendix</summary>\n\n${
+    Array(2424).fill(row).join('\n')
+  }\n\n</details>\n`;
+  const result = compactSummaryReportLinks(raw);
+  assert.equal((result.match(/^\| case/gm) ?? []).length, 2424);
+  assert.equal((result.match(/\[Open report\]\[m0\]/g) ?? []).length, 2424);
+  assert.equal(
+    (result.match(
+      /\[<img src="https:\/\/example.com\/original-long-image.png" alt="Screenshot" width="160">\]\[m0\]/g,
+    ) ?? []).length,
+    2424,
+  );
+  assert.equal((result.match(/^\[m0\]: /gm) ?? []).length, 1);
+  assert.ok(result.indexOf('[m0]: ') > result.indexOf('</details>'));
+  assert.ok(result.endsWith(`[m0]: <${target}>\n`));
+  assert.ok(Buffer.byteLength(result) < Buffer.byteLength(raw));
+  assert.equal(compactSummaryReportLinks(result), result);
+  assert.equal(compactSummaryReportLinks('Not published'), 'Not published');
+});
+
 test('Summary byte guard preserves every row outside upload and emits an explicit diagnostic on overflow', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'summary-bytes-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -1216,7 +1246,7 @@ test('supplemental rows share the two sections without inflating YAML counts or 
   );
   assert.match(
     row,
-    /\[Open report\]\(https:\/\/example.github.io\/project\/original\/chromium\/index.html\)/,
+    /\[Open report\]\[m[0-9a-z]+\]/,
   );
   assert.doesNotMatch(row, /runner-step/);
   assert.equal(evidence.cases[2].status, 'success');

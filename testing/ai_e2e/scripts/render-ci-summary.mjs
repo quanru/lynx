@@ -748,6 +748,35 @@ function supplementalStatus(item) {
 
 export const SUMMARY_BYTE_LIMIT = 950 * 1024;
 
+/** Share report targets between thumbnails and the Report column without changing image URLs. */
+export function compactSummaryReportLinks(markdown) {
+  const references = new Map();
+  const reference = url => {
+    if (!references.has(url)) {
+      references.set(url, `m${references.size.toString(36)}`);
+    }
+    return references.get(url);
+  };
+  const compact = markdown.replace(
+    /<a href="([^"]+)">(<img[^>]+>)<\/a>/g,
+    (_, escapedUrl, image) => {
+      const url = escapedUrl.replaceAll('&quot;', '"').replaceAll('&#39;', '\'')
+        .replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll(
+          '&amp;',
+          '&',
+        );
+      return `[${image}][${reference(url)}]`;
+    },
+  ).replace(
+    /\[Open report\]\(([^)]+)\)/g,
+    (_, url) => `[Open report][${reference(url)}]`,
+  );
+  if (!references.size) return markdown;
+  return `${compact}\n${
+    [...references].map(([url, id]) => `[${id}]: <${url}>`).join('\n')
+  }\n`;
+}
+
 /** Preserve every row on disk, but never silently exceed GitHub's per-step upload limit. */
 export async function writeSummaryWithinLimit(
   output,
@@ -1004,7 +1033,7 @@ export function renderSummary(
       : []),
     '',
   );
-  return sections.join('\n');
+  return compactSummaryReportLinks(sections.join('\n'));
 }
 
 async function main() {
