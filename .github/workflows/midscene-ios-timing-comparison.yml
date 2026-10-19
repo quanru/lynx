@@ -1,0 +1,252 @@
+name: Paired iOS original and Midscene timing
+
+# Diagnostic only: a single paired sample, not an acceptance replacement.
+on:
+  push:
+    branches: [midscene/timing-comparison]
+    paths:
+      - '.github/workflows/midscene-ios-timing-comparison.yml'
+      - 'testing/e2e_diagnostics/**'
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Midscene producer run with a completed successful iOS source build
+        type: string
+        required: true
+        default: '39193594158'
+      order:
+        description: Alternate orders across independent repeated samples
+        type: choice
+        options: [original-first, migrated-first]
+        default: original-first
+        required: true
+      sample_label:
+        description: Evidence label using letters, numbers, dots, underscores or hyphens
+        type: string
+        default: pair-1
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'midscene-native-timing-comparison' || 'paired-ios-timing-contracts' }}
+  cancel-in-progress: false
+
+jobs:
+  contracts:
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+      - name: Validate model-free timing observer and iOS provenance contracts
+        run: |
+          python3 -m unittest discover -s testing/e2e_diagnostics -p original_timing_test.py
+          node --test testing/e2e_diagnostics/ios-timing.test.mjs
+  paired-ios:
+    needs: contracts
+    if: github.repository == 'quanru/lynx' && github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    timeout-minutes: 300
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      SAMPLE_LABEL: ${{ inputs.sample_label }}
+      PAIR_ORDER: ${{ inputs.order }}
+      platform: ios
+      server_host: http://127.0.0.1
+      server_port: '4723'
+      APPIUM_isHeadless: 'True'
+      MIDSCENE_MODEL_RETRY_COUNT: '2'
+      MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
+    steps:
+      - name: Set isolated diagnostic paths
+        run: |
+          {
+            printf 'IOS_TIMING_DIR=%s/ios-timing\n' "$RUNNER_TEMP"
+            printf 'APPIUM_HOME=%s/original-ios-appium\n' "$RUNNER_TEMP"
+            printf 'WDA_WORKDIR=%s/paired-ios-wda\n' "$RUNNER_TEMP"
+            printf 'HARNESS_ROOT=%s/harness\nSOURCE_ROOT=%s/source\n' "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE"
+          } >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Validate exact producer attempt and iOS build
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/ios-timing.mjs producer
+      - name: Wait for producer device tests before controlled sampling
+        timeout-minutes: 42
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/wait-native-producer.mjs
+      - name: Download immutable producer app
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: midscene-explorer-source-ios-${{ steps.producer.outputs.attempt }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/ios-timing/source-build
+      - name: Read actual build revision
+        id: build
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const build = JSON.parse(readFileSync(`${process.env.IOS_TIMING_DIR}/source-build/build.json`, 'utf8'));
+          if (!/^[0-9a-f]{40}$/.test(build.sha ?? '')) throw new Error('Invalid source revision');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${build.sha}\n`);
+          appendFileSync(process.env.GITHUB_ENV, `SOURCE_SHA=${build.sha}\n`);
+          JS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - name: Verify source app and original baseline toolchain
+        env:
+          PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
+        run: |
+          git -C source merge-base --is-ancestor "$PRODUCER_HEAD" HEAD
+          node --input-type=module <<'JS'
+          import { verifyBuild } from './source/testing/ai_e2e/scripts/verify-build.mjs';
+          await verifyBuild(`${process.env.IOS_TIMING_DIR}/source-build`, 'ios', process.env.SOURCE_SHA);
+          JS
+          tar -xzf "$IOS_TIMING_DIR/source-build/LynxExplorer.app.tar.gz" -C "$IOS_TIMING_DIR/source-build"
+          node harness/testing/e2e_diagnostics/ios-timing.mjs inventory-app
+          node source/testing/ai_e2e/scripts/ios-baseline.mjs select-toolchain >> "$GITHUB_ENV"
+          git -C source rev-parse HEAD > "$IOS_TIMING_DIR/source-sha.txt"
+          git -C harness rev-parse HEAD > "$IOS_TIMING_DIR/harness-sha.txt"
+          git -C source ls-files -s -- testing/integration_test/test_script testing/integration_test/demo_pages testing/ai_e2e > "$IOS_TIMING_DIR/source-file-identities.txt"
+      - name: Install unchanged original and migrated test dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in -r source/testing/ai_e2e/scripts/requirements-pixels.txt
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          npm ci --prefix source/testing/ai_e2e --no-audit --no-fund
+          npm run typecheck --prefix source/testing/ai_e2e
+          python3 -m unittest discover -s harness/testing/e2e_diagnostics -p original_timing_test.py
+          node --test harness/testing/e2e_diagnostics/ios-timing.test.mjs
+      - name: Collect migrated inventory and check model setup outside case timing
+        working-directory: source/testing/ai_e2e
+        env: &ios-model-env
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME || secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL || secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY || secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ vars.MIDSCENE_MODEL_REASONING_ENABLED || secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+        run: |
+          GITHUB_SHA="$SOURCE_SHA" node scripts/expected-cases.mjs collect ios-explorer
+          bash scripts/preflight-model.sh
+          npm run check:model
+      - name: Start the exact original baseline simulator and pinned WDA
+        working-directory: source/testing/ai_e2e
+        run: bash scripts/start-wda.sh
+      - name: Install exact Explorer app and isolated original Appium server
+        run: |
+          xcrun simctl install "$SIMULATOR_UDID" "$IOS_TIMING_DIR/source-build/LynxExplorer.app"
+          node harness/testing/e2e_diagnostics/ios-timing.mjs appium-config
+          npm install --prefix "$RUNNER_TEMP/original-ios-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" driver install xcuitest@7.24.18
+          node --input-type=module <<'JS'
+          import { createRequire } from 'node:module';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const require = createRequire(`${process.env.APPIUM_HOME}/package.json`);
+          const xcui = require.resolve('appium-xcuitest-driver/package.json');
+          const nested = createRequire(xcui);
+          const versions = Object.fromEntries(['appium-xcuitest-driver', 'appium-webdriveragent', 'appium-ios-simulator'].map(name => [name, JSON.parse(readFileSync(nested.resolve(`${name}/package.json`), 'utf8')).version]));
+          if (versions['appium-xcuitest-driver'] !== '7.24.18' || versions['appium-webdriveragent'] !== '8.9.1' || versions['appium-ios-simulator'] !== '6.2.6') throw new Error('Original Appium dependency version mismatch');
+          writeFileSync(`${process.env.IOS_TIMING_DIR}/appium-client-versions.json`, JSON.stringify(versions, null, 2));
+          JS
+          nohup "$RUNNER_TEMP/original-ios-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp --default-capabilities "$IOS_TIMING_DIR/appium-default-capabilities.json" > "$IOS_TIMING_DIR/appium.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original Appium server did not become ready'
+          exit 1
+      - name: Original cases first
+        id: original-first
+        if: inputs.order == 'original-first'
+        continue-on-error: true
+        run: node harness/testing/e2e_diagnostics/ios-timing.mjs side original
+      - name: Migrated cases first
+        id: migrated-first
+        if: inputs.order == 'migrated-first'
+        continue-on-error: true
+        env: *ios-model-env
+        run: node harness/testing/e2e_diagnostics/ios-timing.mjs side migrated
+      - name: Migrated cases second, preserving failed original evidence
+        id: migrated-second
+        if: ${{ !cancelled() && inputs.order == 'original-first' && steps.original-first.outcome != 'skipped' }}
+        continue-on-error: true
+        env: *ios-model-env
+        run: node harness/testing/e2e_diagnostics/ios-timing.mjs side migrated
+      - name: Original cases second, preserving failed migrated evidence
+        id: original-second
+        if: ${{ !cancelled() && inputs.order == 'migrated-first' && steps.migrated-first.outcome != 'skipped' }}
+        continue-on-error: true
+        run: node harness/testing/e2e_diagnostics/ios-timing.mjs side original
+      - name: Finalize exact case inventory and separate timer boundaries
+        if: always()
+        run: node harness/testing/e2e_diagnostics/finalize-timing.mjs "$IOS_TIMING_DIR" "$SOURCE_ROOT" ios
+      - name: Retain report artifacts and bounded WDA diagnostics
+        if: always()
+        run: |
+          mkdir -p "$IOS_TIMING_DIR"
+          if [ -d source/testing/ai_e2e/midscene_run ]; then cp -R source/testing/ai_e2e/midscene_run "$IOS_TIMING_DIR/migrated-report"; fi
+          if [ -f "$WDA_WORKDIR/wda.log" ]; then cp "$WDA_WORKDIR/wda.log" "$IOS_TIMING_DIR/wda.log"; fi
+          printf '## Paired iOS timing diagnostic\n\nProducer run: %s. Sample: %s. Order: %s.\n\nExpected scope: 17 original cases and 20 migrated cases (including 3 additive smoke cases). Device, application, inventory and execution gates must all pass before this evidence is comparable. Setup, retries, failures and case timing evidence are retained separately. This single pair is not a statistically stable speed estimate or migration acceptance.\n' "$SOURCE_RUN_ID" "$SAMPLE_LABEL" "$PAIR_ORDER" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload paired timing evidence even after failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paired-ios-timing-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ios-timing
+            !${{ runner.temp }}/ios-timing/source-build/LynxExplorer.app.tar.gz
+            !${{ runner.temp }}/ios-timing/source-build/LynxExplorer.app/**
+            ${{ runner.temp }}/paired-ios-wda/wda-startup.*/diagnostics.json
+            ${{ runner.temp }}/paired-ios-wda/wda-startup.*/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve execution failure after uploading evidence
+        if: always()
+        env:
+          ORIGINAL_FIRST: ${{ steps.original-first.outcome }}
+          ORIGINAL_SECOND: ${{ steps.original-second.outcome }}
+          MIGRATED_FIRST: ${{ steps.migrated-first.outcome }}
+          MIGRATED_SECOND: ${{ steps.migrated-second.outcome }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          const outcomes = process.env.PAIR_ORDER === 'original-first'
+            ? [process.env.ORIGINAL_FIRST, process.env.MIGRATED_SECOND]
+            : [process.env.MIGRATED_FIRST, process.env.ORIGINAL_SECOND];
+          if (outcomes.some(outcome => outcome !== 'success')) throw new Error('Incomplete or failed paired execution; retained evidence is not a successful comparison');
+          const cases = [];
+          for (const suite of ['core', 'xelement', 'sparkling']) {
+            const result = JSON.parse(readFileSync(`${process.env.IOS_TIMING_DIR}/original/${suite}-timing.json`, 'utf8'));
+            if (result.observerErrors.length || result.processOutcome !== 'success' || result.attempts.some(attempt => attempt.interrupted)) throw new Error('Original timing evidence is incomplete');
+            const last = new Map(result.attempts.map(attempt => [attempt.caseName, attempt]));
+            if (result.collectedCases.length !== last.size || [...last.values()].some(attempt => attempt.status !== 'success')) throw new Error('Original cases missing or failed');
+            cases.push(...result.collectedCases);
+          }
+          if (cases.length !== 17 || new Set(cases).size !== 17) throw new Error('Original enabled iOS inventory is not complete');
+          for (const side of ['original', 'migrated']) {
+            const result = JSON.parse(readFileSync(`${process.env.IOS_TIMING_DIR}/side-${side}.json`, 'utf8'));
+            if (result.setupOutcome !== 'success' || result.provenanceOutcome !== 'success') throw new Error('Same-device/application provenance failed');
+          }
+          JS
