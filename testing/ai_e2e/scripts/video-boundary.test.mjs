@@ -14,6 +14,18 @@ const document = text => ({ nodeId: 0, nodeName: '#document', children: [
   ] },
 ] });
 
+test('Seek Empty distinguishes the rightmost target from the adjacent source buttons', () => {
+  for (const platform of ['android', 'ios']) {
+    const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
+    const targets = actions.filter(action => action.prompt.startsWith('Click the single button labeled exactly "Seek Empty" once.'));
+    assert.equal(targets.length, 1);
+    assert.match(targets[0].prompt, /RIGHTMOST.*RIGHT of "Play Pause Empty"/);
+    assert.match(targets[0].prompt, /Do not click "Src Empty"/);
+    assert.match(targets[0].prompt, /locating instruction/);
+    assert.equal(targets[0].options.deepLocate, true);
+  }
+});
+
 test('only ordinary Clear clicks combine planning and location; sensitive targets retain deep grounding', () => {
   for (const platform of ['android', 'ios']) {
     const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);

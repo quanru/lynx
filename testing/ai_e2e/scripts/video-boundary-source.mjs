@@ -56,8 +56,8 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
       } };
       const seekIndex = seekRow.indexOf(label);
-      if (seekIndex >= 0) {
-        assert.ok(seekIndex >= 3, 'Review any new source action in the crowded seek row');
+      if (seekIndex >= 0 || label === 'Seek Empty') {
+        assert.ok(label === 'Seek Empty' || seekIndex >= 3, 'Review any new source action in the crowded seek row');
         const variable = 'videoBoundary' + label.replaceAll(' ', '');
         assert.ok(seekPrompts[variable], 'Missing reviewed seek description');
         return { aiAct: {

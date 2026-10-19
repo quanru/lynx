@@ -304,11 +304,7 @@ cases:
             deepLocate: false
             cacheable: false
       - aiAct:
-          prompt: When scrolling, gesture within the light-gray video demo panel on the
-            LEFT below the back arrow, not the white blank area to its right or
-            below. Scroll if needed and click the single button labeled exactly
-            "Seek Empty" once. Do not click similarly named buttons or perform
-            another action.
+          prompt: ${videoBoundarySeekEmpty}
           options:
             effort: "${videoActionEffort}"
             deepLocate: ${videoDeepLocate}
