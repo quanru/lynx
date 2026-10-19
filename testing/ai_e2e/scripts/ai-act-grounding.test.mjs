@@ -31,7 +31,7 @@ test('native actions retain deep grounding except the explicitly scoped ordinary
           && step.input.prompt.includes('labeled exactly "Clear" once.');
         assert.deepEqual(step.input.options, ordinaryClear
           ? { effort: 'balance', deepLocate: false, cacheable: false }
-          : { effort: 'deepThink', deepLocate, cacheable: false },
+          : { effort: project.name.startsWith('ios') && /^cases\/native\/video-/.test(sourcePath) ? 'balance' : 'deepThink', deepLocate, cacheable: false },
           `${project.name}/${sourcePath}/${item.definition.name}`);
       }
     }
@@ -39,7 +39,7 @@ test('native actions retain deep grounding except the explicitly scoped ordinary
   }
 });
 
-async function verifyPlanningRequests(t, effort) {
+async function verifyPlanningRequests(t, effort, deepLocate = false) {
   // This test must never inherit real planning/insight endpoints or credentials.
   const modelEnvironment = new Map(Object.entries(process.env).filter(([key]) => /^(MIDSCENE_|OPENAI_)/.test(key)));
   for (const key of modelEnvironment.keys()) delete process.env[key];
@@ -55,7 +55,7 @@ async function verifyPlanningRequests(t, effort) {
   const replies = [
     '<planning>Tap the test button once.</planning><log>Tap the button</log><action-type>Tap</action-type><action-param-json>'
       + JSON.stringify({ locate: locateParameter }) + '</action-param-json>',
-    '<｜｜point｜｜>[[500, 500]]<｜｜/point｜｜>',
+    deepLocate ? '<｜｜point｜｜>[[250, 250]]<｜｜/point｜｜>' : '<｜｜point｜｜>[[500, 500]]<｜｜/point｜｜>',
   ];
   const server = createServer(async (request, response) => {
     const chunks = [];
@@ -96,11 +96,12 @@ async function verifyPlanningRequests(t, effort) {
   });
   t.after(() => agent.destroy());
   await agent.aiAct('Tap the test button once.', {
-    effort, deepLocate: false, cacheable: false,
+    effort, deepLocate, cacheable: false,
     abortSignal: controller.signal,
   }).catch(() => { assert.equal(controller.signal.reason, stop); });
-  assert.deepEqual(taps, [{ x: 20, y: 40 }]);
-  assert.equal(requests.length, effort === 'balance' ? 1 : 2,
+  assert.deepEqual(taps, deepLocate ? [{ x: 10, y: 20 }] : [{ x: 20, y: 40 }],
+    'Deep grounding must use its independent result, not the conflicting planner center');
+  assert.equal(requests.length, effort === 'balance' && !deepLocate ? 1 : 2,
     'Balance uses planner coordinates; deepThink requests independent location before the same tap');
   const textParts = request => request.messages.flatMap(message => typeof message.content === 'string'
     ? [message.content] : message.content.filter(part => part.type === 'text').map(part => part.text)).join('\n');
@@ -113,14 +114,16 @@ async function verifyPlanningRequests(t, effort) {
     ? message.content.filter(part => part.type === 'image_url') : []);
   assert.equal(imageParts.length, 1);
   const metadata = await sharp(Buffer.from(imageParts[0].image_url.url.split(',')[1], 'base64')).metadata();
-  assert.deepEqual([metadata.width, metadata.height], [120, 240], 'Locator receives the complete screenshot');
+  assert.deepEqual([metadata.width, metadata.height], deepLocate ? [240, 480] : [120, 240],
+    'Deep grounding enlarges the complete static fixture; ordinary grounding keeps its original size');
   const tasks = agent.dump.executions.flatMap(execution => execution.tasks);
   const locate = tasks.find(task => task.subType === 'Locate');
   assert.ok(locate, 'The SDK must record coordinate resolution');
-  if (effort === 'deepThink') {
-    assert.equal(locate.param.locatedPixelResult, undefined);
-    assert.equal(locate.log.dump.deepLocate, false);
-    assert.equal(locate.log.dump.taskInfo.searchArea, undefined);
+  if (effort === 'deepThink' || deepLocate) {
+    if (effort === 'deepThink') assert.equal(locate.param.locatedPixelResult, undefined);
+    assert.equal(locate.log.dump.deepLocate, deepLocate);
+    assert.deepEqual(locate.log.dump.taskInfo.searchArea,
+      deepLocate ? { left: 0, top: 0, width: 120, height: 240 } : undefined);
   } else {
     assert.ok(locate.param.locatedPixelResult, 'The SDK uses the planner result rather than another model request');
   }
@@ -134,4 +137,8 @@ test('ordinary Clear balanced strategy uses one model request before the same ph
   // Abort after the inert tap isolates grounding; this does not claim that the
   // full aiAct call omits its later completion-planning request or is accurate.
   await verifyPlanningRequests(t, 'balance');
+});
+
+test('iOS balanced video planning retains independent deep grounding and exactly one tap', { timeout: 15000 }, async t => {
+  await verifyPlanningRequests(t, 'balance', true);
 });

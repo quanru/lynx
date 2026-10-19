@@ -53,7 +53,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         && events[eventIndex - 1][1].notContains === 'pause_ok';
       if (label === 'Clear' && afterCanceledPause) return { aiAct: {
         prompt: 'Tap once at the CENTER of the BLUE "Clear" button body at the LEFT END of the first playback-button row. This row contains Clear, Play, Play Null, Pause, Stop and sits immediately ABOVE the Seek 0s / Seek 2s row. Do not tap blank space above the blue button, the numeric status values, or any other button. Stop after that single tap.',
-        options: { effort: 'deepThink', deepLocate, cacheable: false },
+        options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
       } };
       const seekIndex = seekRow.indexOf(label);
       if (seekIndex >= 0) {
@@ -62,7 +62,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         assert.ok(seekPrompts[variable], 'Missing reviewed seek description');
         return { aiAct: {
           prompt: variableBridge ? '${' + variable + '}' : seekPrompts[variable],
-          options: { effort: 'deepThink', deepLocate, cacheable: false },
+          options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
         } };
       }
       return { aiAct: {
@@ -71,7 +71,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         // previously ambiguous post-cancellation Clear on its reviewed path.
         options: label === 'Clear'
           ? { effort: 'balance', deepLocate: false, cacheable: false }
-          : { effort: 'deepThink', deepLocate, cacheable: false },
+          : { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
       } };
     }),
   ];

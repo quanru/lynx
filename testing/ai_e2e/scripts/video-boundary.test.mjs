@@ -23,7 +23,7 @@ test('only ordinary Clear clicks combine planning and location; sensitive target
       assert.deepEqual(action.options, { effort: 'balance', deepLocate: false, cacheable: false });
     }
     for (const action of actions.filter(action => !ordinaryClear.includes(action))) {
-      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
+      assert.deepEqual(action.options, { effort: platform === 'ios' ? 'balance' : 'deepThink', deepLocate: true, cacheable: false });
     }
   }
 });
@@ -43,7 +43,7 @@ test('boundary seek actions preserve source order and match full labels on both 
       assert.match(action.prompt, /already fully on screen, do not scroll/);
       assert.match(action.prompt, /Stop after the single tap/);
       assert.doesNotMatch(action.prompt, /clipped|Seel|NINTH|TENTH|\b\d+\s*(?:px|pixels)\b|\[\d+,\s*\d+\]/);
-      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
+      assert.deepEqual(action.options, { effort: platform === 'ios' ? 'balance' : 'deepThink', deepLocate: true, cacheable: false });
     });
   }
 });

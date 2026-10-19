@@ -42,7 +42,7 @@ test('both complete original playback cases collect on Android/iOS with every ac
         const key = Object.keys(expected)[0];
         assert.equal(step.node, key);
         if (key === 'launch') assert.equal(step.input.uri, project.variables.videoUri);
-        else if (key === 'aiAct') assert.deepEqual(step.input, { ...expected.aiAct, options: { effort: 'deepThink', deepLocate: project.variables.videoDeepLocate, cacheable: false } });
+        else if (key === 'aiAct') assert.deepEqual(step.input, { ...expected.aiAct, options: { effort: project.name.startsWith('ios') ? 'balance' : 'deepThink', deepLocate: project.variables.videoDeepLocate, cacheable: false } });
         else if (key !== 'recordToReport') assert.deepEqual(step.input, expected[key]);
       });
     }

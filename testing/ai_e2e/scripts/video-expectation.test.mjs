@@ -175,7 +175,7 @@ print(json.dumps(events))`], { input: source, encoding: 'utf8' }));
         assert.doesNotMatch(step.input.prompt, /clipped|SECOND|Near End/);
         assert.match(step.input.prompt, /already fully on screen, do not scroll/);
       } else assert.ok(step.input.prompt.includes('"' + labels[index] + '"'));
-      assert.deepEqual(step.input.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
+      assert.deepEqual(step.input.options, { effort: platform === 'ios' ? 'balance' : 'deepThink', deepLocate: true, cacheable: false });
       return ['click', tags[index++]];
     });
     assert.equal(index, 11);
