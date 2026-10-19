@@ -16,6 +16,49 @@ function response(content, model = 'actual-vision-version') {
   };
 }
 
+test('connection timeouts receive at most three attempts with fresh abort signals', async () => {
+  const signals = [];
+  const delays = [];
+  const timeout = new TypeError('fetch failed', {
+    cause: { code: 'UND_ERR_CONNECT_TIMEOUT' },
+  });
+  const model = await checkVision({
+    ...config,
+    sleepImpl: async (delay) => delays.push(delay),
+    fetchImpl: async (_, request) => {
+      signals.push(request.signal);
+      if (signals.length < 3) throw timeout;
+      return response('731942');
+    },
+  });
+  assert.equal(model, 'actual-vision-version');
+  assert.equal(new Set(signals).size, 3);
+  assert.deepEqual(delays, [10_000, 10_000]);
+  let attempts = 0;
+  await assert.rejects(checkVision({
+    ...config,
+    sleepImpl: async () => {},
+    fetchImpl: async () => { attempts++; throw timeout; },
+  }), (error) => error === timeout);
+  assert.equal(attempts, 3);
+});
+
+test('preflight does not retry capability failures, HTTP errors or other transport errors', async () => {
+  for (const result of [response('wrong'), { ok: false, status: 503 }, new Error('network error')]) {
+    let attempts = 0;
+    await assert.rejects(checkVision({
+      ...config,
+      sleepImpl: async () => assert.fail('unexpected retry'),
+      fetchImpl: async () => {
+        attempts++;
+        if (result instanceof Error) throw result;
+        return result;
+      },
+    }));
+    assert.equal(attempts, 1);
+  }
+});
+
 test('preflight requires image-only OCR and reports the actual response model', async () => {
   const model = await checkVision({
     ...config,

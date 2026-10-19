@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 const image =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAAB4AQMAAADlivq5AAAABlBMVEUMDAz///9dPQ0fAAAACXBIWXMAAAsTAAALEwEAmpwYAAACcklEQVR4nO3WQY7cIBAF0EJesOQI5BjZOUfJEbLMzhwNaRY5RrhBLGVDJMs/qipsD8Z092wTs+jpHr+x4VdBD+Ejg27djDuTdtyZtOPO5J/M5NclmM46ENGESB5ANgAWvUfwANGVHhciy+8NgCR/CHKYicYrnYkMMPMLArmiI+nbCy3TMfxLGgCsqm1Pj6pXeQwW1cMTvZCsrWjT0161TgpZNfU0XzW8VNFz0dOl/nbozLmJ9ulKT9lrYgZIZmWd+DPyWfOCpgwEi/iZ9QAuTySHH1jel2fXAKLFG1c+2V3/xNrqLD+i1T6JVlpEK9rVadNOG+pLT5uzdgDFjp7POjqsTzRfzYc2PZ2GVi/DYx0qnTfdVIdnjJVDzvsqsxW9tFqSlk2Vi7aY3RM9vddJtZai1jxj6eRcammRfE/L+mRPZdVkEVVruLXm9Ulb5NKDFmEUrXFVWtLY753MynoSHXt6m3ei72RBqsP5hAAkuz2TRHyKkKydN9RJS3WPvGfWqxEtJTtrORC2WmbWi+pqo6ku9eKH5l0PpQpTR/OCcjmrbLZFo9VH/Y2cg582XRVHdbnBtndA9NXydGisi1Proehokiuan3fS5XHzphe3a+6gJxqIm67iLnro6bWKW3Xq6qWKu6eDV13Hrbos/ELPpqv3BAFSPdVxF+2A39r4uWheHJ8rttUc6nz0yZ9yQOnev9ZOthcR+Txp57GW0GvNJZAtULRLr2i96nmBeKDHD+h1037X5gU97nroa2kG/boORdvn2mDX/pGW6fANA+ul/CfQyUTGfDRnqHvpSr8y6NbNuDNpx51JO+5M2nFn0o7/I5O/RblE9mhAZh4AAAAASUVORK5CYII=';
@@ -12,6 +13,7 @@ export async function checkVision({
   modelName,
   modelFamily,
   fetchImpl = fetch,
+  sleepImpl = sleep,
 }) {
   if (!baseUrl || !apiKey || !modelName || !modelFamily) {
     throw new Error(
@@ -36,18 +38,31 @@ export async function checkVision({
   if (modelFamily === 'deepseek' || modelFamily === 'doubao-seed') {
     request.thinking = { type: 'disabled' };
   }
-  const response = await fetchImpl(
-    `${baseUrl.replace(/\/+$/, '')}/chat/completions`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(90_000),
-    },
-  );
+  let response;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await fetchImpl(
+        `${baseUrl.replace(/\/+$/, '')}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+          signal: AbortSignal.timeout(90_000),
+        },
+      );
+      break;
+    } catch (error) {
+      // Retry only connection establishment failures, never wrong OCR answers,
+      // HTTP errors or requests that timed out after reaching the provider.
+      if (error?.cause?.code !== 'UND_ERR_CONNECT_TIMEOUT' || attempt === 3) {
+        throw error;
+      }
+      await sleepImpl(10_000);
+    }
+  }
   if (!response.ok) {
     throw new Error(`Model vision preflight returned HTTP ${response.status}`);
   }
