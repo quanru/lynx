@@ -21,7 +21,11 @@ test('Sparkling capability contract retains original ordered exact/nonempty/type
     assert.equal(observationDeadline, timeout === 2000 ? 16000 : undefined);
     return { readDocument: async () => root(values) };
   }, { displayedTypes: async tag => { predicates.push(tag); return ['XCUIElementTypeTextField']; } });
-  await run({ contract: 'sparkling' });
+  const evidence = [];
+  await run({ contract: 'sparkling' }, evidence);
+  assert.equal(evidence.length, 6);
+  assert.deepEqual(evidence.map(item => item.actual), ['sparkling', 'container-123', '1.0', '1', 'available', ['XCUIElementTypeTextField']]);
+  assert.ok(evidence.every(item => item.matched && item.observedAt === 1000));
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/sparkling/helpers.py', import.meta.url), 'utf8');
   const reference = JSON.parse(execFileSync('python3', ['-c', `import ast,json,sys
 tree=ast.parse(sys.stdin.read())
@@ -74,9 +78,12 @@ test('runtime and Legacy checks reuse original handles without SessionList redis
   await assert.rejects(run({ contract: 'runtime', runtime: 'lynx' }), /homepage binding/);
   await assert.rejects(run({ contract: 'legacy' }), /parent binding/);
   await run({ contract: 'home' });
-  await run({ contract: 'runtime', runtime: 'lynx' });
+  const evidence = [];
+  await run({ contract: 'runtime', runtime: 'lynx' }, evidence);
   await run({ contract: 'parent' });
-  await run({ contract: 'legacy' });
+  await run({ contract: 'legacy' }, evidence);
+  assert.deepEqual(evidence.map(item => item.actual), ['Open with Lynx', 'absent', 'absent', 'absent', 'absent']);
+  assert.ok(evidence.every(item => item.matched));
   assert.deepEqual(observations, ['bundle-url-input', 'nav-role']);
   assert.deepEqual(reads, ['bundle-url-input', 'nav-role', 'nav-role', 'nav-role', 'nav-role']);
 });

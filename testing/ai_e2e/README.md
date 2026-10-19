@@ -1,5 +1,36 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Native assertion evidence
+
+Custom assertions are deterministic checks against the original fixture and
+native runtime, not visual AI assertions. `native.video` records its expected
+predicate, actual text, observation timestamp and predicate match in the step
+output. A failed polling sample is not itself the final step outcome: the
+runner's status remains authoritative.
+
+Video phases retain the original action-time observations and playback samples.
+Later consumption of a phase's checks never rereads a changed video state.
+Playback guards report their **failure condition** and whether the guard passed;
+large integer event counts are serialized as decimal strings without rounding.
+Sparkling records exact/nonempty capability values, mapped properties, container
+identity, native input type, runtime/Legacy values and successful alert reads.
+Session binding and external URL delivery are not fabricated value assertions.
+
+Successful evidence appears in the SDK step output. Failed checks preserve their
+original cause and partial observations in error details. In the pinned SDK,
+failed `NodeExecutionError.output` can be lost across the loaded-config/runner
+module boundary; the cross-module `WorkflowError.details` path is covered by
+a real SDK execution and HTML assembly regression. Cancellation and fatal device
+errors keep their original identity and may have no completed observation.
+
+No additional screenshots, model calls, input events, polling retries or device
+reads are added for reporting. Existing screenshots remain checkpoint evidence,
+not necessarily an image of each assertion. Summary previews may precede the
+selected step; they must not be interpreted as final failure screenshots.
+Some failed checks have only earlier partial observations and their original
+error message. Local model-free tests establish data preservation, not hosted
+device acceptance or browser-rendered report usability.
+
 ## Play Null grounding correction: hosted acceptance pending
 
 Run [38849324914](https://github.com/quanru/lynx/actions/runs/38849324914)

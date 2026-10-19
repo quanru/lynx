@@ -8,6 +8,13 @@ type VisibleSessions = ReturnType<typeof createVisibleNativeSessions>;
 type BoundView = Awaited<ReturnType<VisibleSessions['observe']>>;
 type Reader = ReturnType<typeof createOwnedDeviceVisibilityReader>;
 type Observe = (tag: string, expectedText?: string, timeoutMs?: number, observationDeadline?: number) => Promise<BoundView>;
+export interface SparklingObservation {
+  tag: string;
+  expected: string | { nonempty: true; forbidden: readonly string[] } | string[] | null;
+  actual: string | string[] | boolean | null;
+  observedAt: number;
+  matched: boolean;
+}
 export type SparklingContract = { contract: 'home' | 'parent' | 'role' | 'legacy' | 'sparkling' | 'mapped'
   | 'rememberParent' | 'child' | 'childIdentity' | 'restoredParent'
   | 'alert' | 'alertDismissed' | 'malformedParent' | 'sameParent' | 'externalMalformed' | 'externalCanonical' }
@@ -43,36 +50,47 @@ export function createSparklingContracts(observe: Observe, reader: Reader, nativ
   async function text(view: BoundView, tag: string) {
     return readNativeText(findTaggedNode(await view.readDocument(), tag));
   }
-  async function exact(tag: string, expected: string) {
+  async function checkExact(tag: string, expected: string, observations?: SparklingObservation[]) {
     const view = await observe(tag, expected, 15_000);
     const actual = await text(view, tag); // Original assert_tag_text rereads after binding.
+    observations?.push({ tag, expected, actual, observedAt: Date.now(), matched: actual === expected });
     if (actual !== expected) throw new Error(`Sparkling ${tag} expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}.`);
   }
-  async function nonempty(tag: string, forbidden: readonly string[]) {
+  async function checkNonempty(tag: string, forbidden: readonly string[], observations?: SparklingObservation[]) {
     const deadline = Date.now() + 15_000;
     for (;;) {
       const view = await observe(tag, undefined, Math.min(2000, deadline - Date.now()), deadline);
       const actual = await text(view, tag);
-      if (Date.now() <= deadline && actual && !forbidden.includes(actual)) return actual;
+      if (Date.now() <= deadline && actual && !forbidden.includes(actual)) {
+        observations?.push({ tag, expected: { nonempty: true, forbidden: [...forbidden] }, actual, observedAt: Date.now(), matched: true });
+        return actual;
+      }
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error(`Sparkling ${tag} must be nonempty and not forbidden.`);
       await new Promise(resolve => setTimeout(resolve, Math.min(200, remaining)));
     }
   }
-  return async (input: SparklingContract) => {
+  return async (input: SparklingContract, observations?: SparklingObservation[]) => {
     if (!input || typeof input !== 'object') throw new Error('Invalid Sparkling contract.');
+    const exact = (tag: string, expected: string) => checkExact(tag, expected, observations);
+    const nonempty = (tag: string, forbidden: readonly string[]) => checkNonempty(tag, forbidden, observations);
     switch (input.contract) {
       case 'home': home = await observe('bundle-url-input'); return;
       case 'parent': parent = await observe('nav-role', 'parent'); return;
       case 'role': await exact('nav-role', 'parent'); return;
       case 'runtime': {
         if (!home || !['lynx', 'sparkling'].includes(input.runtime)) throw new Error('Sparkling runtime check requires its original homepage binding.');
-        await expectNativeValue(home.readDocument, { tag: 'bundle-runtime-label', text: input.runtime === 'lynx' ? 'Open with Lynx' : 'Open with Sparkling', timeoutMs: 10_000 });
+        const expected = input.runtime === 'lynx' ? 'Open with Lynx' : 'Open with Sparkling';
+        const result = await expectNativeValue(home.readDocument, { tag: 'bundle-runtime-label', text: expected, timeoutMs: 10_000 });
+        observations?.push({ tag: 'bundle-runtime-label', expected, ...result, matched: true });
         return;
       }
       case 'legacy': {
         if (!parent) throw new Error('Legacy capabilities require the original parent binding.');
-        for (const tag of legacyTags) await expectNativeValue(parent.readDocument, { tag, text: 'absent', timeoutMs: 10_000 });
+        for (const tag of legacyTags) {
+          const result = await expectNativeValue(parent.readDocument, { tag, text: 'absent', timeoutMs: 10_000 });
+          observations?.push({ tag, expected: 'absent', ...result, matched: true });
+        }
         return;
       }
       case 'sparkling': {
@@ -85,7 +103,10 @@ export function createSparklingContracts(observe: Observe, reader: Reader, nativ
         const deadline = Date.now() + 15_000;
         for (;;) {
           const types = await reader.displayedTypes('nav-xelement-input', deadline - Date.now());
-          if (Date.now() <= deadline && types.length === 1 && types[0] === 'XCUIElementTypeTextField') return;
+          if (Date.now() <= deadline && types.length === 1 && types[0] === 'XCUIElementTypeTextField') {
+            observations?.push({ tag: 'nav-xelement-input', expected: ['XCUIElementTypeTextField'], actual: [...types], observedAt: Date.now(), matched: true });
+            return;
+          }
           const remaining = deadline - Date.now();
           if (remaining <= 0) throw new Error('Sparkling requires exactly one displayed native XElement text field.');
           await new Promise(resolve => setTimeout(resolve, Math.min(200, remaining)));
@@ -114,10 +135,12 @@ export function createSparklingContracts(observe: Observe, reader: Reader, nativ
         await exact('nav-container-id', parentContainerId);
         return;
       case 'alert':
-      case 'alertDismissed':
+      case 'alertDismissed': {
         if (!nativeIO) throw new Error('Sparkling route alerts require case-owned native reads.');
-        await expectOwnedRouteAlert(nativeIO.readAlert, input.contract === 'alertDismissed');
+        const result = await expectOwnedRouteAlert(nativeIO.readAlert, input.contract === 'alertDismissed');
+        observations?.push({ tag: 'native-alert', expected: input.contract === 'alertDismissed' ? null : 'contains missing_target', ...result, matched: true });
         return;
+      }
       case 'malformedParent':
         await exact('nav-route-result', 'malformed:missing_target');
         await observe('nav-role', 'parent');

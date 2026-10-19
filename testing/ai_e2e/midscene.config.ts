@@ -20,16 +20,17 @@ import { readVisibleViewEvidence } from './native-view-evidence.ts';
 import { createOwnedDeviceVisibilityReader } from './native-wda.ts';
 import { createVisibleNativeSessions } from './native-visible-sessions.ts';
 import { createSparklingContracts, sparklingRoutes } from './sparkling-contracts.ts';
-import type { SparklingContract } from './sparkling-contracts.ts';
+import type { SparklingContract, SparklingObservation } from './sparkling-contracts.ts';
 import { readOwnedRouteAlert, deliverOwnedExternalRoute } from './sparkling-native-io.ts';
 import { expectVideoValue } from './video-expectation.ts';
-import type { VideoExpectation } from './video-expectation.ts';
+import type { VideoExpectation, VideoObservation } from './video-expectation.ts';
 import { executeVideoActionPhase, videoActionPhaseChecks } from './video-action-phase.ts';
 import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts';
 import { executeVideoPlaybackPhase, isVideoPlaybackPhase } from './video-playback-phase.ts';
-import type { VideoPlaybackPhase } from './video-playback-phase.ts';
+import type { VideoPlaybackEvidence, VideoPlaybackPhase } from './video-playback-phase.ts';
 import { VideoPhasePreparation } from './video-phase-preparation.ts';
 import { videoBoundarySeekPrompts } from './video-boundary-prompts.ts';
+import { withAssertionEvidence } from './assertion-evidence.ts';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -52,7 +53,7 @@ interface ProjectContext {
   agentRegistry: AgentRegistry;
   getNativeSession(runId: string, fixture: NativeFixtureName): ReturnType<ReturnType<typeof createNativeSessions>['get']>;
   getNativeViewEvidence?(runId: string): ReturnType<typeof readVisibleViewEvidence>;
-  runSparklingContract?(runId: string, input: SparklingContract): Promise<void>;
+  runSparklingContract?(runId: string, input: SparklingContract, observations?: SparklingObservation[]): Promise<void>;
 }
 
 async function captureVideoWaitDiagnostic(
@@ -70,6 +71,7 @@ async function captureVideoWaitDiagnostic(
 type VideoPhaseEvidence = {
   evidence: Awaited<ReturnType<typeof executeVideoActionPhase>>;
   capture: { screenshot?: string };
+  observations: VideoObservation[][];
   reported?: boolean;
 };
 const videoPhases = new WeakMap<AgentRegistry, Map<string, VideoPhaseEvidence>>();
@@ -85,7 +87,7 @@ const phasesFor = (registry: AgentRegistry) => {
   return phases;
 };
 
-const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase; prepare?: 'visibility' | number }, void, ProjectContext>({
+const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase; prepare?: 'visibility' | number }, { observations: VideoObservation[] } | VideoPlaybackEvidence, ProjectContext>({
   name: 'native.videoPhase',
   description: 'Execute a closed original video timing fragment with visual prelocation and public device taps, preserving every original assertion and sample.',
   async execute(execution) {
@@ -115,7 +117,8 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
       return document;
     };
     if (isVideoPlaybackPhase(execution.input.phase)) {
-      await executeVideoPlaybackPhase(agent, execution.input.phase, readDocument, async title => {
+      const evidence: VideoPlaybackEvidence = { video: [], core: [], samples: [], guards: [] };
+      await withAssertionEvidence('native.videoPhase', evidence, execution.signal, () => executeVideoPlaybackPhase(agent, execution.input.phase as VideoPlaybackPhase, readDocument, async title => {
         execution.signal?.throwIfAborted();
         const frame = await session.captureFrame();
         execution.signal?.throwIfAborted();
@@ -123,21 +126,34 @@ const videoPhaseNode = defineNode<{ phase: VideoActionPhase | VideoPlaybackPhase
         await agent.recordToReport('Original video source screenshot: ' + title, {
           screenshots: [{ base64: `data:image/jpeg;base64,${frame.data}`, description: 'Captured at the original source checkpoint, without intervening model calls.' }],
         });
-      }, undefined, execution.signal, prepared);
-      return;
+      }, undefined, execution.signal, prepared, evidence));
+      return {
+        summary: `Verified ${execution.input.phase} using original reads and samples; no reporting rereads`,
+        data: evidence,
+      };
     }
     const capture: VideoPhaseEvidence['capture'] = {};
-    const evidence = await executeVideoActionPhase(agent, execution.input.phase as VideoActionPhase,
-      input => expectVideoValue(readDocument,
-        () => captureVideoWaitDiagnostic(session, execution.context.platform, runId), input),
+    const observations: VideoObservation[][] = [];
+    const evidence = await withAssertionEvidence('native.videoPhase', { observations }, execution.signal, () => executeVideoActionPhase(agent, execution.input.phase as VideoActionPhase,
+      async input => {
+        const samples: VideoObservation[] = [];
+        observations.push(samples);
+        await expectVideoValue(readDocument,
+          () => captureVideoWaitDiagnostic(session, execution.context.platform, runId), input,
+          undefined, samples);
+      },
       async () => {
         execution.signal?.throwIfAborted();
         const frame = await session.captureFrame();
         execution.signal?.throwIfAborted();
         if (typeof frame.data !== 'string' || !frame.data) throw new Error('Missing original action-time video frame.');
         capture.screenshot = `data:image/jpeg;base64,${frame.data}`;
-      }, execution.signal);
-    phases.set(runId, { evidence, capture });
+      }, execution.signal));
+    phases.set(runId, { evidence, capture, observations });
+    return {
+      summary: `Verified ${execution.input.phase} at the original action-time checkpoints; no reporting rereads`,
+      data: { observations: observations.flat() },
+    };
   },
 });
 
@@ -151,7 +167,7 @@ const nativeExpectNode = defineNode<NativeExpectInput & { fixture: NativeFixture
   },
 });
 
-const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
+const videoExpectNode = defineNode<VideoExpectation, { observations: VideoObservation[] }, ProjectContext>({
   name: 'native.video',
   description: 'Preserve original XElement video text, callback order and negative assertions without visual approximations.',
   async execute(execution) {
@@ -160,6 +176,8 @@ const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
     const phase = phases.get(execution.case.runId);
     if (phase) {
       const last = await phase.evidence.consume(execution.input);
+      const observations = phase.observations.shift();
+      if (!observations?.length) throw new Error('Missing original action-time video observations.');
       if (!phase.reported && phase.capture.screenshot) {
         const agent = await execution.context.agentRegistry.getAgent(execution.case.runId);
         await agent.recordToReport('Original video assertions at physical action completion', {
@@ -168,22 +186,37 @@ const videoExpectNode = defineNode<VideoExpectation, void, ProjectContext>({
         phase.reported = true;
       }
       if (last) { phase.evidence.dispose(); phases.delete(execution.case.runId); }
-      return;
+      return {
+        summary: `Verified ${execution.input.tag} at the earlier action-time checkpoint: ${JSON.stringify(observations.at(-1)?.actual)}`,
+        data: { observations },
+      };
     }
     const session = await execution.context.getNativeSession(execution.case.runId, 'video');
-    await expectVideoValue(session.readDocument,
-      () => captureVideoWaitDiagnostic(session, execution.context.platform, execution.case.runId), execution.input);
+    const observations: VideoObservation[] = [];
+    await withAssertionEvidence('native.video', { observations }, execution.signal, () => expectVideoValue(session.readDocument,
+      () => captureVideoWaitDiagnostic(session, execution.context.platform, execution.case.runId), execution.input,
+      undefined, observations));
+    return {
+      summary: `Verified ${execution.input.tag}: ${JSON.stringify(observations.at(-1)?.actual)} against ${JSON.stringify(execution.input)}`,
+      data: { observations },
+    };
   },
 });
 
-const sparklingNode = defineNode<SparklingContract, void, ProjectContext>({
+const sparklingNode = defineNode<SparklingContract, { observations: SparklingObservation[] }, ProjectContext>({
   name: 'native.sparkling',
   description: 'Preserve original iOS Sparkling visible-session, route, capability and native XElement input contracts.',
   async execute(execution) {
     if (execution.scope !== 'case' || execution.context.platform !== 'ios' || !execution.context.runSparklingContract) {
       throw new Error('Sparkling contracts require an iOS case-owned session.');
     }
-    await execution.context.runSparklingContract(execution.case.runId, execution.input);
+    const observations: SparklingObservation[] = [];
+    await withAssertionEvidence('native.sparkling', { observations }, execution.signal,
+      () => execution.context.runSparklingContract!(execution.case.runId, execution.input, observations));
+    return {
+      summary: `Completed Sparkling ${execution.input.contract}; ${observations.length} recorded subcheck observations`,
+      data: { observations },
+    };
   },
 });
 
@@ -353,7 +386,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
 
     return {
       platform: 'ios',
-      async runSparklingContract(runId, input) {
+      async runSparklingContract(runId, input, observations) {
         const { device } = await ensure(runId);
         let contract = sparklingContracts.get(runId);
         if (!contract) {
@@ -364,7 +397,7 @@ const iosSetup = defineProjectSetup<ProjectContext>({
           });
           sparklingContracts.set(runId, contract);
         }
-        await contract(input);
+        await contract(input, observations);
       },
       async getNativeViewEvidence(runId) {
         const { device } = await ensure(runId);

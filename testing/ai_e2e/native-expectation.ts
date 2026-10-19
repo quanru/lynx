@@ -17,7 +17,7 @@ export interface NativeExpectInput {
 export async function expectNativeValue(
   readDocument: () => Promise<NativeNode>,
   input: NativeExpectInput,
-): Promise<void> {
+): Promise<{ actual: string | boolean | null; observedAt: number }> {
   const { tag, matchingText, index = 0, text, attribute, equals, exists, timeoutMs = 10_000 } = input;
   if ((tag === undefined) === (matchingText === undefined)
     || (tag !== undefined && (typeof tag !== 'string' || !tag))
@@ -45,9 +45,9 @@ export async function expectNativeValue(
     }
     if (target) {
       const withinDeadline = timeoutMs === 0 || Date.now() <= deadline;
-      if (exists && withinDeadline) return;
+      if (exists && withinDeadline) return { actual: true, observedAt: Date.now() };
       actual = attribute !== undefined ? readNativeAttribute(target, attribute) : readNativeText(target);
-      if (!exists && actual === (text ?? equals) && withinDeadline) return;
+      if (!exists && actual === (text ?? equals) && withinDeadline) return { actual, observedAt: Date.now() };
     } else {
       actual = undefined;
     }

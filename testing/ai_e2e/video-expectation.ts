@@ -14,6 +14,13 @@ export type VideoExpectation = {
   | { occurrences: { text: string; count: number } }
   | { floatGreaterThan: number } | { floatAtLeast: number } | { errorDetails: true });
 
+export interface VideoObservation {
+  expected: VideoExpectation;
+  actual: string;
+  observedAt: number;
+  matched: boolean;
+}
+
 export function parseVideoCount(text: string, key: string): bigint {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = new RegExp(`(?:^|;)${escaped}=([\\p{Decimal_Number}]+)`, 'u').exec(text);
@@ -46,6 +53,7 @@ export async function expectVideoValue(
   captureDiagnostic: () => Promise<void>,
   input: VideoExpectation,
   clock = { now: Date.now, sleep: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)) },
+  observations?: VideoObservation[],
 ) {
   const keys = ['equal', 'contains', 'notContains', 'order', 'countAtLeast', 'countEquals', 'countAtMost', 'currentTimeRange', 'occurrences', 'errorDetails', 'floatGreaterThan', 'floatAtLeast'].filter(key => Object.hasOwn(input, key));
   const counter = 'countAtLeast' in input ? input.countAtLeast
@@ -98,15 +106,22 @@ export async function expectVideoValue(
     return true;
   };
   const read = async () => readNativeText(findTaggedNode(await readDocument(), input.tag));
+  // Reuse the original sample. Reporting must never cause another device read
+  // or insert asynchronous work into a source-timed action sequence.
+  const evaluate = (actual: string) => {
+    const matched = matches(actual);
+    observations?.push({ expected: structuredClone(input), actual, observedAt: clock.now(), matched });
+    return matched;
+  };
   const deadline = clock.now() + timeoutMs;
   if (!input.immediate) {
     while (clock.now() < deadline) {
       const actual = await read();
-      if (matches(actual)) return;
+      if (evaluate(actual)) return;
       await clock.sleep(200);
     }
     await captureDiagnostic();
   }
   const actual = await read();
-  if (!matches(actual)) throw new Error(`Original video assertion failed for ${input.tag}: ${JSON.stringify(input)}; actual ${JSON.stringify(actual)}`);
+  if (!evaluate(actual)) throw new Error(`Original video assertion failed for ${input.tag}: ${JSON.stringify(input)}; actual ${JSON.stringify(actual)}`);
 }

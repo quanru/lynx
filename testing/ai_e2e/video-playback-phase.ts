@@ -4,7 +4,14 @@ import { findTaggedNode, readNativeText } from './native-dom.ts';
 import type { VideoTimedAgent } from './video-action-phase.ts';
 import { prepareVideoButtons, tapPreparedVideoButton } from './video-button-preparation.ts';
 import { expectVideoValue, parseVideoCount, parseVideoCurrentTime } from './video-expectation.ts';
-import type { VideoExpectation } from './video-expectation.ts';
+import type { VideoExpectation, VideoObservation } from './video-expectation.ts';
+
+export interface VideoPlaybackEvidence {
+  video: VideoObservation[];
+  core: { expected: string; actual: string; tag: string; observedAt: number }[];
+  samples: { variable: string; raw: string; value: string | number; observedAt: number }[];
+  guards: { failureCondition: string; passed: boolean }[];
+}
 
 type Operation = { section: number } & (
   { type: 'tap'; tag: string; label: string } |
@@ -38,7 +45,8 @@ export async function expectCoreVideoValue(readDocument: () => Promise<NativeNod
     const timeout = Symbol('original core timeout');
     const root = await Promise.race([readDocument(), new Promise<typeof timeout>(resolve => { timer = setTimeout(() => resolve(timeout), remaining); })]).finally(() => clearTimeout(timer));
     if (root === timeout || now() >= deadline) break;
-    if (readNativeText(findTaggedNode(root, input.tag)) === input.text) return;
+    const actual = readNativeText(findTaggedNode(root, input.tag));
+    if (actual === input.text) return { expected: input.text, actual, tag: input.tag, observedAt: now() };
   }
   await capture();
   throw new Error(input.message);
@@ -54,6 +62,7 @@ export async function executeVideoPlaybackPhase(
   clock = defaultClock,
   signal?: AbortSignal,
   prepared?: ReadonlyMap<string, number[]>,
+  evidence?: VideoPlaybackEvidence,
 ) {
   const operations = videoPlaybackOperations(phase);
   signal?.throwIfAborted();
@@ -65,20 +74,26 @@ export async function executeVideoPlaybackPhase(
     if (op.type === 'tap') await tapPreparedVideoButton(agent, op.label, points, signal);
     else if (op.type === 'sleep') await clock.sleep(op.ms);
     else if (op.type === 'capture') await capture(op.title);
-    else if (op.type === 'core') await expectCoreVideoValue(readDocument, () => capture('core_wait_failure'), op.input, clock.now);
-    else if (op.type === 'video') await expectVideoValue(readDocument, () => capture('wait_failure'), op.input, clock);
+    else if (op.type === 'core') {
+      const observation = await expectCoreVideoValue(readDocument, () => capture('core_wait_failure'), op.input, clock.now);
+      evidence?.core.push(observation);
+    }
+    else if (op.type === 'video') await expectVideoValue(readDocument, () => capture('wait_failure'), op.input, clock, evidence?.video);
     else if (op.type === 'sample') {
       const text = readNativeText(findTaggedNode(await readDocument(), op.tag));
       const value = op.variable === 'fast_count' ? parseVideoCount(text, 'timeupdate') : parseVideoCurrentTime(text);
       if (samples.has(op.variable)) throw new Error('Original video sample was read more than once.');
       samples.set(op.variable, value);
+      evidence?.samples.push({ variable: op.variable, raw: text, value: typeof value === 'bigint' ? value.toString() : value, observedAt: clock.now() });
     } else if (op.condition === 'fast_time < 3.0 or fast_time <= slow_time + 1.5') {
       const slow = samples.get('slow_time'), fast = samples.get('fast_time');
       if (typeof slow !== 'number' || typeof fast !== 'number') throw new Error('Missing original playback speed samples.');
+      evidence?.guards.push({ failureCondition: op.condition, passed: !(fast < 3 || fast <= slow + 1.5) });
       if (fast < 3 || fast <= slow + 1.5) throw new Error('speed=2.0 should advance faster than speed=0.5; slow=' + slow + ' fast=' + fast);
     } else if (op.condition === 'fast_count < 30') {
       const count = samples.get('fast_count');
       if (typeof count !== 'bigint') throw new Error('Missing original timeupdate count sample.');
+      evidence?.guards.push({ failureCondition: op.condition, passed: count >= 30n });
       if (count < 30n) throw new Error('tiny positive timeupdate interval should not be clamped; count=' + count);
     } else throw new Error('Unknown original video sampling guard.');
   }

@@ -38,7 +38,7 @@ export async function expectOwnedRouteAlert(read: (timeoutMs: number) => Promise
     if (remaining <= 0) throw new Error('Sparkling route alert assertion timed out.');
     const text = await read(remaining);
     if (text !== null && !text.includes('missing_target')) throw new Error('Expected the original missing_target route alert.');
-    if (Date.now() <= deadline && (dismissed ? text === null : text !== null)) return;
+    if (Date.now() <= deadline && (dismissed ? text === null : text !== null)) return { actual: text, observedAt: Date.now() };
     const delay = deadline - Date.now();
     if (delay <= 0) throw new Error('Sparkling route alert assertion timed out.');
     await new Promise(resolve => setTimeout(resolve, Math.min(200, delay)));

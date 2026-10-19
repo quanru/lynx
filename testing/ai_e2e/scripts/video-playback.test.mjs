@@ -90,8 +90,27 @@ function fixture(phase, defect) {
   };
   const capture = async title => trace.push(['capture', title]);
   const clock = { now: () => now, sleep: async ms => { trace.push(['sleep', ms]); now += ms; } };
-  return { trace, queue, run: () => executeVideoPlaybackPhase(agent, phase, read, capture, clock) };
+  return { trace, queue, run: evidence => executeVideoPlaybackPhase(agent, phase, read, capture, clock, undefined, undefined, evidence) };
 }
+
+test('playback report evidence reuses source samples without additional reads, taps, sleeps or captures', async () => {
+  for (const phase of allPhases) {
+    const baseline = fixture(phase), recorded = fixture(phase);
+    const evidence = { video: [], core: [], samples: [], guards: [] };
+    await baseline.run();
+    await recorded.run(evidence);
+    assert.deepEqual(recorded.trace, baseline.trace);
+    const operations = videoPlaybackOperations(phase);
+    for (const kind of ['video', 'core']) {
+      assert.equal(evidence[kind].length, operations.filter(op => op.type === kind).length);
+    }
+    assert.equal(evidence.samples.length, operations.filter(op => op.type === 'sample').length);
+    assert.equal(evidence.guards.length, operations.filter(op => op.type === 'guard').length);
+    assert.ok(evidence.guards.every(guard => guard.passed));
+    assert.doesNotThrow(() => JSON.stringify(evidence), 'BigInt counts must remain report-serializable');
+    if (phase === 'attributes-tiny') assert.equal(evidence.samples[0].value, '30');
+  }
+});
 
 test('timed fragments make all model calls before playback and retain every SDK physical tap, sleep and single read', async () => {
   for (const phase of allPhases) {

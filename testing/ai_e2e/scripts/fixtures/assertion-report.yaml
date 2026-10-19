@@ -1,0 +1,7 @@
+cases:
+  - name: Passing original video assertion
+    steps:
+      - native.video: { tag: status-text, equal: ready, immediate: true }
+  - name: Failing original video assertion
+    steps:
+      - native.video: { tag: status-text, equal: playing, immediate: true }

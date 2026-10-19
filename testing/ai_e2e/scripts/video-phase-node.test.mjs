@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { loadTestProject } from '@midscene/test/config';
+import { buildTestRunReportDump, collectWorkflowDocument, runWorkflowDocument } from '@midscene/test';
+import { TestRunReportAssembler } from '@midscene/core/report';
+import { testRunDump } from './render-ci-summary.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 let nextRunId = 0;
 async function fixture() {
@@ -30,9 +36,63 @@ async function fixture() {
       captureFrame: async () => ({ data: Buffer.from('protocol-frame-marker').toString('base64') }),
     }) };
   const runId = 'phase-node-' + ++nextRunId;
-  return { reports, reads, taps, controller, agent,
+  return { reports, reads, taps, controller, agent, project, context,
     run: (name, input) => project.nodes.get(name).execute({ scope: 'case', case: { runId }, context, input, signal: controller.signal }) };
 }
+test('real SDK execution and assembled HTML retain successful and failed native assertion evidence', async t => {
+  const f = await fixture();
+  const sourcePath = 'scripts/fixtures/assertion-report.yaml';
+  const resolveNode = name => f.project.nodes.get(name);
+  const document = collectWorkflowDocument({ projectId: f.project.projectId,
+    projectName: f.project.name, sourcePath, absolutePath: root + sourcePath }, { resolveNode });
+  const steps = [];
+  const execution = await runWorkflowDocument(document, { resolveNode, projectContext: f.context,
+    onStepResult: (_info, result) => { steps.push(result); } });
+  assert.deepEqual(steps.map(step => step.status), ['success', 'failed']);
+  const observations = [steps[0].output.data.observations[0], steps[1].error.details.evidence.observations[0]];
+  assert.deepEqual(observations.map(item => item.actual), ['ready', 'ready']);
+  assert.deepEqual(observations.map(item => item.matched), [true, false]);
+  assert.match(steps[1].error.message, /Original video assertion failed/);
+  assert.deepEqual(f.reads, ['ready', 'ready']);
+  assert.deepEqual(f.taps, []);
+  assert.deepEqual(f.reports, []);
+  const outputDir = await mkdtemp(join(tmpdir(), 'native-assertion-report-'));
+  t.after(() => rm(outputDir, { recursive: true, force: true }));
+  const now = new Date().toISOString();
+  const report = await new TestRunReportAssembler().assembleAsync({
+    outputDir, reportFileName: 'assertion-evidence', sources: [],
+    buildRunnerDump: index => buildTestRunReportDump({
+      runId: 'assertion-evidence-test', status: 'failed', startedAt: now, endedAt: now, durationMs: 0,
+      summary: { total: 2, passed: 1, failed: 1, notRun: 0, filtered: 0, collectionErrors: 0, documentFailures: 0, projectFailures: 0 },
+      projects: [{ projectId: f.project.projectId, name: f.project.name, status: 'failed', retry: 0,
+        cases: execution.cases.map(item => ({ ...item, documentId: document.documentId })),
+        documents: [execution.document], collectionErrors: [] }],
+    }, index),
+  });
+  const dump = testRunDump(await readFile(report, 'utf8'));
+  const cases = dump.projects.flatMap(project => project.documents.flatMap(doc => doc.cases));
+  assert.deepEqual(cases.map(item => item.status), ['success', 'failed']);
+  const reportSteps = cases.map(item => item.attempts[0].steps[0]);
+  assert.equal(reportSteps[0].output.data.value.observations[0].actual, 'ready');
+  assert.equal(reportSteps[1].error.details.value.evidence.observations[0].actual, 'ready');
+  assert.equal(reportSteps[1].error.details.value.evidence.observations[0].matched, false);
+});
+test('ordinary video node returns the original observed value without screenshots or extra reads', async () => {
+  const f = await fixture();
+  const input = { tag: 'status-text', equal: 'ready', immediate: true };
+  const result = await f.run('native.video', input);
+  assert.match(result.summary, /Verified status-text: "ready"/);
+  assert.equal(result.data.observations.length, 1);
+  const observation = result.data.observations[0];
+  assert.deepEqual(observation.expected, input);
+  assert.equal(observation.actual, 'ready');
+  assert.equal(observation.matched, true);
+  assert.ok(Number.isFinite(observation.observedAt));
+  assert.deepEqual(f.reads, ['ready']);
+  assert.deepEqual(f.taps, []);
+  assert.deepEqual(f.reports, []);
+});
+
 test('the registered native node rejects an expired runner signal before readiness reads or playback', async () => {
   const f = await fixture();
   const reason = new Error('Original runner timeout');
@@ -46,8 +106,13 @@ test('the registered native node rejects an expired runner signal before readine
 });
 test('collected timed node preserves the SDK action contract and reports source-time evidence after exact consumption', async () => {
   const f = await fixture();
-  await f.run('native.videoPhase', { phase: 'replace-playing-source' });
-  await f.run('native.video', { tag: 'status-text', equal: 'playing', timeoutMs: 20000 });
+  const phaseResult = await f.run('native.videoPhase', { phase: 'replace-playing-source' });
+  const result = await f.run('native.video', { tag: 'status-text', equal: 'playing', timeoutMs: 20000 });
+  assert.deepEqual(phaseResult.data.observations.map(item => item.actual), ['playing', 'playing']);
+  assert.equal(result.data.observations.length, 1);
+  assert.equal(result.data.observations[0].actual, 'playing', 'Retain the earlier playing sample, not the ready state after switching source');
+  assert.equal(result.data.observations[0].matched, true);
+  assert.match(result.summary, /earlier action-time checkpoint/);
   assert.deepEqual(f.reads, ['playing', 'playing']);
   assert.equal(f.taps.length, 2);
   assert.equal(f.reports.length, 1);
