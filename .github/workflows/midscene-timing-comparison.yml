@@ -92,6 +92,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node harness/testing/e2e_diagnostics/producer.mjs
+      - name: Wait for producer device tests before controlled sampling
+        timeout-minutes: 42
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/wait-native-producer.mjs
       - name: Download exact producer artifact without overwriting it
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
