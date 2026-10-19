@@ -1,6 +1,8 @@
 name: Paired Android migration timing (diagnostic)
 
 on:
+  push:
+    branches: [midscene/timing-comparison]
   workflow_dispatch:
     inputs:
       source_run_id:
@@ -28,7 +30,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  contracts:
+    if: github.repository == 'quanru/lynx'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check timing observer and evidence contracts without devices or models
+        run: |
+          python3 -m unittest discover -s testing/e2e_diagnostics -p '*_test.py'
+          node --test testing/e2e_diagnostics/*.test.mjs
+          bash -n testing/e2e_diagnostics/paired-android.sh
   paired-android:
+    needs: contracts
     if: github.repository == 'quanru/lynx' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 240
