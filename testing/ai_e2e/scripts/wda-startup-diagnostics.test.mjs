@@ -19,12 +19,18 @@ test('startup diagnostics are bounded, read-only and do not collect environment 
   assert.deepEqual(calls[0].args, ['-p', '123', '-o', 'pid,ppid,stat,etime,pcpu,comm']);
   assert.deepEqual(calls[1].args, ['simctl', 'list', 'devices', '--json']);
   assert.deepEqual(calls[2].args.slice(0, 4), ['simctl', 'spawn', udid, 'log']);
+  for (const processName of ['SpringBoard', 'runningboardd', 'debugserver']) {
+    assert.ok(calls[2].args.at(-1).includes(`process == "${processName}"`));
+  }
+  assert.ok(calls[3].args.at(-1).includes('process == "SimulatorTrampoline"'));
+  assert.ok(calls[3].args.at(-1).includes('process == "com.apple.CoreSimulator.CoreSimulatorService"'));
   for (const call of calls) {
     assert.deepEqual(call.options, { timeout: 10_000, maxBuffer: 256 * 1024,
       killSignal: 'SIGKILL', encoding: 'buffer', shell: false });
     assert.doesNotMatch(call.args.join(' '), /printenv|launch|boot|shutdown|erase|install|env|command|args/);
   }
   for (const call of calls.slice(2)) {
+    assert.ok(call.args.includes('--info') && call.args.includes('--debug'));
     assert.ok(call.args.includes('--last') && call.args.includes('5m'));
     assert.ok(call.args.includes('--predicate'));
   }
@@ -67,6 +73,7 @@ test('invalid startup identities fail before any diagnostic command executes', a
 test('WDA startup keeps its original deadline and records diagnostics only after a readiness failure', async () => {
   const source = await readFile(new URL('./start-wda.sh', import.meta.url), 'utf8');
   assert.match(source, /DEADLINE=\$\(\( \$\(date \+%s\) \+ 180 \)\)/);
+  assert.match(source, /curl --connect-timeout 2 --max-time 5 -fsS/);
   assert.equal((source.match(/wda-startup-diagnostics\.mjs/g) ?? []).length, 2);
   assert.match(source, /WDA process exited before becoming ready[\s\S]*?wda-startup-diagnostics\.mjs[^\n]+\|\| true\n    exit 1/);
   assert.match(source, /timed out waiting for WDA[\s\S]*?wda-startup-diagnostics\.mjs[^\n]+\|\| true\n    exit 1/);

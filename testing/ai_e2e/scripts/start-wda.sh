@@ -78,7 +78,7 @@ echo "WDA pid=$WDA_PID"
 
 # 7) Wait up to three minutes for WDA /status.
 DEADLINE=$(( $(date +%s) + 180 ))
-until curl -fsS "http://localhost:${WDA_PORT}/status" >/dev/null 2>&1; do
+until curl --connect-timeout 2 --max-time 5 -fsS "http://localhost:${WDA_PORT}/status" >/dev/null 2>&1; do
   if ! kill -0 "$WDA_PID" 2>/dev/null; then
     echo "::error:: WDA process exited before becoming ready" >&2
     tail -100 wda.log >&2 || true

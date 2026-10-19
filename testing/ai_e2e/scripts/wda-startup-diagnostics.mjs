@@ -14,10 +14,10 @@ export async function captureWDAStartupDiagnostics(directory, pid, udid, run = s
   const commands = [
     ['process', 'ps', ['-p', String(pid), '-o', 'pid,ppid,stat,etime,pcpu,comm']],
     ['simulators', 'xcrun', ['simctl', 'list', 'devices', '--json']],
-    ['simulator-testmanager', 'xcrun', ['simctl', 'spawn', udid, 'log', 'show', '--last', '5m', '--style', 'compact', '--predicate',
-      'process == "testmanagerd" OR process == "WebDriverAgentRunner-Runner"']],
-    ['host-simulator', '/usr/bin/log', ['show', '--last', '5m', '--style', 'compact', '--predicate',
-      'process == "testmanagerd" OR process == "CoreSimulatorService"']],
+    ['simulator-testmanager', 'xcrun', ['simctl', 'spawn', udid, 'log', 'show', '--info', '--debug', '--last', '5m', '--style', 'compact', '--predicate',
+      'process == "testmanagerd" OR process == "WebDriverAgentRunner-Runner" OR process == "SpringBoard" OR process == "runningboardd" OR process == "debugserver"']],
+    ['host-simulator', '/usr/bin/log', ['show', '--info', '--debug', '--last', '5m', '--style', 'compact', '--predicate',
+      'process == "testmanagerd" OR process == "CoreSimulatorService" OR process == "com.apple.CoreSimulator.CoreSimulatorService" OR process == "debugserver" OR process == "SimulatorTrampoline"']],
   ];
   const results = [];
   for (const [name, command, args] of commands) {
