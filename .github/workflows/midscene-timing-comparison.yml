@@ -1,0 +1,193 @@
+name: Paired Android migration timing (diagnostic)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Same-repository Midscene run with a completed successful Android source build
+        required: true
+        type: string
+      order:
+        description: Execution order for this single paired sample
+        required: true
+        default: original-first
+        type: choice
+        options: [original-first, migrated-first]
+      sample_id:
+        description: Positive sample number (one dispatch is one pair, not a median)
+        required: true
+        default: '1'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: paired-android-migration-timing
+  cancel-in-progress: false
+
+jobs:
+  paired-android:
+    if: github.repository == 'quanru/lynx' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      PAIR_ORDER: ${{ inputs.order }}
+      SAMPLE_ID: ${{ inputs.sample_id }}
+      ANDROID_API: '30'
+      ANDROID_ABI: x86_64
+      AVD_NAME: lynx_midscene
+      platform: android
+      server_host: http://127.0.0.1
+      server_port: '4723'
+      MIDSCENE_MODEL_RETRY_COUNT: '2'
+      MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
+    steps:
+      - name: Set isolated directories and validate sample inputs
+        run: |
+          case "$PAIR_ORDER" in original-first|migrated-first) ;; *) exit 2 ;; esac
+          [[ "$SAMPLE_ID" =~ ^[1-9][0-9]*$ ]]
+          printf 'CONTROL_DIR=%s/paired-android\nAPPIUM_HOME=%s/paired-appium\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'SOURCE_DIR=%s/source\nHARNESS_DIR=%s/harness\n' "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          printf '%s/platform-tools\n' "$ANDROID_HOME" >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '17'
+          distribution: zulu
+      - name: Validate producer identity
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node harness/testing/e2e_diagnostics/producer.mjs
+      - name: Download exact producer artifact without overwriting it
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: midscene-explorer-source-android-${{ steps.producer.outputs.attempt }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/paired-android/source-build
+      - name: Read source revision
+        id: build
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync(`${process.env.CONTROL_DIR}/source-build/build.json`, 'utf8'));
+          if (!/^[a-f0-9]{40}$/.test(manifest.sha)) throw new Error('Invalid source SHA');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${manifest.sha}\n`);
+          JS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - name: Verify exact checkout and immutable source APK
+        env:
+          PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
+        run: |
+          git -C source merge-base --is-ancestor "$PRODUCER_HEAD" HEAD
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { verifyBuild } from './source/testing/ai_e2e/scripts/verify-build.mjs';
+          await verifyBuild(`${process.env.CONTROL_DIR}/source-build`, 'android', execFileSync('git', ['-C', 'source', 'rev-parse', 'HEAD'], {encoding:'utf8'}).trim());
+          JS
+          git -C source rev-parse HEAD > "$CONTROL_DIR/source-sha.txt"
+          git -C harness rev-parse HEAD > "$CONTROL_DIR/harness-sha.txt"
+          printf '%s\n' "$PAIR_ORDER" > "$CONTROL_DIR/order.txt"
+          printf '%s\n' "$SAMPLE_ID" > "$CONTROL_DIR/sample-id.txt"
+      - name: Install pinned original and migrated dependencies
+        timeout-minutes: 20
+        run: |
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in -r source/testing/ai_e2e/scripts/requirements-pixels.txt
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          npm install --prefix "$RUNNER_TEMP/paired-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/paired-server/node_modules/.bin/appium" driver install espresso@4.0.0
+          cd source/testing/ai_e2e
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { collectExpectedCases } from './scripts/expected-cases.mjs';
+          // Explicit producer identity for the collector, not a global rewrite
+          // of the diagnostic workflow's GITHUB_SHA.
+          const sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+          const inventory = await collectExpectedCases('android-explorer', {...process.env, GITHUB_SHA: sourceSha});
+          await mkdir('midscene_run', {recursive: true});
+          await writeFile('midscene_run/expected-cases.json', JSON.stringify(inventory, null, 2));
+          JS
+          npm ls --json > "$CONTROL_DIR/midscene-versions.json"
+          python3 -m pip freeze > "$CONTROL_DIR/python-versions.txt"
+      - name: Start the single shared emulator
+        working-directory: source/testing/ai_e2e
+        timeout-minutes: 20
+        run: bash scripts/start-android-emulator.sh
+      - name: Sign one shared APK and record device identity
+        run: |
+          keys="$(node -e 'const p=require("node:path");const r=require.resolve("appium-adb/package.json",{paths:[process.env.APPIUM_HOME+"/node_modules/appium-espresso-driver"]});console.log(p.join(p.dirname(r),"keys"))')"
+          sdk_version="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$sdk_version/apksigner" sign --key "$keys/testkey.pk8" --cert "$keys/testkey.x509.pem" --out "$CONTROL_DIR/paired.apk" "$CONTROL_DIR/source-build/LynxExplorer.apk"
+          python3 harness/testing/e2e_diagnostics/apk-provenance.py "$CONTROL_DIR/source-build/LynxExplorer.apk" "$CONTROL_DIR/paired.apk" "$CONTROL_DIR/apk-provenance.json"
+          adb shell wm density 320
+          adb get-serialno > "$CONTROL_DIR/device-serial.txt"
+          adb shell getprop ro.build.fingerprint > "$CONTROL_DIR/device-fingerprint.txt"
+          adb shell wm size > "$CONTROL_DIR/device-size.txt"
+          adb shell wm density > "$CONTROL_DIR/device-density.txt"
+          printf '%s\n' "$ImageOS" "$ImageVersion" > "$CONTROL_DIR/runner-image.txt"
+          nohup "$RUNNER_TEMP/paired-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp > "$CONTROL_DIR/appium.log" 2>&1 &
+          nohup adb logcat > "$CONTROL_DIR/device.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Original first (all enabled core and xelement cases)
+        id: original-first
+        if: inputs.order == 'original-first'
+        run: bash harness/testing/e2e_diagnostics/paired-android.sh original
+      - name: Migrated full suite (10 comparable cases and 3 additive smoke cases)
+        id: migrated
+        if: "!cancelled() && (steps.original-first.outcome == 'success' || steps.original-first.outcome == 'failure' || (inputs.order == 'migrated-first' && success()))"
+        env:
+          MIDSCENE_MODEL_API_KEY: ${{ secrets.MIDSCENE_MODEL_API_KEY }}
+          MIDSCENE_MODEL_NAME: ${{ vars.MIDSCENE_MODEL_NAME || secrets.MIDSCENE_MODEL_NAME }}
+          MIDSCENE_MODEL_BASE_URL: ${{ vars.MIDSCENE_MODEL_BASE_URL || secrets.MIDSCENE_MODEL_BASE_URL }}
+          MIDSCENE_MODEL_FAMILY: ${{ vars.MIDSCENE_MODEL_FAMILY || secrets.MIDSCENE_MODEL_FAMILY }}
+          MIDSCENE_MODEL_REASONING_ENABLED: ${{ vars.MIDSCENE_MODEL_REASONING_ENABLED || secrets.MIDSCENE_MODEL_REASONING_ENABLED }}
+        run: |
+          bash source/testing/ai_e2e/scripts/preflight-model.sh
+          (cd source/testing/ai_e2e && npm run check:model)
+          bash harness/testing/e2e_diagnostics/paired-android.sh migrated
+      - name: Original second (all enabled core and xelement cases)
+        if: "!cancelled() && inputs.order == 'migrated-first' && (steps.migrated.outcome == 'success' || steps.migrated.outcome == 'failure')"
+        run: bash harness/testing/e2e_diagnostics/paired-android.sh original
+      - name: Validate complete original and migrated timing inventory
+        if: "!cancelled() && (steps.migrated.outcome == 'success' || steps.migrated.outcome == 'failure')"
+        run: node harness/testing/e2e_diagnostics/finalize-timing.mjs "$CONTROL_DIR" "$SOURCE_DIR" android
+      - name: Retain comparison limitations
+        if: always()
+        run: |
+          printf '## Android paired timing sample\n\nOne pair only; no stable ratio or median is established. The original 10 enabled cases and migrated 13 cases must be inventoried from actual results; 3 additive smoke cases have no original denominator. Failed, interrupted and non-equivalent-input cases cannot establish successful timing ratios. Appium remains resident on both sides; the same emulator and signed APK are verified before and after each side.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload all paired evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paired-android-${{ inputs.sample_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/paired-android
+            source/testing/ai_e2e/midscene_run
+            source/testing/ai_e2e/emulator.log
+          if-no-files-found: warn
+          retention-days: 14
