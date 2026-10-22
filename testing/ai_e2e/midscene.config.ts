@@ -467,7 +467,8 @@ export default defineTestProject<ProjectContext>({
     },
   ],
   test: {
-    maxConcurrency: 1,
+    maxConcurrentProjects: 1,
+    maxConcurrentFiles: 1,
     testTimeout: 180_000,
   },
   output: {

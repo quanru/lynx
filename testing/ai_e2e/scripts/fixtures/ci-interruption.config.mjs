@@ -12,6 +12,6 @@ export default defineTestProject({
     } }),
     defineNode({ name: 'ci.mustNotRun', execute() { throw new Error('Interrupted suite executed a later case.'); } }),
   ] }],
-  test: { maxConcurrency: 1, testTimeout: 10_000 },
+  test: { maxConcurrentProjects: 1, maxConcurrentFiles: 1, testTimeout: 10_000 },
   output: { reportDir: process.env.CI_SIGNAL_REPORT_DIR },
 });

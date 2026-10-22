@@ -135,10 +135,13 @@ no extra timed input or model call after the first timed tap. Transport proof
 alone does not establish intended-target accuracy. Complete new-head device
 validation, physical-input review and report publication remain pending.
 
-## Rome SDK alignment (pending hosted acceptance)
+## Midscene SDK 1.16.5 (pending hosted acceptance)
 
-All Midscene packages are pinned to `1.15.3`, matching Rome's
-`codex/pr-974-e2e-reference` branch at `d1b3183`. Device jobs use Node.js 24.
+All Midscene packages are pinned to stable `1.16.5`, verified against the public
+npm `latest` tags on 2026-10-22. This upgrades the previous Rome-aligned `1.15.3`
+integration; it does not claim Rome uses the new release. Device jobs use Node.js 24.
+The SDK replaces `test.maxConcurrency` with `maxConcurrentProjects` and
+`maxConcurrentFiles`; both are explicitly `1` to preserve serial execution.
 `npm run check:model` invokes the official `midscene-test model verify` checks
 for text, image understanding and AI location, filtering credential-bearing
 failure diagnostics before printing them. CI retains the independent image-only

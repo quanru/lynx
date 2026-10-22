@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { loadTestProject } from '@midscene/test/config';
 
 const workflow = readFileSync(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
 test('model credentials are step-scoped, variables retain secret fallback, and official verification precedes expensive setup', () => {
@@ -22,14 +24,22 @@ test('model credentials are step-scoped, variables retain secret fallback, and o
   }
 });
 
-test('all Midscene packages and the lockfile use the same Rome-aligned stable SDK', () => {
+test('all Midscene packages and the lockfile use the same pinned stable SDK', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
   const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url)));
   for (const name of ["android","core","ios","test"]) {
     const key = '@midscene/' + name;
-    assert.equal(pkg.devDependencies[key], '1.15.3');
-    assert.equal(lock.packages[''].devDependencies[key], '1.15.3');
-    assert.equal(lock.packages['node_modules/' + key].version, '1.15.3');
+    assert.equal(pkg.devDependencies[key], '1.16.5');
+    assert.equal(lock.packages[''].devDependencies[key], '1.16.5');
+    assert.equal(lock.packages['node_modules/' + key].version, '1.16.5');
   }
   assert.equal(pkg.scripts['check:model'], 'node scripts/verify-model.mjs');
+});
+
+test('the pinned SDK keeps native projects and files serial without changing the step deadline', async () => {
+  const loaded = await loadTestProject(fileURLToPath(new URL('../midscene.config.ts', import.meta.url)));
+  assert.equal(loaded.test.maxConcurrentProjects, 1);
+  assert.equal(loaded.test.maxConcurrentFiles, 1);
+  assert.equal(loaded.test.testTimeout, 180_000);
+  for (const project of loaded.projects) assert.equal(project.maxConcurrentFiles, 1);
 });
