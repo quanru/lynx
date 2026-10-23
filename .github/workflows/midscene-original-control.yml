@@ -1,0 +1,204 @@
+name: Original video control (diagnostic only)
+
+# Independent of migrated acceptance. The PR trigger reproduces the immutable
+# checkpoint below in a trusted fork PR; dispatch can select another source run.
+on:
+  push:
+    branches: [midscene/original-video-control]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Midscene run with a successful completed Android source build
+        required: true
+        default: '38275815434'
+        type: string
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.github/workflows/midscene-original-control.yml'
+      - 'testing/e2e_diagnostics/**'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: original-video-control-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android-original:
+    name: Original Android VideoBoundary (not migration acceptance)
+    if: github.event_name == 'workflow_dispatch' || (github.repository == 'quanru/lynx' && (github.event.pull_request.head.repo.full_name == github.repository || github.ref == 'refs/heads/midscene/original-video-control'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id || '38275815434' }}
+      ANDROID_API: '30'
+      ANDROID_ABI: x86_64
+      AVD_NAME: lynx_midscene
+      platform: android
+      server_host: http://127.0.0.1
+      server_port: '4723'
+      test_case_name: VideoBoundary
+    steps:
+      - name: Set diagnostic-only directories
+        run: |
+          printf 'APPIUM_HOME=%s/original-control-appium\nCONTROL_DIR=%s/original-control\n' "$RUNNER_TEMP" "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf '%s/platform-tools\n' "$ANDROID_HOME" >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '17'
+          distribution: zulu
+      - name: Validate producer run identity
+        id: producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --test harness/testing/ai_e2e/scripts/original-video-producer.test.mjs
+          node harness/testing/e2e_diagnostics/producer.mjs
+      - name: Download exact producer APK
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: midscene-explorer-source-android-${{ steps.producer.outputs.attempt }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original-control/source-build
+      - name: Read build checkout identity
+        id: build
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync(`${process.env.CONTROL_DIR}/source-build/build.json`, 'utf8'));
+          if (!/^[a-f0-9]{40}$/.test(manifest.sha)) throw new Error('Invalid build revision');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${manifest.sha}\n`);
+          JS
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+          fetch-depth: 2
+          path: source
+          persist-credentials: false
+      - name: Verify revision, capabilities and checksum
+        env:
+          PRODUCER_HEAD: ${{ steps.producer.outputs.head }}
+        run: |
+          git -C source merge-base --is-ancestor "$PRODUCER_HEAD" HEAD
+          # The diagnostic workflow SHA is not the producer build SHA. Pass the
+          # verified source checkout explicitly instead of overriding GITHUB_SHA.
+          node --input-type=module <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { verifyBuild } from './source/testing/ai_e2e/scripts/verify-build.mjs';
+          const sha = execFileSync('git', ['-C', 'source', 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          await verifyBuild(`${process.env.CONTROL_DIR}/source-build`, 'android', sha);
+          console.log(`Verified original-control source APK at ${sha}`);
+          JS
+          git -C source rev-parse HEAD > "$CONTROL_DIR/checkout-sha.txt"
+          sha256sum source/testing/integration_test/test_script/case_sets/xelement/{VideoBoundary.py,video_utils.py} > "$CONTROL_DIR/original-source-checksums.txt"
+      - name: Install pinned original framework and Appium
+        timeout-minutes: 15
+        run: |
+          # The legacy CI common-deps action also installs these tools; the
+          # framework uses six without declaring it in its wheel metadata.
+          python3 -m pip install --disable-pip-version-check -r source/tools/vpython_tools/requirements.txt -r source/testing/integration_test/test_script/requirements.in
+          # Unchanged lynx-e2e-appium's reporter imports pip's legacy stdlib_pkgs.
+          python3 -m pip install --disable-pip-version-check pip==25.0.1
+          python3 source/testing/integration_test/test_script/manage.py runtest --help
+          PYTHONPATH=source/testing/integration_test/test_script python3 - <<'PY'
+          from pathlib import Path
+          from lynx_e2e._impl.manage.report import get_installed_distributions
+          from android_test.xelement import xelementTest
+          from lib.test_runner.case_set import CaseSet
+          get_installed_distributions()
+          cases = CaseSet(case_set_path=str(Path('source/testing/integration_test/test_script/case_sets/xelement'))).get_cases()
+          assert [case.name for case in cases] == ['VideoBoundary']
+          print('Original reporter, module and single-case filter loaded; no device actions executed.')
+          PY
+          npm install --prefix "$RUNNER_TEMP/original-control-server" --no-audit --no-fund appium@2.11.2
+          "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" driver install espresso@4.0.0
+      - name: Start identical headless emulator configuration
+        working-directory: source/testing/ai_e2e
+        timeout-minutes: 20
+        run: bash scripts/start-android-emulator.sh
+      - name: Prepare original Espresso signing and preserve payload provenance
+        run: |
+          set -euo pipefail
+          keys="$(node -e 'const p=require("node:path");const r=require.resolve("appium-adb/package.json",{paths:[process.env.APPIUM_HOME+"/node_modules/appium-espresso-driver"]});console.log(p.join(p.dirname(r),"keys"))')"
+          sdk_version="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$sdk_version/apksigner" sign --key "$keys/testkey.pk8" --cert "$keys/testkey.x509.pem" --out "$CONTROL_DIR/control.apk" "$CONTROL_DIR/source-build/LynxExplorer.apk"
+          python3 harness/testing/e2e_diagnostics/apk-provenance.py "$CONTROL_DIR/source-build/LynxExplorer.apk" "$CONTROL_DIR/control.apk" "$CONTROL_DIR/apk-provenance.json"
+          adb shell wm density 320
+          adb install -r -g "$CONTROL_DIR/control.apk"
+          adb shell getprop ro.build.fingerprint > "$CONTROL_DIR/device-fingerprint.txt"
+          adb shell wm size > "$CONTROL_DIR/device-size.txt"
+          adb shell wm density > "$CONTROL_DIR/device-density.txt"
+      - name: Start Appium and retain diagnostic logs
+        run: |
+          nohup "$RUNNER_TEMP/original-control-server/node_modules/.bin/appium" server --address 127.0.0.1 --port 4723 --log-no-colors --log-timestamp > "$CONTROL_DIR/appium.log" 2>&1 &
+          nohup adb logcat > "$CONTROL_DIR/device.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4723/status >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo '::error::Original control Appium server did not become ready'
+          exit 1
+      - name: Run unchanged original VideoBoundary
+        id: original
+        timeout-minutes: 20
+        working-directory: source/testing/integration_test/test_script
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          python3 manage.py runtest android_test.xelement 2>&1 | tee "$CONTROL_DIR/original.log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*VideoBoundary[[:space:]]*\]' "$CONTROL_DIR/original.log" && grep -Fq 'Caseset passed!' "$CONTROL_DIR/original.log" || status=1
+          fi
+          printf '%s\n' "$status" > "$CONTROL_DIR/original-exit-code.txt"
+          exit "$status"
+      - name: Verify actual installed APK and unchanged source
+        if: always() && steps.original.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          installed="$(adb shell pm path com.lynx.explorer | tr -d '\r' | sed -n 's/^package://p' | head -n 1)"
+          test -n "$installed"
+          adb pull "$installed" "$CONTROL_DIR/installed.apk"
+          python3 harness/testing/e2e_diagnostics/apk-provenance.py "$CONTROL_DIR/control.apk" "$CONTROL_DIR/installed.apk" "$CONTROL_DIR/installed-apk-provenance.json"
+          git -C source diff --exit-code -- testing/integration_test/test_script testing/integration_test/demo_pages
+          sha256sum --check "$CONTROL_DIR/original-source-checksums.txt"
+      - name: Keep original screenshots separate from migration reports
+        if: always()
+        env:
+          ORIGINAL_OUTCOME: ${{ steps.original.outcome }}
+        run: |
+          mkdir -p "$CONTROL_DIR"
+          if [ -d source/testing/integration_test/test_script/screenshots ]; then cp -R source/testing/integration_test/test_script/screenshots "$CONTROL_DIR/"; fi
+          if [ -f source/testing/ai_e2e/emulator.log ]; then cp source/testing/ai_e2e/emulator.log "$CONTROL_DIR/"; fi
+          entered=no
+          if [ -f "$CONTROL_DIR/original.log" ] && grep -Eq 'Exec[[:space:]]+case[[:space:]]+\[[[:space:]]*VideoBoundary[[:space:]]*\]' "$CONTROL_DIR/original.log"; then entered=yes; fi
+          printf 'Original VideoBoundary body entered: %s\n\n' "$entered" >> "$GITHUB_STEP_SUMMARY"
+          # shellcheck disable=SC2016 # Backticks are literal Markdown, not shell commands.
+          printf '## Original Android VideoBoundary diagnostic\n\nProducer: [run %s](%s/%s/actions/runs/%s). Original execution: `%s`.\n\nThis is an independent Appium/Espresso control, not Midscene acceptance. APK hashes, signature-only payload comparison, installed APK identity, original logs and screenshots are retained in the diagnostic artifact. A setup failure does not establish an original-case failure.\n' "$SOURCE_RUN_ID" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$SOURCE_RUN_ID" "$ORIGINAL_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload original control evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: original-video-control-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/original-control/*.json
+            ${{ runner.temp }}/original-control/*.txt
+            ${{ runner.temp }}/original-control/*.log
+            ${{ runner.temp }}/original-control/screenshots
+          if-no-files-found: warn
+          retention-days: 14

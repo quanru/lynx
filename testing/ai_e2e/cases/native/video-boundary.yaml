@@ -1,0 +1,669 @@
+afterEach:
+  - recordToReport: VideoBoundary final assertion evidence, including failures
+cases:
+  - name: xelement/VideoBoundary
+    steps:
+      - recordToReport:
+          title: Start isolated Explorer for VideoBoundary
+      - wait:
+          duration: 5000
+          unit: ms
+      - launch: ${videoUri}
+      - wait:
+          duration: 2000
+          unit: ms
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - native.videoPhase:
+          phase: replace-playing-source
+      - native.video:
+          tag: status-text
+          equal: playing
+          timeoutMs: 20000
+      - native.video:
+          tag: event-counts
+          countAtLeast:
+            key: buffering
+            value: 1
+          timeoutMs: 10000
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - native.video:
+          tag: attr-state
+          contains: src=secondary
+          timeoutMs: 20000
+      - native.video:
+          tag: event-counts
+          countAtLeast:
+            key: firstframe
+            value: 1
+          timeoutMs: 10000
+      - recordToReport:
+          title: "Original VideoBoundary diagnostic screenshot: src_secondary"
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src Bad" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: error
+          timeoutMs: 20000
+      - native.video:
+          tag: event-counts
+          countAtLeast:
+            key: error
+            value: 1
+          timeoutMs: 10000
+      - native.video:
+          tag: last-error
+          errorDetails: true
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src Empty" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: empty
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Play" once. Do not click similarly named buttons or perform another
+            action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: error
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: play_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: play_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=missing video source
+          immediate: true
+      - native.video:
+          tag: event-counts
+          countAtLeast:
+            key: error
+            value: 1
+          timeoutMs: 10000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Stop" once. Do not click similarly named buttons or perform another
+            action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: stopped
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: stop_ok
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Queue" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: attr-state
+          contains: mode=queue
+          timeoutMs: 20000
+      - aiAct:
+          prompt: ${videoBoundaryPlayPauseEmpty}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: play_fail
+          timeoutMs: 10000
+      - native.video:
+          tag: callback-log
+          contains: play_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=request canceled by src change
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: pause_fail
+          timeoutMs: 10000
+      - native.video:
+          tag: callback-log
+          contains: pause_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=request canceled by src change
+          immediate: true
+      - wait:
+          duration: 1000
+          unit: ms
+      - native.video:
+          tag: callback-log
+          occurrences:
+            text: pause_fail
+            count: 1
+          immediate: true
+      - native.video:
+          tag: callback-log
+          notContains: pause_ok
+          immediate: true
+      - aiAct:
+          prompt: Tap once at the CENTER of the BLUE "Clear" button body at the LEFT
+            END of the first playback-button row. This row contains Clear, Play,
+            Play Null, Pause, Stop and sits immediately ABOVE the Seek 0s / Seek
+            2s row. Do not tap blank space above the blue button, the numeric
+            status values, or any other button. Stop after that single tap.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Stop" once. Do not click similarly named buttons or perform another
+            action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: stopped
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: stop_ok
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekEmpty}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 10000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=request canceled by src change
+          immediate: true
+      - wait:
+          duration: 1000
+          unit: ms
+      - native.video:
+          tag: callback-log
+          occurrences:
+            text: seek_fail
+            count: 1
+          immediate: true
+      - native.video:
+          tag: callback-log
+          notContains: seek_ok
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Src A" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: status-text
+          equal: ready
+          timeoutMs: 20000
+      - wait:
+          duration: 1000
+          unit: ms
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekBad}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position out of range
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekMissing}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=missing position param
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekNull}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=missing position param
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekText}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position param must be a number
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekNaN}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position out of range
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekInf}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position out of range
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: ${videoBoundarySeekHuge}
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: seek_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: success=false
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: errorCode=
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: msg=position out of range
+          immediate: true
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - native.videoPhase:
+          phase: stop-play-null
+      - native.video:
+          tag: status-text
+          equal: playing
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: play_ok
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: success=true
+          timeoutMs: 20000
+      - native.video:
+          tag: status-text
+          equal: stopped
+          timeoutMs: 20000
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Clear" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
+            cacheable: false
+      - aiAct:
+          prompt: When scrolling, gesture within the light-gray video demo panel on the
+            LEFT below the back arrow, not the white blank area to its right or
+            below. Scroll if needed and click the single button labeled exactly
+            "Unknown" once. Do not click similarly named buttons or perform
+            another action.
+          options:
+            effort: deepThink
+            deepLocate: ${videoDeepLocate}
+            cacheable: false
+      - native.video:
+          tag: callback-log
+          contains: unknownVideoMethod_fail
+          timeoutMs: 20000
+      - native.video:
+          tag: callback-log
+          contains: unknownVideoMethod_fail
+          immediate: true
+      - native.video:
+          tag: callback-log
+          contains: ${videoBridgeError}
+          immediate: true

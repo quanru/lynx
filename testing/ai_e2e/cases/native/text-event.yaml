@@ -1,0 +1,12 @@
+# Keep the original three-second observation window, element crop and baseline.
+# This is an exact pixel/API contract; do not replace it with a visual AI assertion.
+cases:
+  - name: core/TextEvent
+    steps:
+      - launch: "${textEventUri}"
+      - wait: { duration: 2000, unit: ms }
+      - wait: { duration: 3000, unit: ms }
+      - recordToReport: Before original flattened-text pixel comparison
+      - native.pixels: { fixture: textEvent, baseline: text_flattern_element, tag: flatten-text }
+      - native.expect: { fixture: textEvent, matchingText: "Test text bindlayout event....", exists: true, timeoutMs: 3000 }
+      - recordToReport: Original pixel baseline and bindlayout text existence passed

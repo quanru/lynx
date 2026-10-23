@@ -1,0 +1,12 @@
+cases:
+  - name: core/DomFocus
+    steps:
+      - launch: "${domFocusUri}"
+      - recordToReport: Before original DOM.focus protocol checks
+      - native.cdp: { fixture: domFocus, method: DOM.focus, tag: focus-input-a }
+      - native.expect: { fixture: domFocus, tag: focus-state, text: input-a }
+      - recordToReport: DOM.focus on input A produced its exact focus target
+      - native.cdp: { fixture: domFocus, method: DOM.focus, tag: focus-input-b }
+      - native.expect: { fixture: domFocus, tag: focus-state, text: input-b }
+      - native.expect: { fixture: domFocus, tag: blur-state, text: input-a }
+      - recordToReport: DOM.focus on input B produced the original focus and blur targets
