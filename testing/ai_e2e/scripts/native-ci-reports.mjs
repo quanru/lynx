@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { nativeCiGroups } from './native-ci-groups.mjs';
 import { collectExpectedCases, executionIdentity, selectedArtifactAttempt } from './expected-cases.mjs';
 import { loadExpectedCaseEvidence } from './render-ci-summary.mjs';
@@ -27,18 +28,17 @@ function executionTimestamp(value) {
     ? Date.parse(value) : NaN;
 }
 
-export function nativeJobResultResolver(env = process.env, request = fetch) {
+export function nativeJobResultResolver(env = process.env, request = fetch, { wait = sleep, log = console.warn } = {}) {
   const attempts = new Map();
   async function getJson(url) {
     const response = await request(url, {
-      headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache' },
       signal: AbortSignal.timeout(30_000),
     });
     if (!response.ok) throw new Error(`Cannot verify native job provenance: HTTP ${response.status}`);
     return response.json();
   }
-  return async (group, attempt, optional = false) => {
-    if (!env.GH_TOKEN || !/^[\w.-]+\/[\w.-]+$/.test(env.GITHUB_REPOSITORY ?? '')) throw new Error('Native job provenance requires Actions read access');
+  async function snapshot(attempt) {
     if (!attempts.has(attempt)) attempts.set(attempt, (async () => {
       const url = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${attempt}`;
       const run = await getJson(url);
@@ -55,14 +55,37 @@ export function nativeJobResultResolver(env = process.env, request = fetch) {
         if (!data.jobs.length) throw new Error('Incomplete native job provenance');
       }
     })());
-    const { jobs, startedAt } = await attempts.get(attempt);
-    const matches = jobs.filter(job => job.name === `Midscene AI E2E · ${group.label}` && String(job.run_attempt) === attempt);
-    if (optional && matches.length === 0) return undefined;
+    return attempts.get(attempt);
+  }
+  return async (group, attempt, optional = false) => {
+    if (!env.GH_TOKEN || !/^[\w.-]+\/[\w.-]+$/.test(env.GITHUB_REPOSITORY ?? '')) throw new Error('Native job provenance requires Actions read access');
+    // Dependency completion and the jobs API can become visible at different
+    // times. Never cache an incomplete snapshot for the rest of publication.
+    const delays = [2_000, 5_000, 10_000, 20_000];
+    let matches, startedAt;
+    for (let poll = 0; ; poll++) {
+      const data = await snapshot(attempt);
+      startedAt = data.startedAt;
+      matches = data.jobs.filter(job => job.name === `Midscene AI E2E · ${group.label}`);
+      const awaitingConclusion = matches.length === 1 && matches[0].status === 'completed' && matches[0].conclusion == null;
+      const pending = matches.length === 0 || awaitingConclusion || (matches.length === 1
+        && ['queued', 'waiting', 'pending', 'in_progress', 'requested'].includes(matches[0].status));
+      if (!pending) break;
+      attempts.delete(attempt);
+      const state = matches.length === 0 ? 'missing' : awaitingConclusion ? 'awaiting-conclusion' : matches[0].status;
+      if (poll === delays.length) {
+        // Even an optional newer-attempt lookup must fail closed here. An
+        // absent API row is not evidence that an older artifact is reusable.
+        throw new Error(`Native job provenance remained ${state} after ${poll + 1} snapshots: ${group.id}, attempt ${attempt}`);
+      }
+      log(`Waiting for native job provenance: ${group.id}, attempt ${attempt}, ${state}; refresh ${poll + 1}/${delays.length}.`);
+      await wait(delays[poll]);
+    }
     const job = matches[0];
     if (matches.length !== 1 || job.status !== 'completed' || String(job.run_id) !== env.GITHUB_RUN_ID
       || String(job.run_attempt) !== attempt || !Number.isSafeInteger(job.id) || job.id <= 0
       || !['success', 'failure', 'cancelled', 'skipped', 'timed_out', 'action_required', 'neutral', 'startup_failure', 'stale'].includes(job.conclusion)) {
-      throw new Error(`Native group has no unique completed job in its producing attempt: ${group.id}`);
+      throw new Error(`Native group has no unique completed job in its producing attempt: ${group.id}, attempt ${attempt}, matches ${matches.length}, status ${job?.status}, conclusion ${job?.conclusion}, run ${job?.run_id}, job attempt ${job?.run_attempt}`);
     }
     const jobStartedAt = executionTimestamp(job.started_at), jobCompletedAt = executionTimestamp(job.completed_at);
     if (!Number.isFinite(jobStartedAt) || !Number.isFinite(jobCompletedAt) || jobCompletedAt < jobStartedAt) {

@@ -134,6 +134,43 @@ groups. The deliberately failing model-free SIGINT fixture now writes SDK
 Summary output to a private temporary file so it cannot append a misleading
 failure table to the successful contract-check job.
 
+### Third parallel run: transport failures and incomplete API evidence
+
+[Run 39908657556](https://github.com/quanru/lynx/actions/runs/39908657556),
+head `c176e6f`, passed the 287 contract checks and both source builds. Android
+Core and boundary passed 10/10; Android Video passed 2/3, with VideoAttributes
+failing on `UND_ERR_CONNECT_TIMEOUT` to the model endpoint. All 20 iOS cases
+remained not run because the image-only gate or official model verifier failed
+to establish connections. This run therefore recorded **12 passed, 1 failed
+and 20 not run**; it did not validate the new iOS Boundary grounding.
+
+Report selection rejected Android Core and boundary's job provenance, so Pages
+was not published. The unchanged resolver subsequently verified all five jobs
+against the live API. The old error did not record which field was incomplete
+at publication time; it is not evidence that the device job was absent or failed.
+Selection now refreshes missing/nonterminal job snapshots, including a completed
+job awaiting its conclusion, at most five times with 2/5/10/20-second delays.
+Incomplete snapshots are discarded, and requests ask for uncached data. Invalid
+identity, duplicate jobs and malformed terminal results still fail closed, with
+specific diagnostics. An unresolved newer-attempt lookup cannot authorize reuse
+of an older report.
+
+CI also re-enables Node's [alternate-address connection selection](https://nodejs.org/api/net.html#socketconnectoptions-connectlistener),
+with IPv4-first DNS ordering and a one-second address-attempt interval. A
+loopback-only regression verifies that a failed first address can fall back to
+the second while sending exactly one HTTP request. This does not prove why ARK
+was unreachable from the hosted runners or repair a provider outage.
+
+The pinned official verifier intentionally disables its own model retries.
+The wrapper now permits at most three verifier executions, ten seconds apart,
+only when **every failed check** explicitly reports connection-establishment
+timeout. Authentication errors, wrong image/locator results, HTTP failures,
+post-connection timeouts and unrecognized output do not qualify. Every attempt
+is bounded and redacted. A retry repeats all four official checks, for at most
+12 checks across three executions. The existing image-only gate, SDK request retry policy,
+case retry count, assertion windows and five-device limit are unchanged.
+Local regressions validate these guards; new-head hosted acceptance is pending.
+
 ## Native assertion evidence
 
 Custom assertions are deterministic checks against the original fixture and
@@ -284,6 +321,8 @@ each isolated device. Hosted execution uses the five groups described above.
 for text, image understanding and AI location, filtering credential-bearing
 failure diagnostics before printing them. CI retains the independent image-only
 gate and runs official verification before starting the emulator or WDA.
+Pure connection-timeout failures receive the bounded verifier retries described
+above; all capability checks must still pass on a successful execution.
 Model credentials are step-scoped to verification and case execution, with
 repository variables preferred over same-named non-key secrets. Existing
 repository-secret configuration remains supported; no new environment is required.

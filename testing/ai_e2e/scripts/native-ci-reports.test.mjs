@@ -153,6 +153,33 @@ test('job provenance uses the exact matrix job and attempt, not the failed aggre
   await assert.rejects(resolver(nativeCiGroups[0], '1'), /Malformed native workflow attempt/);
 });
 
+test('all iOS preflight failures retain 20 not-run rows alongside 12 passes and one Android failure', async t => {
+  const root = await temporary(t), source = path.join(root, 'source'), selected = path.join(root, 'selected');
+  for (const group of nativeCiGroups) {
+    await stage(source, group, '1', group.platform === 'ios' ? 'skipped' : group.id === 'android-video' ? 'failure' : 'success',
+      group.platform !== 'ios');
+  }
+  const failedEnv = { ...env, GITHUB_RUN_ATTEMPT: '1', ANDROID_RESULT: 'failure', IOS_RESULT: 'failure' };
+  await selectNativeGroupReports(source, selected, failedEnv, fixtureJobResult(source));
+  const site = path.join(root, 'site'), output = path.join(root, 'summary.md');
+  execFileSync(process.execPath, [fileURLToPath(new URL('./native-ci-reports.mjs', import.meta.url)), 'summary', selected,
+    '--title', 'Preflight failure fixture', '--run-url', 'https://github.com/example/repo/actions/runs/123',
+    '--pages-url', 'https://example.test', '--site-dir', site, '--site-prefix', 'runs/123-1', '--output', output,
+  ], { env: { ...process.env, ...failedEnv }, stdio: 'pipe' });
+  const markdown = await readFile(output, 'utf8');
+  assert.match(markdown, /21 need attention · 12 passed/);
+  assert.equal((markdown.match(/^\| (?:Android|iOS) ·/gm) ?? []).length, 33);
+  assert.equal((markdown.match(/<img /g) ?? []).length, 13, 'Never invent screenshots for cases blocked before execution');
+  assert.equal((markdown.match(/\[Open report\]/g) ?? []).length, 13);
+  assert.equal((markdown.match(/⏭️ Not run/g) ?? []).length, 20);
+  assert.equal((markdown.match(/❌ Failed/g) ?? []).length, 1);
+  const index = await readFile(path.join(site, 'index.html'), 'utf8');
+  assert.match(index, /Incomplete Midscene reports/);
+  assert.equal((index.match(/Open available report/g) ?? []).length, 2);
+  assert.equal((index.match(/No report was produced/g) ?? []).length, 3);
+  assert.doesNotMatch(index, /http-equiv="refresh"/, 'Do not redirect to an older complete run when iOS never executed');
+});
+
 function partialRerunApi() {
   return async url => {
     const attempt = Number(/\/attempts\/(\d+)/.exec(url)[1]);
@@ -167,6 +194,70 @@ function partialRerunApi() {
       : { id: 123, run_attempt: attempt, run_started_at: `2026-10-23T0${attempt}:00:00Z` } };
   };
 }
+
+test('missing and in-progress job snapshots refresh instead of poisoning the publication cache', async () => {
+  let snapshots = 0;
+  const waits = [], messages = [];
+  const api = partialRerunApi();
+  const resolver = nativeJobResultResolver({ ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' }, async (url, options) => {
+    assert.equal(options.headers['Cache-Control'], 'no-cache');
+    const data = await (await api(url)).json();
+    if (data.jobs) {
+      snapshots++;
+      if (snapshots === 1) data.jobs.splice(0, 1);
+      if (snapshots === 2) Object.assign(data.jobs[0], { status: 'in_progress', conclusion: null });
+      if (snapshots === 3) data.jobs[0].conclusion = null;
+      data.total_count = data.jobs.length;
+    }
+    return { ok: true, json: async () => data };
+  }, { wait: async ms => waits.push(ms), log: message => messages.push(message) });
+  assert.deepEqual(await resolver(nativeCiGroups[0], '1'), { jobId: '100', outcome: 'success' });
+  assert.deepEqual(await resolver(nativeCiGroups[1], '1'), { jobId: '101', outcome: 'failure' });
+  assert.equal(snapshots, 4, 'Reuse only the completed snapshot for the next group');
+  assert.deepEqual(waits, [2000, 5000, 10000]);
+  assert.match(messages[0], /missing/);
+  assert.match(messages[1], /in_progress/);
+  assert.match(messages[2], /awaiting-conclusion/);
+});
+
+test('persistent missing or nonterminal jobs are bounded failures, including optional newer-attempt lookups', async () => {
+  for (const missing of [true, false]) for (const optional of [true, false]) {
+    let snapshots = 0;
+    const waits = [], api = partialRerunApi();
+    const resolver = nativeJobResultResolver({ ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' }, async url => {
+      const data = await (await api(url)).json();
+      if (data.jobs) {
+        snapshots++;
+        if (missing) data.jobs.splice(0, 1);
+        else Object.assign(data.jobs[0], { status: 'in_progress', conclusion: null });
+        data.total_count = data.jobs.length;
+      }
+      return { ok: true, json: async () => data };
+    }, { wait: async ms => waits.push(ms), log: () => {} });
+    await assert.rejects(resolver(nativeCiGroups[0], '2', optional), /remained .* after 5 snapshots/);
+    assert.equal(snapshots, 5);
+    assert.deepEqual(waits, [2000, 5000, 10000, 20000]);
+  }
+});
+
+test('duplicate, foreign or malformed terminal jobs fail immediately without relaxing provenance', async () => {
+  for (const damage of ['duplicate', 'run', 'attempt', 'status', 'conclusion', 'id']) {
+    const api = partialRerunApi();
+    const resolver = nativeJobResultResolver({ ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' }, async url => {
+      const data = await (await api(url)).json();
+      if (data.jobs) {
+        if (damage === 'duplicate') data.jobs.push({ ...data.jobs[0], id: 999 });
+        else Object.assign(data.jobs[0], {
+          run: { run_id: 456 }, attempt: { run_attempt: 9 }, status: { status: 'unknown' },
+          conclusion: { conclusion: 'unknown' }, id: { id: -1 },
+        }[damage]);
+        data.total_count = data.jobs.length;
+      }
+      return { ok: true, json: async () => data };
+    }, { wait: async () => assert.fail('Malformed evidence must not be retried'), log: () => {} });
+    await assert.rejects(resolver(nativeCiGroups[0], '1'), /no unique completed job/);
+  }
+});
 
 test('partial reruns retain original artifacts despite copied jobs receiving new attempt numbers and IDs', async t => {
   const root = await temporary(t), source = path.join(root, 'source'), selected = path.join(root, 'selected');
