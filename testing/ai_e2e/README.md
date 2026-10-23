@@ -74,6 +74,16 @@ These are candidates requiring hosted acceptance, not guaranteed model behavior.
 They retain `aiAct`, all 36 original clicks, every assertion, wait and retry, and
 the unchanged fixture. No product-source change or assertion relaxation is used.
 
+The Android Video-only rerun in attempt 2 passed all three cases in 28m 12s,
+bringing the available device results to 32 passed and one iOS failure. Report
+assembly then rejected retained sibling jobs as missing new artifacts: GitHub's
+partial-rerun API copied them into attempt 2 with new IDs but old execution
+timestamps. The provenance resolver now compares those timestamps with the
+attempt's start time. Retained jobs use their original producer artifacts;
+genuinely rerun jobs still require new artifacts, even when they fail. Missing,
+invalid or overlapping timestamps fail closed. This report correction and the
+two iOS prompt corrections still require hosted validation on the new revision.
+
 ## Native assertion evidence
 
 Custom assertions are deterministic checks against the original fixture and

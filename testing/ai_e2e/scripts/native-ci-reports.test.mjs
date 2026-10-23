@@ -137,17 +137,94 @@ test('setup failure retains the latest group inventory rather than resurrecting 
 test('job provenance uses the exact matrix job and attempt, not the failed aggregate platform', async () => {
   const requests = [];
   const jobs = nativeCiGroups.map((group, index) => ({ id: index + 100, run_id: 123, run_attempt: 2,
-    name: `Midscene AI E2E · ${group.label}`, status: 'completed', conclusion: index === 1 ? 'failure' : 'success' }));
+    name: `Midscene AI E2E · ${group.label}`, status: 'completed', conclusion: index === 1 ? 'failure' : 'success',
+    started_at: '2026-10-23T02:01:00Z', completed_at: '2026-10-23T02:10:00Z' }));
   const resolver = nativeJobResultResolver({ ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' }, async (url, options) => {
     requests.push(url);
     assert.equal(options.headers.Authorization, 'Bearer test-token');
-    return { ok: true, json: async () => ({ jobs, total_count: jobs.length }) };
+    return { ok: true, json: async () => url.includes('/jobs?') ? { jobs, total_count: jobs.length }
+      : { id: 123, run_attempt: 2, run_started_at: '2026-10-23T02:00:00Z' } };
   });
   assert.deepEqual(await resolver(nativeCiGroups[0], '2'), { jobId: '100', outcome: 'success' });
   assert.deepEqual(await resolver(nativeCiGroups[1], '2'), { jobId: '101', outcome: 'failure' });
-  assert.equal(requests.length, 1);
-  assert.match(requests[0], /\/runs\/123\/attempts\/2\/jobs\?/);
-  await assert.rejects(resolver(nativeCiGroups[0], '1'), /no unique completed job/);
+  assert.equal(requests.length, 2);
+  assert.match(requests[0], /\/runs\/123\/attempts\/2$/);
+  assert.match(requests[1], /\/runs\/123\/attempts\/2\/jobs\?/);
+  await assert.rejects(resolver(nativeCiGroups[0], '1'), /Malformed native workflow attempt/);
+});
+
+function partialRerunApi() {
+  return async url => {
+    const attempt = Number(/\/attempts\/(\d+)/.exec(url)[1]);
+    const jobs = nativeCiGroups.map((group, index) => {
+      const actualAttempt = attempt === 2 && index === 1 ? 2 : 1;
+      return { id: attempt * 100 + index, run_id: 123, run_attempt: attempt,
+        name: `Midscene AI E2E · ${group.label}`, status: 'completed',
+        conclusion: index === 2 || (index === 1 && actualAttempt === 1) ? 'failure' : 'success',
+        started_at: `2026-10-23T0${actualAttempt}:01:00Z`, completed_at: `2026-10-23T0${actualAttempt}:10:00Z` };
+    });
+    return { ok: true, json: async () => url.includes('/jobs?') ? { jobs, total_count: jobs.length }
+      : { id: 123, run_attempt: attempt, run_started_at: `2026-10-23T0${attempt}:00:00Z` } };
+  };
+}
+
+test('partial reruns retain original artifacts despite copied jobs receiving new attempt numbers and IDs', async t => {
+  const root = await temporary(t), source = path.join(root, 'source'), selected = path.join(root, 'selected');
+  for (const [index, group] of nativeCiGroups.entries()) {
+    await stage(source, group, '1', index === 1 ? 'skipped' : index === 2 ? 'failure' : 'success', index !== 1);
+  }
+  await stage(source, nativeCiGroups[1], '2');
+  const failedEnv = { ...env, IOS_RESULT: 'failure', GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' };
+  const resolver = nativeJobResultResolver(failedEnv, partialRerunApi());
+  await selectNativeGroupReports(source, selected, failedEnv, resolver);
+  for (const [index, group] of nativeCiGroups.entries()) {
+    const result = JSON.parse(await readFile(path.join(selected, `midscene-ai-e2e-${group.id}`, 'job-result.json'), 'utf8'));
+    assert.equal(result.attempt, index === 1 ? '2' : '1');
+    assert.equal(result.jobId, String((index === 1 ? 200 : 100) + index));
+    assert.equal(result.outcome, index === 2 ? 'failure' : 'success');
+  }
+  assert.equal(await resolver(nativeCiGroups[0], '2', true), undefined);
+  await assert.rejects(resolver(nativeCiGroups[0], '2'), /did not execute within/);
+  const args = await nativeSummaryArguments(selected, failedEnv);
+  assert.ok(args.includes('iOS · Boundary=failure'));
+  assert.ok(args.includes('Android · Video=success'));
+  const output = path.join(root, 'summary.md');
+  execFileSync(process.execPath, [fileURLToPath(new URL('./native-ci-reports.mjs', import.meta.url)), 'summary', selected,
+    '--title', 'Partial rerun fixture', '--run-url', 'https://github.com/example/repo/actions/runs/123',
+    '--pages-url', 'https://example.test', '--site-dir', path.join(root, 'site'), '--site-prefix', 'runs/123-2', '--output', output,
+  ], { env: { ...process.env, ...failedEnv }, stdio: 'pipe' });
+  const markdown = await readFile(output, 'utf8');
+  assert.match(markdown, /1 need attention · 32 passed/);
+  assert.equal((markdown.match(/<img /g) ?? []).length, 33);
+  assert.equal((markdown.match(/\[Open report\]/g) ?? []).length, 33);
+  assert.ok(markdown.indexOf('xelement/VideoBoundary') < markdown.indexOf('<details>'));
+});
+
+test('partial reruns still reject a real newer execution whose artifact is missing', async t => {
+  const root = await temporary(t), source = path.join(root, 'source');
+  await allGroups(source);
+  const apiEnv = { ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' };
+  await assert.rejects(selectNativeGroupReports(source, path.join(root, 'selected'), apiEnv,
+    nativeJobResultResolver(apiEnv, partialRerunApi())), /Newer native job has no artifact.*android-video/);
+});
+
+test('invalid, reversed or attempt-overlapping job timestamps cannot be mistaken for retained results', async () => {
+  for (const patch of [
+    { started_at: undefined },
+    { started_at: 123 },
+    { completed_at: '2026-10-23' },
+    { completed_at: 'invalid' },
+    { started_at: '2026-10-23T02:10:00Z', completed_at: '2026-10-23T02:01:00Z' },
+    { started_at: '2026-10-23T01:01:00Z', completed_at: '2026-10-23T02:01:00Z' },
+  ]) {
+    const request = partialRerunApi();
+    const resolver = nativeJobResultResolver({ ...env, GITHUB_REPOSITORY: 'example/repo', GH_TOKEN: 'test-token' }, async url => {
+      const response = await request(url), data = await response.json();
+      if (data.jobs) Object.assign(data.jobs[0], patch);
+      return { ok: true, json: async () => data };
+    });
+    await assert.rejects(resolver(nativeCiGroups[0], '2', true), /timestamps|did not execute within/);
+  }
 });
 
 test('missing artifacts cannot turn successful jobs green; failed groups remain explicitly absent', async t => {

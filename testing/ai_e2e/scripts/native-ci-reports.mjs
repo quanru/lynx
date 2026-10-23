@@ -22,32 +22,58 @@ function platformResult(group, env) {
   return result;
 }
 
+function executionTimestamp(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+    ? Date.parse(value) : NaN;
+}
+
 export function nativeJobResultResolver(env = process.env, request = fetch) {
   const attempts = new Map();
+  async function getJson(url) {
+    const response = await request(url, {
+      headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`Cannot verify native job provenance: HTTP ${response.status}`);
+    return response.json();
+  }
   return async (group, attempt, optional = false) => {
     if (!env.GH_TOKEN || !/^[\w.-]+\/[\w.-]+$/.test(env.GITHUB_REPOSITORY ?? '')) throw new Error('Native job provenance requires Actions read access');
     if (!attempts.has(attempt)) attempts.set(attempt, (async () => {
+      const url = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${attempt}`;
+      const run = await getJson(url);
+      const startedAt = executionTimestamp(run.run_started_at);
+      if (String(run.id) !== env.GITHUB_RUN_ID || String(run.run_attempt) !== attempt || !Number.isFinite(startedAt)) {
+        throw new Error('Malformed native workflow attempt provenance');
+      }
       const jobs = [];
       for (let page = 1; ; page++) {
-        const response = await request(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${attempt}/jobs?per_page=100&page=${page}`, {
-          headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
-          signal: AbortSignal.timeout(30_000),
-        });
-        if (!response.ok) throw new Error(`Cannot verify native job provenance: HTTP ${response.status}`);
-        const data = await response.json();
+        const data = await getJson(`${url}/jobs?per_page=100&page=${page}`);
         if (!Array.isArray(data.jobs) || !Number.isSafeInteger(data.total_count)) throw new Error('Malformed native job provenance');
         jobs.push(...data.jobs);
-        if (jobs.length >= data.total_count) return jobs;
+        if (jobs.length >= data.total_count) return { jobs, startedAt };
         if (!data.jobs.length) throw new Error('Incomplete native job provenance');
       }
     })());
-    const matches = (await attempts.get(attempt)).filter(job => job.name === `Midscene AI E2E · ${group.label}` && String(job.run_attempt) === attempt);
+    const { jobs, startedAt } = await attempts.get(attempt);
+    const matches = jobs.filter(job => job.name === `Midscene AI E2E · ${group.label}` && String(job.run_attempt) === attempt);
     if (optional && matches.length === 0) return undefined;
     const job = matches[0];
     if (matches.length !== 1 || job.status !== 'completed' || String(job.run_id) !== env.GITHUB_RUN_ID
       || String(job.run_attempt) !== attempt || !Number.isSafeInteger(job.id) || job.id <= 0
       || !['success', 'failure', 'cancelled', 'skipped', 'timed_out', 'action_required', 'neutral', 'startup_failure', 'stale'].includes(job.conclusion)) {
       throw new Error(`Native group has no unique completed job in its producing attempt: ${group.id}`);
+    }
+    const jobStartedAt = executionTimestamp(job.started_at), jobCompletedAt = executionTimestamp(job.completed_at);
+    if (!Number.isFinite(jobStartedAt) || !Number.isFinite(jobCompletedAt) || jobCompletedAt < jobStartedAt) {
+      throw new Error(`Invalid native job execution timestamps: ${group.id}`);
+    }
+    // Partial reruns clone unchanged jobs into the new attempt with NEW IDs and
+    // run_attempt values, but retain their original execution timestamps. Only
+    // jobs executed during this attempt can require a new producer artifact.
+    if (jobStartedAt < startedAt) {
+      if (optional && jobCompletedAt < startedAt) return undefined;
+      throw new Error(`Native group did not execute within its selected attempt: ${group.id}`);
     }
     return { jobId: String(job.id), outcome: ['success', 'cancelled', 'skipped'].includes(job.conclusion) ? job.conclusion : 'failure' };
   };
