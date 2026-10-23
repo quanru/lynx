@@ -4,14 +4,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { videoActionPhaseChecks, videoActionPhaseTargets } from '../video-action-phase.ts';
-import { videoBoundarySeekPrompts } from '../video-boundary-prompts.ts';
+import { videoBoundaryActionPrompts } from '../video-boundary-prompts.ts';
 
 const seekRow = ['Seek 0s', 'Seek 2s', 'Near End', 'Seek Bad', 'Seek Missing', 'Seek Null', 'Seek Text', 'Seek NaN', 'Seek Inf', 'Seek Huge'];
 
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
   const deepLocate = variableBridge ? '${videoDeepLocate}' : true;
-  const seekPrompts = videoBoundarySeekPrompts();
+  const actionPrompts = videoBoundaryActionPrompts();
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBoundary.py', import.meta.url), 'utf8');
   const events = JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./extract-video-boundary.py', import.meta.url))], {
     input: JSON.stringify({ source, platform }), encoding: 'utf8',
@@ -56,12 +56,12 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
       } };
       const seekIndex = seekRow.indexOf(label);
-      if (seekIndex >= 0 || label === 'Seek Empty') {
-        assert.ok(label === 'Seek Empty' || seekIndex >= 3, 'Review any new source action in the crowded seek row');
+      if (seekIndex >= 0 || label === 'Seek Empty' || label === 'Play Pause Empty') {
+        assert.ok(label === 'Seek Empty' || label === 'Play Pause Empty' || seekIndex >= 3, 'Review any new source action in the crowded seek row');
         const variable = 'videoBoundary' + label.replaceAll(' ', '');
-        assert.ok(seekPrompts[variable], 'Missing reviewed seek description');
+        assert.ok(actionPrompts[variable], 'Missing reviewed boundary action description');
         return { aiAct: {
-          prompt: variableBridge ? '${' + variable + '}' : seekPrompts[variable],
+          prompt: variableBridge ? '${' + variable + '}' : actionPrompts[variable],
           options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
         } };
       }

@@ -40,6 +40,33 @@ test('only ordinary Clear clicks combine planning and location; sensitive target
   }
 });
 
+test('Seek Null anchors the lower seek row rather than the first-column Clear button', () => {
+  for (const platform of ['android', 'ios']) {
+    const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
+    const targets = actions.filter(action => action.prompt.startsWith('Click the single button labeled exactly "Seek Null" once'));
+    assert.equal(targets.length, 1);
+    assert.match(targets[0].prompt, /LEFTMOST.*LOWER.*LEFT of "Seek Text"/);
+    assert.match(targets[0].prompt, /BELOW the row containing "Seek 0s"/);
+    assert.match(targets[0].prompt, /"Src A".*BELOW/);
+    assert.match(targets[0].prompt, /Do not click "Clear"/);
+    assert.match(targets[0].prompt, /row and neighbor context in the locating instruction/);
+  }
+});
+
+test('Play Pause Empty finishes after one executed tap without repeating or repairing the action', () => {
+  for (const platform of ['android', 'ios']) {
+    const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
+    const targets = actions.filter(action => action.prompt.startsWith('Click the single button labeled exactly "Play Pause Empty" once'));
+    assert.equal(targets.length, 1);
+    assert.match(targets[0].prompt, /between "Play Empty".*LEFT.*"Seek Empty".*RIGHT/);
+    assert.match(targets[0].prompt, /non-idempotent.*second tap clears and replaces the callback evidence/);
+    assert.match(targets[0].prompt, /first executed tap, finish immediately based on the action history/);
+    assert.match(targets[0].prompt, /Do not tap again to verify success/);
+    assert.match(targets[0].prompt, /Do not restore the source, clear the log/);
+    assert.equal(targets[0].options.deepLocate, true);
+  }
+});
+
 test('boundary seek actions preserve source order and match full labels on both platforms', () => {
   const fixture = readFileSync(new URL('../../integration_test/demo_pages/video/index.tsx', import.meta.url), 'utf8');
   const row = fixture.slice(fixture.indexOf('lynx-test-tag="btn-seek-start"'), fixture.indexOf('lynx-test-tag="btn-src-primary"'));

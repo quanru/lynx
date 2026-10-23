@@ -48,6 +48,32 @@ runners; it is not a measured speedup. The new parallel CI must establish actual
 wall time, all 33 outcomes, model rate-limit behavior and linked report integrity.
 Additional device setup can increase total runner minutes despite lower wall time.
 
+### First parallel run: acceptance incomplete
+
+[Run 39885677928, attempt 1](https://github.com/quanru/lynx/actions/runs/39885677928/attempts/1)
+started all five device jobs within one second and finished publication in
+**70m 56s**. It recorded **29 passed, 1 failed and 3 not run**, not a complete
+successful speedup baseline. Android Core and boundary passed 10/10 in 29m 20s
+of SDK execution; iOS Video passed 3/3 in 17m 19s and Core and Sparkling passed
+16/16 in 16m 45s. All five group artifacts were assembled and Pages published.
+
+Android Video failed before device startup because the downloaded Emulator
+archive could not be unpacked (`Error on ZipFile unknown archive`). Its three
+cases remained not run. iOS VideoBoundary exhausted its two case attempts:
+
+- Attempt 1: the planner placed Seek Null's crop over the playback/status area;
+  refined grounding tapped Clear, leaving the callback log empty. The original
+  `seek_fail` assertion correctly rejected the missing action.
+- Attempt 2: `aiAct` tapped Play Pause Empty twice despite the single-tap prompt.
+  The second tap ran against an already-empty source and replaced the callback
+  log with `missing video source` instead of the required cancellation message.
+
+The revised prompts anchor Seek Null by its row and neighbors, and tell the
+non-idempotent Play Pause Empty action to finish after its first executed tap.
+These are candidates requiring hosted acceptance, not guaranteed model behavior.
+They retain `aiAct`, all 36 original clicks, every assertion, wait and retry, and
+the unchanged fixture. No product-source change or assertion relaxation is used.
+
 ## Native assertion evidence
 
 Custom assertions are deterministic checks against the original fixture and

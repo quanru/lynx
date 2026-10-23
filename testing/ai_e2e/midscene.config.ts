@@ -29,7 +29,7 @@ import type { VideoActionPhase, VideoTimedAgent } from './video-action-phase.ts'
 import { executeVideoPlaybackPhase, isVideoPlaybackPhase } from './video-playback-phase.ts';
 import type { VideoPlaybackEvidence, VideoPlaybackPhase } from './video-playback-phase.ts';
 import { VideoPhasePreparation } from './video-phase-preparation.ts';
-import { videoBoundarySeekPrompts } from './video-boundary-prompts.ts';
+import { videoBoundaryActionPrompts } from './video-boundary-prompts.ts';
 import { withAssertionEvidence } from './assertion-evidence.ts';
 import { nativeCiFiles } from './scripts/native-ci-groups.mjs';
 
@@ -452,7 +452,7 @@ export default defineTestProject<ProjectContext>({
     {
       name: 'android-explorer',
       // Refine small controls independently; homepage actions retain full-frame location.
-      variables: { ...videoBoundarySeekPrompts(), videoBridgeError: '"code":3', videoActionEffort: 'deepThink', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
+      variables: { ...videoBoundaryActionPrompts(), videoBridgeError: '"code":3', videoActionEffort: 'deepThink', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
       files: nativeCiFiles('android-explorer', { include: ['cases/native/**/*.{yaml,yml}'] }),
@@ -460,7 +460,7 @@ export default defineTestProject<ProjectContext>({
     },
     {
       name: 'ios-explorer',
-      variables: { ...videoBoundarySeekPrompts(), videoBridgeError: "method 'unknownVideoMethod' not found", videoActionEffort: 'balance', videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
+      variables: { ...videoBoundaryActionPrompts(), videoBridgeError: "method 'unknownVideoMethod' not found", videoActionEffort: 'balance', videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
       files: nativeCiFiles('ios-explorer', { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] }),
