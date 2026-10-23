@@ -31,6 +31,7 @@ import type { VideoPlaybackEvidence, VideoPlaybackPhase } from './video-playback
 import { VideoPhasePreparation } from './video-phase-preparation.ts';
 import { videoBoundarySeekPrompts } from './video-boundary-prompts.ts';
 import { withAssertionEvidence } from './assertion-evidence.ts';
+import { nativeCiFiles } from './scripts/native-ci-groups.mjs';
 
 // @midscene/core writes agent reports to
 // <cwd>/midscene_run/report/<reportFileName>.html. releaseAgent must return the
@@ -454,7 +455,7 @@ export default defineTestProject<ProjectContext>({
       variables: { ...videoBoundarySeekPrompts(), videoBridgeError: '"code":3', videoActionEffort: 'deepThink', videoDeepLocate: true, eventInlineDeepLocate: false, videoUri: fixtureUri('android', 'video'), eventUri: fixtureUri('android', 'event'), domFocusUri: fixtureUri('android', 'domFocus'), insertTextUri: fixtureUri('android', 'insertText'), textEventUri: fixtureUri('android', 'textEvent'), imageUri: fixtureUri('android', 'image'), layoutLinearUri: fixtureUri('android', 'layoutLinear') },
       setup: bindSetup(androidSetup, androidSlot),
       nodes: nodesFor(AndroidAgent, androidSlot),
-      files: { include: ['cases/native/**/*.{yaml,yml}'] },
+      files: nativeCiFiles('android-explorer', { include: ['cases/native/**/*.{yaml,yml}'] }),
       retry: 1,
     },
     {
@@ -462,11 +463,12 @@ export default defineTestProject<ProjectContext>({
       variables: { ...videoBoundarySeekPrompts(), videoBridgeError: "method 'unknownVideoMethod' not found", videoActionEffort: 'balance', videoDeepLocate: true, eventInlineDeepLocate: true, videoUri: fixtureUri('ios', 'video'), eventUri: fixtureUri('ios', 'event'), domFocusUri: fixtureUri('ios', 'domFocus'), insertTextUri: fixtureUri('ios', 'insertText'), textEventUri: fixtureUri('ios', 'textEvent'), imageUri: fixtureUri('ios', 'image'), layoutLinearUri: fixtureUri('ios', 'layoutLinear'), ...sparklingRoutes },
       setup: bindSetup(iosSetup, iosSlot),
       nodes: nodesFor(IOSAgent, iosSlot),
-      files: { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] },
+      files: nativeCiFiles('ios-explorer', { include: ['cases/native/**/*.{yaml,yml}', 'cases/ios-sparkling/**/*.{yaml,yml}'] }),
       retry: 1,
     },
   ],
   test: {
+    // Hosted CI owns up to five isolated devices; never parallelize one device.
     maxConcurrentProjects: 1,
     maxConcurrentFiles: 1,
     testTimeout: 180_000,

@@ -1,5 +1,53 @@
 # AI E2E for Lynx Explorer (Midscene)
 
+## Five isolated CI devices (parallel acceptance pending)
+
+Native CI now allows **five device jobs per workflow run**: two Android emulators
+and three iOS simulators, each on a separate hosted runner. The platform matrix
+limits are 2 and 3, with fail-fast disabled. The previous shared model-job lock
+is removed. This does not start five sessions against the same device: SDK
+project and file concurrency remain 1 inside every job, including local runs.
+
+| Device group | Original YAML selection | Platform cases |
+| --- | --- | ---: |
+| Android · Core and boundary | Core, Explorer smoke, VideoBoundary | 10 |
+| Android · Video | VideoAttributes, VideoBasic, VideoModes | 3 |
+| iOS · Boundary | VideoBoundary | 1 |
+| iOS · Video | VideoAttributes, VideoBasic, VideoModes | 3 |
+| iOS · Core and Sparkling | Core, Explorer smoke, all Sparkling files | 16 |
+
+`scripts/native-ci-groups.mjs` owns the file assignments. Collection regressions
+compare their union with the full SDK collection: all Android 13 and iOS 20 case
+identities must appear exactly once. Files are selected in place, not copied or
+rewritten. Hooks, within-file ordering, assertions, source waits, pixel baselines,
+device profiles, retry limits and the 180-second step deadline are unchanged.
+An unknown or cross-platform group is rejected before device setup. For a focused
+local run, set `NATIVE_CI_GROUP=ios-video` and run
+`node scripts/run-ci.mjs --project ios-explorer`; omit the variable for the full
+serial platform suite. Do not run different groups on the same physical device.
+
+Each group uploads a separate artifact with commit/run/attempt/group identity.
+The report adapter selects the latest producer attempt independently for each
+group and verifies its job outcome against the Actions API. A failed group does
+not mark successful sibling groups as failed, and a failed rerun cannot revive
+its older green report. Missing artifacts stay missing; no screenshots or
+successful execution are invented. Collected inventories still expose setup
+failures as not-run cases. The unchanged, cross-repository shared renderer
+combines all five inputs into the native HTML report and screenshot Summary,
+with failures first and successful cases in the collapsed appendix.
+
+Serial baseline: SDK 1.16.5 at `3fff3e9`,
+[run 39741752514](https://github.com/quanru/lynx/actions/runs/39741752514), passed
+Android 13/13 and iOS 20/20, including report assembly and Pages publication.
+The SDK execution durations were **66m 8s Android** and **62m 36s iOS**; the whole
+workflow took approximately **176 minutes**, including source builds, serialized
+device jobs and publication. These are executed outcomes, not a new physical-input
+accuracy audit. Grouping is based on this run's file durations. A **75–85 minute**
+whole-workflow estimate assumes similar model latency and available hosted
+runners; it is not a measured speedup. The new parallel CI must establish actual
+wall time, all 33 outcomes, model rate-limit behavior and linked report integrity.
+Additional device setup can increase total runner minutes despite lower wall time.
+
 ## Native assertion evidence
 
 Custom assertions are deterministic checks against the original fixture and
@@ -135,13 +183,14 @@ no extra timed input or model call after the first timed tap. Transport proof
 alone does not establish intended-target accuracy. Complete new-head device
 validation, physical-input review and report publication remain pending.
 
-## Midscene SDK 1.16.5 (pending hosted acceptance)
+## Midscene SDK 1.16.5
 
 All Midscene packages are pinned to stable `1.16.5`, verified against the public
 npm `latest` tags on 2026-10-22. This upgrades the previous Rome-aligned `1.15.3`
 integration; it does not claim Rome uses the new release. Device jobs use Node.js 24.
 The SDK replaces `test.maxConcurrency` with `maxConcurrentProjects` and
-`maxConcurrentFiles`; both are explicitly `1` to preserve serial execution.
+`maxConcurrentFiles`; both are explicitly `1` to preserve serial execution within
+each isolated device. Hosted execution uses the five groups described above.
 `npm run check:model` invokes the official `midscene-test model verify` checks
 for text, image understanding and AI location, filtering credential-bearing
 failure diagnostics before printing them. CI retains the independent image-only
@@ -153,8 +202,9 @@ repository-secret configuration remains supported; no new environment is require
 Case-owned device sessions, deterministic source assertions and playback timing
 are unchanged. Keep the screenshot Summary, combined native HTML report,
 publication guards and model-free contract checks: Rome's single Web report does
-not replace these cross-platform requirements. Historical results below describe
-the previous SDK and are not acceptance of this upgrade. The last accepted
+not replace these cross-platform requirements. The serial 1.16.5 execution baseline
+is recorded above; parallel execution remains pending. Historical results below
+describe the previous SDK. The last fully input-audited
 native head was `a47143b`, with Android 13/13 and iOS 20/20 first-attempt passes
 in [38332110055](https://github.com/quanru/lynx/actions/runs/38332110055).
 
@@ -340,8 +390,9 @@ now describes Seek 2s by its second position and neighbors in the crowded row;
 scrolling cannot unclip its fixed-width text. The operation remains one aiAct
 click, with unchanged ordered source assertions. No target coordinates,
 original waits, fixtures or product implementations change in this follow-up.
-Credentialed Android/iOS jobs share one run-local CI slot; source builds still
-run in parallel. Provider retries use two retries and 30-second backoff inside
+At that checkpoint, credentialed Android/iOS jobs shared one run-local CI slot;
+the five-device policy above now supersedes that scheduling restriction.
+Provider retries still use two retries and 30-second backoff inside
 the unchanged step deadline. An inert public-SDK regression verifies that step
 cancellation interrupts the backoff without sending another request or input.
 Other repositories sharing this endpoint still need adequate RPM capacity or

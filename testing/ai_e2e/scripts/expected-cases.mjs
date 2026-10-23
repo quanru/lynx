@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { nativeCiFiles, requireNativeProjectGroup } from './native-ci-groups.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -11,7 +12,9 @@ export function executionIdentity(projectName, env = process.env) {
     || !/^[1-9][0-9]*$/.test(env.GITHUB_RUN_ATTEMPT ?? '')) {
     throw new Error('Expected-case inventory requires the exact CI commit, run, attempt and native project');
   }
-  return { schemaVersion: 1, label, projectName, sha: env.GITHUB_SHA,
+  const group = requireNativeProjectGroup(projectName, env);
+  return { schemaVersion: 1, label: group?.label ?? label, projectName,
+    ...(group ? { groupId: group.id } : {}), sha: env.GITHUB_SHA,
     runId: env.GITHUB_RUN_ID, attempt: env.GITHUB_RUN_ATTEMPT };
 }
 
@@ -24,7 +27,7 @@ export async function collectExpectedCases(projectName, env = process.env) {
   const project = loaded.projects.find(item => item.name === projectName);
   if (!project) throw new Error('Expected native project was not collected');
   const cases = [];
-  for (const absolutePath of discoverTestFiles(root, project.files)) {
+  for (const absolutePath of discoverTestFiles(root, nativeCiFiles(projectName, project.files, env))) {
     const sourcePath = path.relative(root, absolutePath).split(path.sep).join('/');
     const document = collectWorkflowDocument({ projectId: project.projectId,
       projectName, sourcePath, absolutePath }, {
@@ -65,7 +68,9 @@ export async function selectedArtifactAttempt(directory, currentAttempt, platfor
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [mode, projectName, outcome] = process.argv.slice(2);
-  if (mode === 'selected-directory' || mode === 'selected-platform') {
+  if (mode === 'identity') {
+    console.log(JSON.stringify(executionIdentity(projectName)));
+  } else if (mode === 'selected-directory' || mode === 'selected-platform') {
     console.log(await selectedArtifactAttempt(projectName, process.env.GITHUB_RUN_ATTEMPT, mode === 'selected-platform'));
   } else {
     const value = mode === 'collect' && outcome === undefined

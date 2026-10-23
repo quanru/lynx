@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { requireNativeProjectGroup } from './native-ci-groups.mjs';
 
 // Stop the CLI itself, not npm's intermediary process, early enough to let
 // Midscene publish its failed/not-run cases before Actions kills the job.
@@ -49,6 +50,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     throw new Error('Usage: node scripts/run-ci.mjs --project android-explorer|ios-explorer');
   }
   const cli = fileURLToPath(new URL('../node_modules/@midscene/test/bin/midscene-test', import.meta.url));
+  requireNativeProjectGroup(args[1]);
   const child = spawn(process.execPath, [cli, ...args], { stdio: 'inherit' });
   process.exitCode = await supervise(child);
 }

@@ -152,16 +152,24 @@ jobs:
           python3 testing/ai_e2e/scripts/native_capture_test.py
 
   android-ai-e2e:
-    name: Midscene AI E2E · Android (Explorer)
+    name: Midscene AI E2E · ${{ matrix.label }}
     needs: build-explorer
     if: always() && !cancelled() && needs.build-explorer.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    # Source builds remain parallel; only credentialed device jobs share a slot.
-    concurrency:
-      group: midscene-native-model-${{ github.run_id }}
-      cancel-in-progress: false
+    # Two Android plus three iOS jobs: at most five independent hosted devices.
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - group: android-core-boundary
+            label: Android · Core and boundary
+          - group: android-video
+            label: Android · Video
     env:
+      NATIVE_CI_GROUP: ${{ matrix.group }}
+      NATIVE_CI_LABEL: ${{ matrix.label }}
       # Provider retries remain inside the unchanged test-step deadline.
       MIDSCENE_MODEL_RETRY_COUNT: '2'
       MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
@@ -281,9 +289,10 @@ jobs:
           if [ -f testing/ai_e2e/midscene_run/expected-cases.json ]; then
             node testing/ai_e2e/scripts/expected-cases.mjs status android-explorer "$EXECUTION_OUTCOME"
           fi
-          target="$RUNNER_TEMP/midscene-upload/android/attempt-$GITHUB_RUN_ATTEMPT"
+          target="$RUNNER_TEMP/midscene-upload/$NATIVE_CI_GROUP/attempt-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$target"
           printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
+          node testing/ai_e2e/scripts/expected-cases.mjs identity android-explorer > "$target/group.json"
           if [ -d testing/ai_e2e/midscene_run ]; then
             cp -R testing/ai_e2e/midscene_run/. "$target"/
           fi
@@ -294,8 +303,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-android-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/midscene-upload/android
+          name: midscene-ai-e2e-${{ matrix.group }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/midscene-upload
           if-no-files-found: warn
           retention-days: 14
 
@@ -305,12 +314,12 @@ jobs:
           PRODUCER_RESULT: ${{ steps.native-forward.outcome == 'success' && steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.release-native-forward.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
         run: |
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
-            --title "Lynx Explorer × Midscene · Android" \
+            --title "Lynx Explorer × Midscene · $NATIVE_CI_LABEL" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --links-published false \
-            --entry "Android=testing/ai_e2e/midscene_run" \
-            --result "Android=$PRODUCER_RESULT" \
-            --artifact "Android=midscene-ai-e2e-android-$GITHUB_RUN_ATTEMPT" \
+            --entry "$NATIVE_CI_LABEL=testing/ai_e2e/midscene_run" \
+            --result "$NATIVE_CI_LABEL=$PRODUCER_RESULT" \
+            --artifact "$NATIVE_CI_LABEL=midscene-ai-e2e-$NATIVE_CI_GROUP-$GITHUB_RUN_ATTEMPT" \
             --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/midscene-job-summary" \
             --job-summary-only true \
@@ -320,7 +329,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-summary-overflow-android-${{ github.run_attempt }}
+          name: midscene-summary-overflow-${{ matrix.group }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/midscene-job-summary/summary-overflow.md
             ${{ runner.temp }}/midscene-job-summary/summary-overflow.json
@@ -331,21 +340,31 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-log-android-emulator-${{ github.run_attempt }}
+          name: midscene-ai-e2e-log-${{ matrix.group }}-emulator-${{ github.run_attempt }}
           path: testing/ai_e2e/emulator.log
           if-no-files-found: ignore
           retention-days: 14
 
   ios-ai-e2e:
-    name: Midscene AI E2E · iOS (Explorer)
+    name: Midscene AI E2E · ${{ matrix.label }}
     needs: build-explorer
     if: always() && !cancelled() && needs.build-explorer.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-15
     timeout-minutes: 120
-    concurrency:
-      group: midscene-native-model-${{ github.run_id }}
-      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - group: ios-boundary
+            label: iOS · Boundary
+          - group: ios-video
+            label: iOS · Video
+          - group: ios-core-sparkling
+            label: iOS · Core and Sparkling
     env:
+      NATIVE_CI_GROUP: ${{ matrix.group }}
+      NATIVE_CI_LABEL: ${{ matrix.label }}
       MIDSCENE_MODEL_RETRY_COUNT: '2'
       MIDSCENE_MODEL_RETRY_INTERVAL: '30000'
     steps:
@@ -447,9 +466,10 @@ jobs:
           if [ -f testing/ai_e2e/midscene_run/expected-cases.json ]; then
             node testing/ai_e2e/scripts/expected-cases.mjs status ios-explorer "$EXECUTION_OUTCOME"
           fi
-          target="$RUNNER_TEMP/midscene-upload/ios/attempt-$GITHUB_RUN_ATTEMPT"
+          target="$RUNNER_TEMP/midscene-upload/$NATIVE_CI_GROUP/attempt-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$target"
           printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$target/attempt.txt"
+          node testing/ai_e2e/scripts/expected-cases.mjs identity ios-explorer > "$target/group.json"
           if [ -d testing/ai_e2e/midscene_run ]; then
             cp -R testing/ai_e2e/midscene_run/. "$target"/
           fi
@@ -460,8 +480,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-ios-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/midscene-upload/ios
+          name: midscene-ai-e2e-${{ matrix.group }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/midscene-upload
           if-no-files-found: warn
           retention-days: 14
 
@@ -471,12 +491,12 @@ jobs:
           PRODUCER_RESULT: ${{ steps.run-cases.outcome == 'success' && steps.probe-devtool.outcome == 'success' && steps.upload-report.outcome == 'success' && 'success' || 'failure' }}
         run: |
           node testing/ai_e2e/scripts/render-ci-summary.mjs \
-            --title "Lynx Explorer × Midscene · iOS" \
+            --title "Lynx Explorer × Midscene · $NATIVE_CI_LABEL" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --links-published false \
-            --entry "iOS=testing/ai_e2e/midscene_run" \
-            --result "iOS=$PRODUCER_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-ios-$GITHUB_RUN_ATTEMPT" \
+            --entry "$NATIVE_CI_LABEL=testing/ai_e2e/midscene_run" \
+            --result "$NATIVE_CI_LABEL=$PRODUCER_RESULT" \
+            --artifact "$NATIVE_CI_LABEL=midscene-ai-e2e-$NATIVE_CI_GROUP-$GITHUB_RUN_ATTEMPT" \
             --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/midscene-job-summary" \
             --job-summary-only true \
@@ -486,7 +506,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-summary-overflow-ios-${{ github.run_attempt }}
+          name: midscene-summary-overflow-${{ matrix.group }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/midscene-job-summary/summary-overflow.md
             ${{ runner.temp }}/midscene-job-summary/summary-overflow.json
@@ -498,7 +518,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midscene-ai-e2e-log-ios-wda-${{ github.run_attempt }}
+          name: midscene-ai-e2e-log-${{ matrix.group }}-wda-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/wda-build/wda.log
             ${{ runner.temp }}/wda-build/wda-startup.*
@@ -513,6 +533,9 @@ jobs:
     permissions:
       actions: read
       contents: read
+    env:
+      ANDROID_RESULT: ${{ needs.android-ai-e2e.result }}
+      IOS_RESULT: ${{ needs.ios-ai-e2e.result }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -523,7 +546,7 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: midscene-ai-e2e-android-*
-          path: ${{ runner.temp }}/midscene-artifacts/android
+          path: ${{ runner.temp }}/midscene-artifacts
           merge-multiple: true
 
       - name: Download iOS report
@@ -531,30 +554,22 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: midscene-ai-e2e-ios-*
-          path: ${{ runner.temp }}/midscene-artifacts/ios
+          path: ${{ runner.temp }}/midscene-artifacts
           merge-multiple: true
 
-      - name: Select latest report attempt per platform
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+      - name: Install source inventory dependencies
+        working-directory: testing/ai_e2e
+        run: npm ci --no-audit --no-fund
+
+      - name: Select latest report attempt per device group
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          select_latest() {
-            local platform="$1"
-            local source="$RUNNER_TEMP/midscene-artifacts/$platform"
-            local target="$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-$platform"
-            local latest=""
-            if [ -d "$source" ]; then
-              latest="$(find "$source" -mindepth 1 -maxdepth 1 -type d \
-                -name 'attempt-*' -print | sort -V | tail -n 1)"
-            fi
-            if [ -n "$latest" ]; then
-              local attempt
-              attempt="$(node testing/ai_e2e/scripts/expected-cases.mjs selected-directory "$latest")"
-              mkdir -p "$target"
-              cp -R "$latest"/. "$target"/
-              printf '%s\n' "$attempt" > "$target/selected-attempt.txt"
-            fi
-          }
-          select_latest android
-          select_latest ios
+          node testing/ai_e2e/scripts/native-ci-reports.mjs select \
+            "$RUNNER_TEMP/midscene-artifacts" "$RUNNER_TEMP/midscene-reports"
 
       - name: Stage combined report bundle for this attempt
         run: |
@@ -629,14 +644,6 @@ jobs:
           node testing/ai_e2e/scripts/expected-cases.mjs selected-directory "$latest"
           mkdir -p "$RUNNER_TEMP/midscene-reports"
           cp -R "$latest"/. "$RUNNER_TEMP/midscene-reports"/
-          for platform in android ios; do
-            directory="$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-$platform"
-            attempt="$GITHUB_RUN_ATTEMPT"
-            if [ -d "$directory" ]; then
-              attempt="$(node testing/ai_e2e/scripts/expected-cases.mjs selected-platform "$directory")"
-            fi
-            echo "${platform}_report_attempt=$attempt" >> "$GITHUB_ENV"
-          done
 
       - id: pages
         continue-on-error: true
@@ -686,18 +693,10 @@ jobs:
           PAGES_URL: ${{ steps.pages.outputs.base_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+          node testing/ai_e2e/scripts/native-ci-reports.mjs summary "$RUNNER_TEMP/midscene-reports" \
             --title "Lynx Explorer × Midscene" \
             --run-url "$RUN_URL" \
             --pages-url "$PAGES_URL" \
-            --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
-            --result "Android=$ANDROID_RESULT" \
-            --artifact "Android=midscene-ai-e2e-android-$android_report_attempt" \
-            --artifact-attempt "Android=$android_report_attempt" \
-            --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
-            --result "iOS=$IOS_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-ios-$ios_report_attempt" \
-            --artifact-attempt "iOS=$ios_report_attempt" \
             --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/pages-site" \
             --output "$RUNNER_TEMP/published-summary.md"
@@ -754,19 +753,11 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           status=0
-          node testing/ai_e2e/scripts/render-ci-summary.mjs \
+          node testing/ai_e2e/scripts/native-ci-reports.mjs summary "$RUNNER_TEMP/midscene-reports" \
             --title "Lynx Explorer × Midscene" \
             --run-url "$RUN_URL" \
             --links-published false \
             --job-summary-only false \
-            --entry "Android=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-android" \
-            --result "Android=$ANDROID_RESULT" \
-            --artifact "Android=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
-            --artifact-attempt "Android=$android_report_attempt" \
-            --entry "iOS=$RUNNER_TEMP/midscene-reports/midscene-ai-e2e-ios" \
-            --result "iOS=$IOS_RESULT" \
-            --artifact "iOS=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT" \
-            --artifact-attempt "iOS=$ios_report_attempt" \
             --site-prefix "runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --site-dir "$RUNNER_TEMP/unpublished-report-site" \
             --output "$RUNNER_TEMP/unpublished-summary.md" || status=$?

@@ -1,17 +1,26 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { nativeCiGroups } from './native-ci-groups.mjs';
 
-test('native CI serializes credentialed jobs and bounds provider retries without cancelling the other platform', async () => {
+test('native CI runs at most five isolated devices and keeps provider retries bounded without cancelling other groups', async () => {
   const workflow = await readFile(new URL('../../../.github/workflows/midscene-ai-e2e.yml', import.meta.url), 'utf8');
   for (const platform of ['android', 'ios']) {
     const job = workflow.split('  ' + platform + '-ai-e2e:')[1].split(/\n {2}(?=\S)/)[0];
-    assert.match(job, /concurrency:\s+group: midscene-native-model-\$\{\{ github\.run_id \}\}\s+cancel-in-progress: false/);
+    const groups = nativeCiGroups.filter(group => group.platform === platform);
+    assert.match(job, new RegExp(`max-parallel: ${groups.length}`));
+    assert.match(job, /fail-fast: false/);
+    assert.doesNotMatch(job, /\n    concurrency:/);
+    assert.equal(job.match(/- group:/g).length, groups.length);
+    for (const group of groups) assert.ok(job.includes(`- group: ${group.id}\n            label: ${group.label}`));
+    assert.match(job, /NATIVE_CI_GROUP: \$\{\{ matrix.group \}\}/);
+    assert.match(job, /name: midscene-ai-e2e-\$\{\{ matrix.group \}\}-\$\{\{ github.run_attempt \}\}/);
     assert.match(job, /MIDSCENE_MODEL_RETRY_COUNT: '2'/);
     assert.match(job, /MIDSCENE_MODEL_RETRY_INTERVAL: '30000'/);
     assert.match(job, /needs: build-explorer/);
     assert.match(job, /if: always\(\) && !cancelled\(\)/);
   }
+  assert.equal(nativeCiGroups.length, 5);
   const build = workflow.split('  build-explorer:')[1].split('  contract-check:')[0];
   assert.doesNotMatch(build, /concurrency:|MIDSCENE_MODEL_RETRY/);
   assert.match(build, /fail-fast: false/);
@@ -83,9 +92,9 @@ test('unavailable publication retains an honest per-case artifact fallback', asy
   assert.match(fallback, /--links-published false/);
   assert.match(fallback, /--job-summary-only false/);
   assert.doesNotMatch(fallback, /--pages-url/);
-  for (const platform of ['Android', 'iOS']) {
-    assert.ok(fallback.includes('--artifact "' + platform + '=midscene-ai-e2e-report-$GITHUB_RUN_ATTEMPT"'));
-  }
+  assert.match(fallback, /native-ci-reports\.mjs summary "\$RUNNER_TEMP\/midscene-reports"/);
+  const adapter = await readFile(new URL('./native-ci-reports.mjs', import.meta.url), 'utf8');
+  assert.match(adapter, /midscene-ai-e2e-report-\$\{env.GITHUB_RUN_ATTEMPT\}/);
   assert.ok(fallback.includes('cat "$RUNNER_TEMP/unpublished-summary.md" >> "$GITHUB_STEP_SUMMARY"'));
 });
 

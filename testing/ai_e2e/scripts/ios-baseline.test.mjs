@@ -15,7 +15,7 @@ test('WDA evidence survives a successful job after a failed case attempt', () =>
   const upload = workflow.split('      - name: Upload WDA log\n')[1]?.split('\n  report-bundle:')[0];
   assert.ok(upload);
   assert.match(upload, /if: always\(\)/);
-  assert.match(upload, /name: midscene-ai-e2e-log-ios-wda-\$\{\{ github.run_attempt \}\}/);
+  assert.match(upload, /name: midscene-ai-e2e-log-\$\{\{ matrix.group \}\}-wda-\$\{\{ github.run_attempt \}\}/);
   assert.match(upload, /path: \|\s+\$\{\{ runner.temp \}\}\/wda-build\/wda.log/);
   assert.match(upload, /\$\{\{ runner.temp \}\}\/wda-build\/wda-startup\.\*/);
   assert.match(upload, /if-no-files-found: ignore/);
