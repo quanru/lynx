@@ -70,11 +70,19 @@ test('CI leaves headroom for finalization without modifying assertion windows, r
 test('actual pinned Midscene CLI writes a failed report and not-run case after direct SIGINT, without models or devices', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lynx-ci-signal-proof-'));
   const reports = join(directory, 'reports');
+  const githubSummary = join(directory, 'github-summary.md');
   const child = spawn(process.execPath, [
     fileURLToPath(new URL('../node_modules/@midscene/test/bin/midscene-test', import.meta.url)),
     '--config', fileURLToPath(new URL('./fixtures/ci-interruption.config.mjs', import.meta.url)),
     '--result-dir', join(directory, 'results'),
-  ], { cwd: fileURLToPath(new URL('./fixtures/', import.meta.url)), stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, CI_SIGNAL_REPORT_DIR: reports } });
+  ], { cwd: fileURLToPath(new URL('./fixtures/', import.meta.url)), stdio: ['ignore', 'pipe', 'pipe'], env: {
+    ...process.env,
+    CI_SIGNAL_REPORT_DIR: reports,
+    // This deliberately failing fixture must never append to the real job's
+    // Summary. Exercise the SDK's GitHub output only inside its own sandbox.
+    GITHUB_ACTIONS: 'true',
+    GITHUB_STEP_SUMMARY: githubSummary,
+  } });
   const signals = new EventEmitter();
   const result = supervise(child, { timeoutMs: 20_000, graceMs: 4_000, signals, log: () => {} });
   let output = '', interrupted = false;
@@ -93,4 +101,5 @@ test('actual pinned Midscene CLI writes a failed report and not-run case after d
   const cases = dump.projects.flatMap(project => project.cases ?? project.documents?.flatMap(document => document.cases) ?? []);
   assert.equal(cases.length, 2);
   assert.deepEqual(cases.map(item => item.status), ['failed', 'not-run']);
+  assert.match(await readFile(githubSummary, 'utf8'), /\| 0 \| 1 \| 1 \| 0 \|/);
 });

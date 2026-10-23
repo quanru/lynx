@@ -29,7 +29,7 @@ test('original Lynx runtime selection targets the segmented control rather than 
 test('the observed Boundary Clear miss keeps the original single action and asserts the same following stop result', async () => {
   const steps = await collected('cases/native/video-boundary.yaml', 'xelement/VideoBoundary');
   assert.equal(steps[49].node, 'aiAct');
-  assert.deepEqual(steps[49].input.options, { effort: 'balance', deepLocate: true, cacheable: false });
+  assert.deepEqual(steps[49].input.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
   assert.match(steps[49].input.prompt, /CENTER of the BLUE "Clear" button body/);
   assert.match(steps[49].input.prompt, /Clear, Play, Play Null, Pause, Stop/);
   assert.match(steps[49].input.prompt, /Do not tap blank space above/);

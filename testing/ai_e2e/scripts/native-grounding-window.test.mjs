@@ -6,6 +6,20 @@ import test from 'node:test';
 const { default: Service } = await import('../node_modules/@midscene/core/dist/es/service/index.mjs');
 const { expandSearchArea, mergeSearchAreaResults } = await import('../node_modules/@midscene/core/dist/es/ai-model/workflows/grounding/search-area.mjs');
 
+test('run 39897067173 Boundary planner crops exclude the actual Stop and Seek Missing buttons', () => {
+  // Attempt 2 agent traces and original 1206x2622 screenshots. Coordinates are
+  // diagnostic evidence only; production actions never use these constants.
+  for (const sample of [
+    { point: [905, 1290], crop: { left: 706, top: 1091, width: 400, height: 400 }, target: [1056, 1625] },
+    { point: [920, 1363], crop: { left: 721, top: 1164, width: 400, height: 400 }, target: [1056, 1750] },
+  ]) {
+    const crop = expandSearchArea(mergeSearchAreaResults({ center: sample.point }), { width: 1206, height: 2622 });
+    assert.deepEqual(crop, sample.crop);
+    assert.ok(sample.target[1] > crop.top + crop.height,
+      'Refinement cannot recover a target that is absent from its input image');
+  }
+});
+
 test('full-frame iOS grounding does not inherit the evidenced blank planning crop', async () => {
   const shotSize = { width: 1206, height: 2622 };
   const planLocatedElement = { center: [362, 1573] };

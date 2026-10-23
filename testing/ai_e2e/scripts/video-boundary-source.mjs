@@ -11,6 +11,8 @@ const seekRow = ['Seek 0s', 'Seek 2s', 'Near End', 'Seek Bad', 'Seek Missing', '
 export function originalVideoBoundary(platform, variableBridge = false) {
   assert.ok(['android', 'ios'].includes(platform));
   const deepLocate = variableBridge ? '${videoDeepLocate}' : true;
+  const clearEffort = variableBridge ? '${videoBoundaryClearEffort}' : platform === 'ios' ? 'deepThink' : 'balance';
+  const clearDeepLocate = variableBridge ? '${videoBoundaryClearDeepLocate}' : platform === 'ios';
   const actionPrompts = videoBoundaryActionPrompts();
   const source = readFileSync(new URL('../../integration_test/test_script/case_sets/xelement/VideoBoundary.py', import.meta.url), 'utf8');
   const events = JSON.parse(execFileSync('python3', [fileURLToPath(new URL('./extract-video-boundary.py', import.meta.url))], {
@@ -53,7 +55,7 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         && events[eventIndex - 1][1].notContains === 'pause_ok';
       if (label === 'Clear' && afterCanceledPause) return { aiAct: {
         prompt: 'Tap once at the CENTER of the BLUE "Clear" button body at the LEFT END of the first playback-button row. This row contains Clear, Play, Play Null, Pause, Stop and sits immediately ABOVE the Seek 0s / Seek 2s row. Do not tap blank space above the blue button, the numeric status values, or any other button. Stop after that single tap.',
-        options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
+        options: { effort: 'deepThink', deepLocate, cacheable: false },
       } };
       const seekIndex = seekRow.indexOf(label);
       if (seekIndex >= 0 || label === 'Seek Empty' || label === 'Play Pause Empty') {
@@ -62,16 +64,16 @@ export function originalVideoBoundary(platform, variableBridge = false) {
         assert.ok(actionPrompts[variable], 'Missing reviewed boundary action description');
         return { aiAct: {
           prompt: variableBridge ? '${' + variable + '}' : actionPrompts[variable],
-          options: { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
+          options: { effort: 'deepThink', deepLocate, cacheable: false },
         } };
       }
       return { aiAct: {
         prompt: `When scrolling, gesture within the light-gray video demo panel on the LEFT below the back arrow, not the white blank area to its right or below. Scroll if needed and click the single button labeled exactly ${JSON.stringify(label)} once. Do not click similarly named buttons or perform another action.`,
-        // Ordinary Clear actions can plan and locate together. Keep the
-        // previously ambiguous post-cancellation Clear on its reviewed path.
+        // Only Android retains combined planning/location for ordinary Clear.
+        // iOS planner points missed the button in run 39897067173, attempt 2.
         options: label === 'Clear'
-          ? { effort: 'balance', deepLocate: false, cacheable: false }
-          : { effort: variableBridge ? '${videoActionEffort}' : platform === 'ios' ? 'balance' : 'deepThink', deepLocate, cacheable: false },
+          ? { effort: clearEffort, deepLocate: clearDeepLocate, cacheable: false }
+          : { effort: 'deepThink', deepLocate, cacheable: false },
       } };
     }),
   ];

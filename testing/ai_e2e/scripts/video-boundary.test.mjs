@@ -26,16 +26,16 @@ test('Seek Empty distinguishes the rightmost target from the adjacent source but
   }
 });
 
-test('only ordinary Clear clicks combine planning and location; sensitive targets retain deep grounding', () => {
+test('only Android ordinary Clear clicks combine planning and location; iOS always locates independently', () => {
   for (const platform of ['android', 'ios']) {
     const actions = originalVideoBoundary(platform).steps.filter(step => step.aiAct).map(step => step.aiAct);
     const ordinaryClear = actions.filter(action => action.prompt.includes('labeled exactly "Clear"'));
-    assert.ok(ordinaryClear.length > 0);
+    assert.equal(ordinaryClear.length, 12);
     for (const action of ordinaryClear) {
-      assert.deepEqual(action.options, { effort: 'balance', deepLocate: false, cacheable: false });
+      assert.deepEqual(action.options, { effort: platform === 'ios' ? 'deepThink' : 'balance', deepLocate: platform === 'ios', cacheable: false });
     }
     for (const action of actions.filter(action => !ordinaryClear.includes(action))) {
-      assert.deepEqual(action.options, { effort: platform === 'ios' ? 'balance' : 'deepThink', deepLocate: true, cacheable: false });
+      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
     }
   }
 });
@@ -82,7 +82,7 @@ test('boundary seek actions preserve source order and match full labels on both 
       assert.match(action.prompt, /already fully on screen, do not scroll/);
       assert.match(action.prompt, /Stop after the single tap/);
       assert.doesNotMatch(action.prompt, /clipped|Seel|NINTH|TENTH|\b\d+\s*(?:px|pixels)\b|\[\d+,\s*\d+\]/);
-      assert.deepEqual(action.options, { effort: platform === 'ios' ? 'balance' : 'deepThink', deepLocate: true, cacheable: false });
+      assert.deepEqual(action.options, { effort: 'deepThink', deepLocate: true, cacheable: false });
     });
   }
 });

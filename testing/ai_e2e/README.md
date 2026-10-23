@@ -81,8 +81,58 @@ partial-rerun API copied them into attempt 2 with new IDs but old execution
 timestamps. The provenance resolver now compares those timestamps with the
 attempt's start time. Retained jobs use their original producer artifacts;
 genuinely rerun jobs still require new artifacts, even when they fail. Missing,
-invalid or overlapping timestamps fail closed. This report correction and the
-two iOS prompt corrections still require hosted validation on the new revision.
+invalid or overlapping timestamps fail closed. The next run below validates the
+report correction; iOS Boundary acceptance remains incomplete.
+
+### Second parallel run: report reruns fixed, iOS Boundary still failing
+
+[Run 39897067173](https://github.com/quanru/lynx/actions/runs/39897067173),
+head `796f32f`, passed all 13 Android cases and 19 iOS cases on their first case
+attempts. Initial iOS Boundary setup stalled while launching WDA, before any
+case ran. Publication completed **80m 18s** after workflow creation, but this
+is not a successful 33-case speed baseline.
+
+| Group | Passed / expected | SDK execution |
+| --- | ---: | ---: |
+| Android Core and boundary | 10 / 10 | 47m 27s |
+| Android Video | 3 / 3 | 36m 40s |
+| iOS Core and Sparkling | 16 / 16 | 21m 36s |
+| iOS Video | 3 / 3 | 29m 39s |
+| iOS Boundary, job rerun | 0 / 1 | 25m 32s, two failed case attempts |
+
+Android Boundary's 32 `aiAct` steps still recorded 104 model calls in both
+parallel runs. Their recorded model-call time increased from **20m 55s** to
+**36m 03s**, while its 86 deterministic assertion steps took about three
+seconds in the second run. This is latency in the model-call path, not added
+test steps or a case retry; the evidence does not identify a provider-side
+queueing cause or prove that concurrency caused the increase.
+
+The [Boundary-only rerun](https://github.com/quanru/lynx/actions/runs/39897067173/attempts/2)
+started WDA successfully but failed both case attempts. Screenshots and SDK
+traces show that Stop and Seek Missing received planner points in the status
+area. Their 400-by-400 refinement crops excluded the actual buttons; refinement
+returned the crop center and the tap missed. The preceding ordinary Clear also
+hit the gap below its button, leaving stale callback text. The exact callback
+message assertion rejected that stale result. Play Pause Empty passed its
+original checks in the second case attempt; Seek Null was not reached.
+
+All iOS Boundary `aiAct` actions now use `effort: deepThink` with uncached deep
+location: an independent full-frame search selects the target region before
+refinement. This also rolls back combined planning/location for iOS ordinary
+Clear. Android's existing options and other iOS video cases are unchanged.
+Model-free regressions use a phone-sized 1206-by-2622 screenshot to verify the
+actual pinned SDK request sequence; tiny screenshots do not exercise cropping.
+These checks establish request behavior, not real-model target accuracy.
+All 36 original clicks, exact assertions, waits, fixture and retry limits remain
+unchanged. Complete hosted acceptance is still required.
+
+The partial-rerun bundle and Pages publication both passed. The combined Summary
+correctly shows one failed case with its screenshot/report link, plus a closed
+appendix containing 32 successful rows, each with a screenshot/report link.
+Its provenance identifies Boundary attempt 2 and the four retained attempt-1
+groups. The deliberately failing model-free SIGINT fixture now writes SDK
+Summary output to a private temporary file so it cannot append a misleading
+failure table to the successful contract-check job.
 
 ## Native assertion evidence
 
@@ -149,7 +199,10 @@ input evidence confirm accuracy. VideoBoundary passes after retry in that run;
 the earlier 180-second model timeout does not recur, but this is not a stability
 claim.
 
-## Boundary Clear planning candidate: hosted acceptance pending
+## Historical Boundary Clear planning candidate
+
+The iOS candidate below is superseded by the independent-location correction
+above. Only Android retains combined planning/location for ordinary Clear.
 
 In [run 38677828053](https://github.com/quanru/lynx/actions/runs/38677828053),
 iOS VideoBoundary step 104 exhausted its 180-second action budget after the

@@ -51,7 +51,7 @@ cases:
             "Src Bad" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -75,7 +75,7 @@ cases:
             "Src Empty" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -89,8 +89,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -99,7 +99,7 @@ cases:
             "Play" once. Do not click similarly named buttons or perform another
             action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -139,8 +139,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -149,7 +149,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -167,7 +167,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -181,7 +181,7 @@ cases:
             "Queue" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -191,7 +191,7 @@ cases:
       - aiAct:
           prompt: ${videoBoundaryPlayPauseEmpty}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -254,7 +254,7 @@ cases:
             2s row. Do not tap blank space above the blue button, the numeric
             status values, or any other button. Stop after that single tap.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - aiAct:
@@ -264,7 +264,7 @@ cases:
             "Stop" once. Do not click similarly named buttons or perform another
             action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -282,7 +282,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -296,13 +296,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekEmpty}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -345,7 +345,7 @@ cases:
             "Src A" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -362,13 +362,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekBad}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -398,13 +398,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekMissing}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -434,13 +434,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekNull}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -470,13 +470,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekText}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -506,13 +506,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekNaN}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -542,13 +542,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekInf}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -578,13 +578,13 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: ${videoBoundarySeekHuge}
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
@@ -614,8 +614,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - native.videoPhase:
           phase: stop-play-null
@@ -642,8 +642,8 @@ cases:
             "Clear" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: balance
-            deepLocate: false
+            effort: "${videoBoundaryClearEffort}"
+            deepLocate: ${videoBoundaryClearDeepLocate}
             cacheable: false
       - aiAct:
           prompt: When scrolling, gesture within the light-gray video demo panel on the
@@ -652,7 +652,7 @@ cases:
             "Unknown" once. Do not click similarly named buttons or perform
             another action.
           options:
-            effort: "${videoActionEffort}"
+            effort: deepThink
             deepLocate: ${videoDeepLocate}
             cacheable: false
       - native.video:
